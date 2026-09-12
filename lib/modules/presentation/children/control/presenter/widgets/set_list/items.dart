@@ -507,7 +507,10 @@ Future<void> _showRenameDialog(
   CollectionItem item,
   ControlCubit cubit,
 ) async {
-  final ctrl = TextEditingController(text: item.displayTitle);
+  // Selected, not just filled: every name worth changing is a long one that
+  // an import chose, and the operator should not have to clear it by hand.
+  final ctrl = TextEditingController(text: item.displayTitle)
+    ..selection = TextSelection(baseOffset: 0, extentOffset: item.displayTitle.length);
   final name = await showDialog<String>(
     context: context,
     builder: (ctx) => AppDialog(
