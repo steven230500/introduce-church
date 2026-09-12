@@ -1,6 +1,9 @@
 .PHONY: run test build-mac build-windows dist-mac dist-windows clean reset deps lint check build-all fresh
 
-FLUTTER      := /Users/stevenpatino/development/flutter/bin/flutter
+# Whatever flutter is on PATH. The hard-coded path this used to hold stopped
+# existing when the SDK moved, and every target here failed with "no such file"
+# until someone went looking in the Makefile.
+FLUTTER      := $(shell command -v flutter)
 APP_NAME     := Introduce
 APP_PATH     := build/macos/Build/Products/Release/$(APP_NAME).app
 WIN_APP_PATH := build/windows/x64/runner/Release
