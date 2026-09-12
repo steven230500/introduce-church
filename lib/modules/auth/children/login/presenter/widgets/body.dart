@@ -29,6 +29,7 @@ class _BodyState extends State<_Body> {
       },
       builder: (context, state) {
         final isLoading = state is LoginLoadingState;
+        final model = state.model;
         final cubit = context.read<LoginCubit>();
 
         return TweenAnimationBuilder<double>(
@@ -58,15 +59,25 @@ class _BodyState extends State<_Body> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Iniciar sesión',
-                      style: TextStyle(
+                    Text(
+                      model.isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    if (model.isRegistering) ...[
+                      _Field(
+                        label: 'Nombre (opcional)',
+                        icon: Icons.person_outline,
+                        enabled: !isLoading,
+                        onChanged: cubit.onDisplayNameChanged,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // Email
                     _Field(
@@ -85,23 +96,54 @@ class _BodyState extends State<_Body> {
                       obscureText: _obscure,
                       enabled: !isLoading,
                       onChanged: cubit.onPasswordChanged,
-                      onSubmitted: (_) => cubit.submit(),
+                      onSubmitted: (_) => model.isRegistering ? null : cubit.submit(),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           size: 18,
                           color: AppColors.textMuted,
                         ),
+                        tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
+
+                    if (model.isRegistering) ...[
+                      const SizedBox(height: 14),
+                      _Field(
+                        label: 'Repetir contraseña',
+                        icon: Icons.lock_outline,
+                        obscureText: _obscure,
+                        enabled: !isLoading,
+                        onChanged: cubit.onConfirmPasswordChanged,
+                        onSubmitted: (_) => cubit.submit(),
+                      ),
+                    ],
+
+                    // Says what is wrong while they type, instead of waiting
+                    // for a failed submit to explain it.
+                    if (model.hint != null) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 13, color: AppColors.warning),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              model.hint!,
+                              style: const TextStyle(color: AppColors.warning, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 24),
 
                     // Button
                     SizedBox(
                       height: 46,
                       child: FilledButton(
-                        onPressed: isLoading ? null : cubit.submit,
+                        onPressed: isLoading || !model.isValid ? null : cubit.submit,
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
@@ -117,10 +159,26 @@ class _BodyState extends State<_Body> {
                                   color: AppColors.textMuted,
                                 ),
                               )
-                            : const Text(
-                                'Entrar',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            : Text(
+                                model.isRegistering ? 'Crear cuenta' : 'Entrar',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Center(
+                      child: TextButton(
+                        onPressed: isLoading ? null : cubit.toggleMode,
+                        child: Text(
+                          model.isRegistering
+                              ? '¿Ya tienes cuenta? Inicia sesión'
+                              : '¿Primera vez? Crea una cuenta',
+                          style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+                        ),
                       ),
                     ),
                   ],

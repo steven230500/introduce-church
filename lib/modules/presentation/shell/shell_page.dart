@@ -5,12 +5,16 @@ import 'package:flutter_modular/flutter_modular.dart' show Modular;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
+import '../../../core/widgets/ui/app_buttons.dart';
 import '../children/control/presenter/cubit/cubit.dart';
 import '../children/control/presenter/page.dart';
 import 'collections_library_page.dart';
 import 'library/library_dock.dart';
+import '../../../core/api/api_client.dart';
+import '../../auth/utils/navigator.dart';
 import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
+import 'widgets/change_password_dialog.dart';
 import 'widgets/live_bar.dart';
 import 'widgets/shortcuts_dialog.dart';
 
@@ -180,8 +184,88 @@ class _Sidebar extends StatelessWidget {
             active: false,
             onTap: () => showOrgAdminDialog(context),
           ),
+          const _AccountButton(),
           const SizedBox(height: AppSpace.md),
         ],
+      ),
+    );
+  }
+}
+
+/// The account menu: who is signed in, change password, sign out.
+///
+/// These used to have nowhere to live, so an operator could not change their
+/// password or hand the machine to someone else without editing a file.
+class _AccountButton extends StatelessWidget {
+  const _AccountButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Modular.get<ApiClient>().currentUser;
+
+    return PopupMenuButton<String>(
+      tooltip: user?.email ?? 'Cuenta',
+      color: AppColors.surfaceControl,
+      position: PopupMenuPosition.over,
+      itemBuilder: (_) => [
+        if (user != null)
+          PopupMenuItem<String>(
+            enabled: false,
+            height: 40,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (user.displayName?.isNotEmpty == true)
+                  Text(
+                    user.displayName!,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                Text(
+                  user.email,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'password',
+          height: 38,
+          child: AppMenuRow(icon: Icons.key_outlined, label: 'Cambiar contraseña'),
+        ),
+        const PopupMenuItem(
+          value: 'signout',
+          height: 38,
+          child: AppMenuRow(
+            icon: Icons.logout_rounded,
+            label: 'Cerrar sesión',
+            danger: true,
+          ),
+        ),
+      ],
+      onSelected: (value) async {
+        if (value == 'password') {
+          await showChangePasswordDialog(context);
+        } else if (value == 'signout') {
+          await Modular.get<ApiClient>().signOut();
+          AuthNavigator.goToLogin();
+        }
+      },
+      child: const SizedBox(
+        width: AppSizes.sidebarWidth,
+        height: 54,
+        child: Center(
+          child: Icon(
+            Icons.account_circle_outlined,
+            size: 22,
+            color: AppColors.textMuted,
+          ),
+        ),
       ),
     );
   }

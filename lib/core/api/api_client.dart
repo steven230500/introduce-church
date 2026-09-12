@@ -86,6 +86,21 @@ class ApiClient {
     return session;
   }
 
+  /// Replaces the password and ends the session.
+  ///
+  /// The server revokes every session on a change, including this one, so the
+  /// caller has to send the operator back to the login screen.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await post<void>('/account/password', data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
+    await _forgetSession();
+  }
+
   Future<void> signOut() async {
     if (_session != null) {
       // Best effort: the local session goes regardless, so a network failure

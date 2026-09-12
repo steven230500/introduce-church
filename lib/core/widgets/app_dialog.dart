@@ -182,6 +182,7 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.label,
     this.fillColor = kDialogSurface,
+    this.obscureText = false,
   });
 
   final TextEditingController controller;
@@ -195,13 +196,19 @@ class AppTextField extends StatelessWidget {
   final String? label;
   final Color fillColor;
 
+  /// Hides what is typed. For passwords.
+  final bool obscureText;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
       autofocus: autofocus,
-      maxLines: maxLines,
+      obscureText: obscureText,
+      // A password field cannot be multiline, and Flutter asserts on the
+      // combination rather than ignoring it.
+      maxLines: obscureText ? 1 : maxLines,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
