@@ -17,6 +17,7 @@ void main() {
       FakeControlRepository(rows: [collectionRow(id: 'c1', name: 'Culto domingo')]),
       FakeTemplateRepository(),
       FakePrefsService(),
+      FakePresentationSocket(),
     );
     shell = ShellCubit();
   });

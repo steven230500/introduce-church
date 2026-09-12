@@ -1,23 +1,33 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../../core/services/supabase_service.dart';
+import '../../../../../core/api/api_client.dart';
 import '../../../../../core/utils/app_logger.dart';
 
 class LoginRepository {
-  final SupabaseService _supabase;
+  const LoginRepository(this._api);
+  final ApiClient _api;
 
-  LoginRepository(this._supabase);
-
-  Future<({AuthResponse response, bool hasOrg})> signIn({
+  Future<({Session session, bool hasOrg})> signIn({
     required String email,
     required String password,
   }) async {
     appLogger.d('LoginRepository.signIn | email: $email');
-    final response = await _supabase.client.auth.signInWithPassword(
+    final session = await _api.signIn(email: email, password: password);
+    appLogger.i('LoginRepository.signIn | success: ${session.user.id}');
+    return (session: session, hasOrg: session.hasOrg);
+  }
+
+  /// Creates an account and signs straight in, so a new operator is not sent
+  /// back to a login form they just filled out.
+  Future<({Session session, bool hasOrg})> register({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    appLogger.d('LoginRepository.register | email: $email');
+    final session = await _api.register(
       email: email,
       password: password,
+      displayName: displayName,
     );
-    appLogger.i('LoginRepository.signIn | success: ${response.user?.id}');
-    final orgId = await _supabase.loadOrgId();
-    return (response: response, hasOrg: orgId != null);
+    return (session: session, hasOrg: session.hasOrg);
   }
 }

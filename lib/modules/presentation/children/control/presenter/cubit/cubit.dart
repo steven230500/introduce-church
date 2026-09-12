@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../../../core/local_db/bible_repository.dart';
 import '../../../../../../core/services/app_prefs_service.dart';
-import '../../../../../../core/services/supabase_service.dart';
+import '../../../../../../core/api/api_client.dart';
+import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pptx_import_service.dart';
 import '../../../../../../core/models/collection.dart';
 import '../../../../../../core/models/slide_template.dart';
@@ -146,12 +146,13 @@ class ControlModel extends Equatable {
 }
 
 class ControlCubit extends Cubit<ControlState> {
-  ControlCubit(this._repository, this._templateRepository, this._prefs)
+  ControlCubit(this._repository, this._templateRepository, this._prefs, this._socket)
     : super(const ControlLoadingState());
 
   final ControlRepository _repository;
   final TemplateRepository _templateRepository;
   final AppPrefsService _prefs;
+  final PresentationSocket _socket;
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
   Player? _audioPlayer;
@@ -209,12 +210,8 @@ class ControlCubit extends Cubit<ControlState> {
       );
     } catch (e) {
       final s = e.toString();
-      if (s.contains('Access token') ||
-          s.contains('AuthRetryable') ||
-          s.contains('JWT') ||
-          e is AuthException) {
-        Modular.get<SupabaseService>().clearOrg();
-        await Supabase.instance.client.auth.signOut();
+      if (e is ApiException && e.isAuthFailure) {
+        await Modular.get<ApiClient>().signOut();
         AuthNavigator.goToLogin();
         return;
       }
@@ -576,22 +573,18 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   Future<void> openStageMonitor() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
+    // The window reads the stored session itself, so it only needs to be told
+    // which kind of window to be.
     final controller = await WindowController.create(
       WindowConfiguration(
         hiddenAtLaunch: true,
-        arguments: jsonEncode({'type': 'stage', 'user_id': userId}),
+        arguments: jsonEncode({'type': 'stage'}),
       ),
     );
     await controller.show();
   }
 
   Future<void> openDisplayWindow() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
     // Reset live so display starts black
     if (state is ControlLoadedState) {
       final model = (state as ControlLoadedState).model;
@@ -623,7 +616,7 @@ class ControlCubit extends Cubit<ControlState> {
     _displayController = await WindowController.create(
       WindowConfiguration(
         hiddenAtLaunch: true,
-        arguments: jsonEncode({'user_id': userId, 'screen': screenData}),
+        arguments: jsonEncode({'type': 'display', 'screen': screenData}),
       ),
     );
     await _displayController!.show();
@@ -741,9 +734,30 @@ class ControlCubit extends Cubit<ControlState> {
     _scheduleAutoAdvance();
   }
 
+  /// Publishes the operator's position to the projector and stage windows.
+  ///
+  /// The socket is the path that matters during a service: it reaches the other
+  /// windows in milliseconds and the server persists on the way through. The
+  /// HTTP write is the fallback for when the socket is down.
   void _syncState() {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
+
+    if (_socket.isConnected) {
+      _socket.send({
+        'collection_id': model.activeCollection?.id,
+        'current_item_index': model.currentItemIndex,
+        'current_slide_index': model.currentSlideIndex,
+        'is_live': model.isLive,
+        'blank_screen': model.blankScreen,
+        'countdown_active': model.countdownActive,
+        'countdown_end': model.countdownEnd?.toUtc().toIso8601String(),
+        'overlay_visible': model.overlayVisible,
+        'overlay_text': model.overlayText,
+      });
+      return;
+    }
+
     _repository.upsertPresentationState(
       collectionId: model.activeCollection?.id,
       itemIndex: model.currentItemIndex,

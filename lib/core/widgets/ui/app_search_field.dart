@@ -3,7 +3,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_dimens.dart';
 
 /// Search input used by every library. Debounces so typing doesn't fire a
-/// query per keystroke against Supabase.
+/// query per keystroke against the API.
 class AppSearchField extends StatefulWidget {
   const AppSearchField({
     super.key,

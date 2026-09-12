@@ -26,98 +26,119 @@ class LiveBar extends StatelessWidget {
         final enabled = model != null;
         final cubit = context.read<ControlCubit>();
 
-        return Container(
-          height: AppSizes.liveBarHeight,
-          color: AppColors.chrome,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-          child: Row(
-            children: [
-              // Only the inert half of the bar drags the window. Wrapping the
-              // controls too puts an ancestor double-tap recogniser above every
-              // button, and each one then sits dead for the length of the
-              // double-tap window before it fires.
-              Expanded(
-                child: DragToMoveArea(
-                  child: Row(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Label budget, spent where confusion is worst.
+            //
+            // The two output buttons are always labelled: they open different
+            // windows for different audiences, and no pair of icons makes that
+            // difference readable. The screen-state trio earns labels once the
+            // window is wide enough to hold them; its icons carry meaning on
+            // their own. The library toggle never gets one, because a split
+            // panel glyph already looks like the panel it opens.
+            final width = constraints.maxWidth;
+            final labelOutputs = width >= 1040;
+            final labelState = width >= 1180;
+
+            return Container(
+              height: AppSizes.liveBarHeight,
+              color: AppColors.chrome,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+              child: Row(
+                children: [
+                  // Only the inert half of the bar drags the window. Wrapping
+                  // the controls too puts an ancestor double-tap recogniser
+                  // above every button, and each one then sits dead for the
+                  // length of the double-tap window before it fires.
+                  Expanded(
+                    child: DragToMoveArea(
+                      child: Row(
+                        children: [
+                          // Room for the macOS traffic-light buttons.
+                          const SizedBox(width: 88),
+                          const _AppMark(),
+                          const SizedBox(width: AppSpace.lg),
+                          Expanded(child: _NowShowing(model: model)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.md),
+
+                  // ── What the congregation sees ────────────────────────────
+                  AppButtonGroup(
                     children: [
-                      // Room for the macOS traffic-light buttons.
-                      const SizedBox(width: 88),
-                      const _AppMark(),
-                      const SizedBox(width: AppSpace.lg),
-                      Expanded(child: _NowShowing(model: model)),
+                      AppIconButton(
+                        icon: Icons.timer_outlined,
+                        label: labelState ? 'Cuenta' : null,
+                        tooltip: model?.countdownActive == true
+                            ? 'Detener la cuenta regresiva'
+                            : 'Mostrar una cuenta regresiva en pantalla',
+                        active: model?.countdownActive ?? false,
+                        activeColor: AppColors.warning,
+                        onTap: !enabled
+                            ? null
+                            : () {
+                                if (model.countdownActive) {
+                                  cubit.stopCountdown();
+                                } else {
+                                  showCountdownDialog(context, cubit);
+                                }
+                              },
+                      ),
+                      AppIconButton(
+                        icon: Icons.subtitles_outlined,
+                        label: labelState ? 'Aviso' : null,
+                        tooltip: model?.overlayVisible == true
+                            ? 'Quitar el aviso sobre el slide'
+                            : 'Escribir un aviso sobre el slide',
+                        active: model?.overlayVisible ?? false,
+                        activeColor: AppColors.success,
+                        onTap: !enabled ? null : () => handleOverlay(context, model),
+                      ),
+                      AppIconButton(
+                        icon: Icons.visibility_off_outlined,
+                        label: labelState ? 'Negro' : null,
+                        tooltip: 'Poner la pantalla en negro  ·  B',
+                        active: model?.blankScreen ?? false,
+                        activeColor: AppColors.textMuted,
+                        onTap: enabled ? cubit.toggleBlank : null,
+                      ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(width: AppSpace.lg),
 
-              // ── Screen state ──────────────────────────────────────────────
-              AppButtonGroup(
-                children: [
-                  AppIconButton(
-                    icon: Icons.timer_outlined,
-                    tooltip: model?.countdownActive == true
-                        ? 'Detener cuenta regresiva'
-                        : 'Cuenta regresiva',
-                    active: model?.countdownActive ?? false,
-                    activeColor: AppColors.warning,
-                    onTap: !enabled
-                        ? null
-                        : () {
-                            if (model.countdownActive) {
-                              cubit.stopCountdown();
-                            } else {
-                              showCountdownDialog(context, cubit);
-                            }
-                          },
+                  const AppVerticalDivider(),
+
+                  // ── Extra windows ─────────────────────────────────────────
+                  AppButtonGroup(
+                    children: [
+                      AppIconButton(
+                        icon: Icons.present_to_all_outlined,
+                        label: labelOutputs ? 'Proyector' : null,
+                        tooltip: 'Abrir la ventana de proyección para el público',
+                        onTap: enabled ? cubit.openDisplayWindow : null,
+                      ),
+                      AppIconButton(
+                        icon: Icons.co_present_outlined,
+                        label: labelOutputs ? 'Escenario' : null,
+                        tooltip: 'Abrir el monitor con notas para el equipo',
+                        onTap: enabled ? cubit.openStageMonitor : null,
+                      ),
+                    ],
                   ),
-                  AppIconButton(
-                    icon: Icons.closed_caption_outlined,
-                    tooltip: model?.overlayVisible == true
-                        ? 'Ocultar overlay'
-                        : 'Overlay de texto',
-                    active: model?.overlayVisible ?? false,
-                    activeColor: AppColors.success,
-                    onTap: !enabled ? null : () => handleOverlay(context, model),
-                  ),
-                  AppIconButton(
-                    icon: Icons.rectangle_outlined,
-                    tooltip: 'Pantalla negra  ·  B',
-                    active: model?.blankScreen ?? false,
-                    activeColor: AppColors.textMuted,
-                    onTap: enabled ? cubit.toggleBlank : null,
+
+                  const AppVerticalDivider(),
+
+                  const _DockToggle(),
+                  const SizedBox(width: AppSpace.md),
+                  _LiveButton(
+                    isLive: model?.isLive ?? false,
+                    onTap: enabled ? cubit.toggleLive : null,
                   ),
                 ],
               ),
-
-              const AppVerticalDivider(),
-
-              // ── Output windows ────────────────────────────────────────────
-              AppButtonGroup(
-                children: [
-                  AppIconButton(
-                    icon: Icons.tv_outlined,
-                    tooltip: 'Abrir pantalla de proyección',
-                    onTap: enabled ? cubit.openDisplayWindow : null,
-                  ),
-                  AppIconButton(
-                    icon: Icons.monitor_outlined,
-                    tooltip: 'Monitor de escenario',
-                    onTap: enabled ? cubit.openStageMonitor : null,
-                  ),
-                ],
-              ),
-
-              const AppVerticalDivider(),
-
-              const _DockToggle(),
-              const SizedBox(width: AppSpace.md),
-              _LiveButton(
-                isLive: model?.isLive ?? false,
-                onTap: enabled ? cubit.toggleLive : null,
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -235,9 +256,16 @@ class _DockToggle extends StatelessWidget {
       builder: (context, shell) {
         final inPresenter = shell.section == ShellSection.presenter;
         return AppIconButton(
-          icon: shell.dockOpen ? Icons.vertical_split_rounded : Icons.view_sidebar_rounded,
-          tooltip: shell.dockOpen ? 'Ocultar biblioteca' : 'Mostrar biblioteca',
+          icon: shell.dockOpen
+              ? Icons.vertical_split_rounded
+              : Icons.view_sidebar_rounded,
+          tooltip: shell.dockOpen
+              ? 'Ocultar la biblioteca  ·  F'
+              : 'Mostrar la biblioteca  ·  F',
           active: shell.dockOpen && inPresenter,
+          // Subtle: this moves a panel, it does not change what is projected.
+          // A solid fill here competed with the live button for attention.
+          subtle: true,
           onTap: context.read<ShellCubit>().toggleDock,
         );
       },

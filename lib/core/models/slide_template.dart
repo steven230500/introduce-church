@@ -108,14 +108,14 @@ class SlideTemplate {
         (e) => e.name == json['bgType'],
         orElse: () => BackgroundType.solid,
       ),
-      bgColor: (json['bgColor'] as num).toInt(),
+      bgColor: (json['bgColor'] as num?)?.toInt() ?? _fallback.bgColor,
       bgGradientEnd: (json['bgGradientEnd'] as num? ?? 0xFF000000).toInt(),
       bgGradientAngle: (json['bgGradientAngle'] as num? ?? 135).toDouble(),
       bgImagePath: json['bgImagePath'] as String?,
       bgOverlayOpacity: (json['bgOverlayOpacity'] as num? ?? 0.45).toDouble(),
-      fontSize: (json['fontSize'] as num).toDouble(),
-      fontWeight: (json['fontWeight'] as num).toInt(),
-      textColor: (json['textColor'] as num).toInt(),
+      fontSize: (json['fontSize'] as num?)?.toDouble() ?? _fallback.fontSize,
+      fontWeight: (json['fontWeight'] as num?)?.toInt() ?? _fallback.fontWeight,
+      textColor: (json['textColor'] as num?)?.toInt() ?? _fallback.textColor,
       textAlign: TextAlign.values.firstWhere(
         (e) => e.name == json['textAlign'],
         orElse: () => TextAlign.center,
@@ -124,12 +124,13 @@ class SlideTemplate {
         (e) => e.name == json['textValign'],
         orElse: () => TextVerticalAlign.center,
       ),
-      paddingH: (json['paddingH'] as num).toDouble(),
-      paddingV: (json['paddingV'] as num).toDouble(),
+      paddingH: (json['paddingH'] as num?)?.toDouble() ?? _fallback.paddingH,
+      paddingV: (json['paddingV'] as num?)?.toDouble() ?? _fallback.paddingV,
       textShadow: json['textShadow'] as bool? ?? true,
       showReference: json['showReference'] as bool? ?? true,
-      referenceFontSize: (json['referenceFontSize'] as num).toDouble(),
-      referenceColor: (json['referenceColor'] as num).toInt(),
+      referenceFontSize: (json['referenceFontSize'] as num?)?.toDouble() ??
+          _fallback.referenceFontSize,
+      referenceColor: (json['referenceColor'] as num?)?.toInt() ?? _fallback.referenceColor,
       referencePosition: ReferencePosition.values.firstWhere(
         (e) => e.name == json['referencePosition'],
         orElse: () => ReferencePosition.bottomRight,
@@ -141,11 +142,7 @@ class SlideTemplate {
         orElse: () => SlideTransitionType.fade,
       ),
       transitionDurationMs: (json['transitionDurationMs'] as num?)?.toInt() ?? 300,
-      layers:
-          (json['layers'] as List<dynamic>?)
-              ?.map((l) => SlideLayer.fromJson(l as Map<String, dynamic>))
-              .toList() ??
-          const [],
+      layers: _parseLayers(json['layers']),
     );
   }
 
@@ -212,6 +209,27 @@ class SlideTemplate {
   static const List<SlideTemplate> presets = [darkClassic, blueNight, lowerThird, light];
 
   static SlideTemplate get defaultTemplate => darkClassic;
+
+  /// Values used for any field a stored design is missing.
+  ///
+  /// A design row written by an older build, or by hand, must not be able to
+  /// take down the presenter: the set list loads designs on every refresh, and
+  /// one malformed row used to throw and blank the whole screen.
+  static const SlideTemplate _fallback = darkClassic;
+
+  static List<SlideLayer> _parseLayers(dynamic raw) {
+    if (raw is! List) return const [];
+    final layers = <SlideLayer>[];
+    for (final entry in raw) {
+      if (entry is! Map<String, dynamic>) continue;
+      try {
+        layers.add(SlideLayer.fromJson(entry));
+      } catch (_) {
+        // Skip the bad layer and keep the rest of the design.
+      }
+    }
+    return layers;
+  }
 
   static SlideTemplate? findPreset(String id) {
     try {

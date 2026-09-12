@@ -101,33 +101,40 @@ class _DockTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? AppColors.accent : AppColors.textMuted;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: AppSpace.xs + 1),
-        decoration: BoxDecoration(
-          color: active ? AppColors.accentFillSoft : Colors.transparent,
-          borderRadius: AppRadius.all(AppRadius.sm),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: AppSpace.xs + 1),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+    return Tooltip(
+      message: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1, vertical: AppSpace.xs + 1),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+          decoration: BoxDecoration(
+            color: active ? AppColors.accentFillSoft : Colors.transparent,
+            borderRadius: AppRadius.all(AppRadius.sm),
+          ),
+          // The four tabs split a 300px panel, so the longest label has about
+          // 60px to live in. Scaling down beats letting the text run outside
+          // its own highlight, which is what an ellipsis or a clip would do.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 13, color: color),
+                const SizedBox(width: AppSpace.xs),
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
-                overflow: TextOverflow.clip,
-                softWrap: false,
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

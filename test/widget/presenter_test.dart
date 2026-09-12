@@ -40,7 +40,7 @@ void main() {
 
   setUp(() {
     repo = FakeControlRepository(rows: serviceRows());
-    control = ControlCubit(repo, FakeTemplateRepository(), FakePrefsService());
+    control = ControlCubit(repo, FakeTemplateRepository(), FakePrefsService(), FakePresentationSocket());
     shell = ShellCubit();
   });
 

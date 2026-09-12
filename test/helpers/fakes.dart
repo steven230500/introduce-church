@@ -1,11 +1,31 @@
+import 'package:dio/dio.dart';
+import 'package:introduce_church/core/api/api_client.dart';
+import 'package:introduce_church/core/api/presentation_socket.dart';
 import 'package:introduce_church/core/models/collection.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/core/repositories/template_repository.dart';
 import 'package:introduce_church/core/services/app_prefs_service.dart';
-import 'package:introduce_church/core/services/supabase_service.dart';
 import 'package:introduce_church/modules/presentation/children/control/repository/repository.dart';
 
 import 'builders.dart';
+
+/// An API client wired to a Dio that is never called.
+///
+/// Repository fakes override every method that would reach the network, so the
+/// client exists only to satisfy their constructors.
+ApiClient fakeApiClient() => ApiClient(Dio(), FakePrefsService());
+
+/// A socket that reports itself disconnected, so ControlCubit takes the HTTP
+/// path and the fake repository sees the write.
+class FakePresentationSocket extends PresentationSocket {
+  FakePresentationSocket() : super(fakeApiClient(), '');
+
+  @override
+  bool get isConnected => false;
+
+  @override
+  Future<void> connect() async {}
+}
 
 /// Prefs that keep everything in memory.
 ///
@@ -24,12 +44,12 @@ class FakePrefsService extends AppPrefsService {
 }
 
 /// Control repository that serves canned rows and records what was asked of it,
-/// so cubit behaviour can be asserted without a Supabase project.
+/// so cubit behaviour can be asserted without a server.
 class FakeControlRepository extends ControlRepository {
   FakeControlRepository({this.rows = const []})
-      : super(SupabaseService(FakePrefsService()));
+      : super(fakeApiClient());
 
-  /// Rows returned by [getCollectionsRaw], in Supabase's wire shape.
+  /// Rows returned by [getCollectionsRaw], in the API's wire shape.
   List<Map<String, dynamic>> rows;
 
   /// Throw this on the next read, to exercise the offline and error paths.
@@ -129,7 +149,7 @@ class FakeControlRepository extends ControlRepository {
 /// Template repository backed by a plain list.
 class FakeTemplateRepository extends TemplateRepository {
   FakeTemplateRepository({this.templates = const []})
-      : super(SupabaseService(FakePrefsService()));
+      : super(fakeApiClient());
 
   List<SlideTemplate> templates;
   final List<String> calls = [];

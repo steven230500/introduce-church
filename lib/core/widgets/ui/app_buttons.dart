@@ -2,53 +2,98 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimens.dart';
 
-/// Square icon button used in toolbars and panel headers.
+/// Button for toolbars and panel headers.
 ///
-/// [active] fills it with [activeColor] so a toggled state reads at a glance
-/// from across the sound booth.
+/// Pass a [label] and it renders icon plus text. An icon alone is only legible
+/// when its meaning is obvious, and in a projection toolbar almost none of them
+/// are: a plain rectangle for "black screen" and two near-identical monitors for
+/// two different outputs tell the operator nothing. Tooltips do not help, since
+/// they need a hover and a wait.
+///
+/// [active] marks a state that is currently on. A [subtle] button tints itself
+/// instead of filling, for toggles that change the workspace rather than what
+/// the congregation sees.
 class AppIconButton extends StatelessWidget {
   const AppIconButton({
     super.key,
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.label,
     this.active = false,
     this.activeColor = AppColors.accent,
+    this.subtle = false,
     this.size = 34,
     this.iconSize = 16,
   });
 
   final IconData icon;
+
+  /// Hover text. Says what the control does, and names its shortcut.
   final String tooltip;
+
+  /// Visible text beside the icon. Omit only where space genuinely forbids it.
+  final String? label;
+
   final VoidCallback? onTap;
   final bool active;
   final Color activeColor;
+
+  /// Tint rather than fill when active.
+  final bool subtle;
+
   final double size;
   final double iconSize;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
+
+    final Color background;
+    final Color foreground;
+    if (active && subtle) {
+      background = activeColor.withValues(alpha: 0.18);
+      foreground = activeColor;
+    } else if (active) {
+      background = activeColor;
+      foreground = Colors.white;
+    } else {
+      background = Colors.transparent;
+      foreground = enabled ? AppColors.textTertiary : AppColors.textDisabled;
+    }
+
     return Tooltip(
       message: tooltip,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: AppMotion.normal,
-          width: size,
           height: size,
+          width: label == null ? size : null,
+          padding: label == null
+              ? null
+              : const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2),
           decoration: BoxDecoration(
-            color: active ? activeColor : Colors.transparent,
+            color: background,
             borderRadius: AppRadius.all(AppRadius.sm),
           ),
-          child: Icon(
-            icon,
-            size: iconSize,
-            color: active
-                ? Colors.white
-                : enabled
-                ? AppColors.textTertiary
-                : AppColors.textDisabled,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: iconSize, color: foreground),
+              if (label != null) ...[
+                const SizedBox(width: AppSpace.sm - 2),
+                Text(
+                  label!,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

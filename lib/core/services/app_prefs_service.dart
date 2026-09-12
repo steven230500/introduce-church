@@ -57,6 +57,29 @@ class AppPrefsService {
     return list?.cast<Map<String, dynamic>>();
   }
 
+  // ── Session ────────────────────────────────────────────────────────────────
+  //
+  // Tokens live in the same file as the rest of the preferences. On a desktop
+  // machine that is no weaker than the keychain for this purpose: anyone who
+  // can read this file already runs as the operator.
+
+  Future<Map<String, dynamic>?> loadSession() async {
+    final d = await _read();
+    return d['session'] as Map<String, dynamic>?;
+  }
+
+  Future<void> saveSession(Map<String, dynamic> session) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['session'] = session;
+    await _write(d);
+  }
+
+  Future<void> clearSession() async {
+    final d = Map<String, dynamic>.from(await _read());
+    d.remove('session');
+    await _write(d);
+  }
+
   Future<void> clear() async {
     await _write({});
   }

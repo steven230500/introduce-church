@@ -116,33 +116,27 @@ class SongFormCubit extends Cubit<SongFormState> {
 
     emit(SongFormReadyState(model.copyWith(isSaving: true)));
     try {
-      final song = await _repository.upsertSong(
+      await _repository.saveSong(
         id: model.id,
         title: model.title.trim(),
         author: model.author.trim().isEmpty ? null : model.author.trim(),
-        copyright: null,
+        verses: [
+          for (final verse in model.verses)
+            (
+              type: switch (verse.type) {
+                VerseType.chorus => 'chorus',
+                VerseType.bridge => 'bridge',
+                VerseType.preCHORUS => 'pre-chorus',
+                VerseType.tag => 'tag',
+                VerseType.intro => 'intro',
+                VerseType.outro => 'outro',
+                VerseType.verse => 'verse',
+              },
+              content: verse.content,
+              chords: verse.chords?.isNotEmpty == true ? verse.chords : null,
+            ),
+        ],
       );
-
-      final versesPayload = model.verses.asMap().entries.map((e) {
-        final typeStr = switch (e.value.type) {
-          VerseType.chorus => 'chorus',
-          VerseType.bridge => 'bridge',
-          VerseType.preCHORUS => 'pre-chorus',
-          VerseType.tag => 'tag',
-          VerseType.intro => 'intro',
-          VerseType.outro => 'outro',
-          VerseType.verse => 'verse',
-        };
-        return {
-          'song_id': song.id,
-          'type': typeStr,
-          'verse_order': e.key,
-          'content': e.value.content,
-          if (e.value.chords?.isNotEmpty == true) 'chords': e.value.chords,
-        };
-      }).toList();
-
-      await _repository.replaceVerses(song.id, versesPayload);
       emit(const SongFormSavedState());
     } catch (e) {
       final current = (state as SongFormReadyState).model;

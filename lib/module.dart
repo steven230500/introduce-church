@@ -1,7 +1,6 @@
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/api/api_client.dart';
 import 'core/module.dart';
-import 'core/services/supabase_service.dart';
 import 'modules/auth/module.dart';
 import 'modules/org_setup/org_setup_module.dart';
 import 'modules/presentation/module.dart';
@@ -12,7 +11,7 @@ class AuthGuard extends RouteGuard {
 
   @override
   Future<bool> canActivate(String path, ParallelRoute route) async {
-    return Supabase.instance.client.auth.currentUser != null;
+    return Modular.get<ApiClient>().isAuthenticated;
   }
 }
 
@@ -21,10 +20,12 @@ class OrgGuard extends RouteGuard {
 
   @override
   Future<bool> canActivate(String path, ParallelRoute route) async {
-    final svc = Modular.get<SupabaseService>();
-    if (svc.orgId != null) return true;
-    final loaded = await svc.loadOrgId();
-    return loaded != null;
+    final api = Modular.get<ApiClient>();
+    if (api.orgId != null) return true;
+    // The session may predate the membership, so ask the server once before
+    // sending the operator back to setup.
+    final refreshed = await api.refreshSession();
+    return refreshed?.hasOrg ?? false;
   }
 }
 

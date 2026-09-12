@@ -1,13 +1,16 @@
+import '../../../../../core/api/api_client.dart';
 import '../../../../../core/local_db/bible_repository.dart';
 import '../../../../../core/models/collection.dart';
 import '../../../../../core/models/collection_item_type.dart';
-import '../../../../../core/services/supabase_service.dart';
 import '../../../../../core/utils/app_logger.dart';
 
+/// Everything the presenter reads and writes about service plans.
+///
+/// Item payloads keep the `content_json` shapes the models already parse, so
+/// the slide logic did not have to change when the backend did.
 class ControlRepository {
-  final SupabaseService _supabase;
-
-  ControlRepository(this._supabase);
+  const ControlRepository(this._api);
+  final ApiClient _api;
 
   Future<List<Collection>> getCollections() async {
     final raw = await getCollectionsRaw();
@@ -16,29 +19,22 @@ class ControlRepository {
 
   Future<List<Map<String, dynamic>>> getCollectionsRaw() async {
     appLogger.d('ControlRepository.getCollectionsRaw');
-    final data = await _supabase.client
-        .from('collections')
-        .select('*, collection_items(*, songs(*, verses(*)))')
-        .order('service_date', ascending: false)
-        .timeout(const Duration(seconds: 5));
-    return List<Map<String, dynamic>>.from(data);
+    final rows = await _api.get<List<dynamic>>('/collections');
+    return (rows ?? []).cast<Map<String, dynamic>>();
   }
 
-  Future<Collection> createCollection({required String name, DateTime? serviceDate}) async {
-    final userId = _supabase.currentUser!.id;
+  // ── Collections ────────────────────────────────────────────────────────────
+
+  Future<Collection> createCollection({
+    required String name,
+    DateTime? serviceDate,
+  }) async {
     appLogger.d('ControlRepository.createCollection | name: $name');
-    final result = await _supabase.client
-        .from('collections')
-        .insert({
-          'user_id': userId,
-          'created_by': userId,
-          if (_supabase.orgId != null) 'org_id': _supabase.orgId,
-          'name': name,
-          if (serviceDate != null) 'service_date': serviceDate.toIso8601String().substring(0, 10),
-        })
-        .select('*, collection_items(*, songs(*, verses(*)))')
-        .single();
-    return Collection.fromJson(result);
+    final body = await _api.post<Map<String, dynamic>>('/collections', data: {
+      'name': name,
+      'service_date': ?_date(serviceDate),
+    });
+    return Collection.fromJson(body!);
   }
 
   Future<void> updateCollection({
@@ -46,87 +42,74 @@ class ControlRepository {
     required String name,
     DateTime? serviceDate,
   }) async {
-    appLogger.d('ControlRepository.updateCollection | id: $id');
-    await _supabase.client
-        .from('collections')
-        .update({
-          'name': name,
-          if (serviceDate != null) 'service_date': serviceDate.toIso8601String().substring(0, 10),
-        })
-        .eq('id', id);
+    await _api.patch<void>('/collections/$id', data: {
+      'name': name,
+      // Always sent, so clearing the date actually clears it.
+      'service_date': _date(serviceDate),
+    });
   }
 
   Future<void> deleteCollection(String id) async {
-    appLogger.d('ControlRepository.deleteCollection | id: $id');
-    await _supabase.client.from('collections').delete().eq('id', id);
+    await _api.delete<void>('/collections/$id');
   }
+
+  Future<void> updateCollectionBgAudio(String id, String? path) async {
+    await _api.patch<void>('/collections/$id', data: {'bg_audio_path': path});
+  }
+
+  // ── Items ──────────────────────────────────────────────────────────────────
 
   Future<void> addSongToCollection({
     required String collectionId,
     required String songId,
     required int order,
-  }) async {
-    appLogger.d('ControlRepository.addSongToCollection $collectionId $songId');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.song.value,
-      'song_id': songId,
-      'item_order': order,
-    });
-  }
-
-  Future<void> addFreeSlideToCollection({
-    required String collectionId,
-    required String text,
-    required int order,
-    String? title,
-  }) async {
-    appLogger.d('ControlRepository.addFreeSlideToCollection');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.freeSlide.value,
-      'item_order': order,
-      'content_json': {'text': text, if (title != null && title.isNotEmpty) 'title': title},
-    });
-  }
-
-  Future<void> removeItemFromCollection(String itemId) async {
-    appLogger.d('ControlRepository.removeItemFromCollection | id: $itemId');
-    await _supabase.client.from('collection_items').delete().eq('id', itemId);
-  }
+  }) =>
+      _addItems(collectionId, [
+        {'item_type': CollectionItemType.song.value, 'song_id': songId},
+      ]);
 
   Future<void> addBibleVerseToCollection({
     required String collectionId,
     required BibleVerseRef ref,
     required int order,
-  }) async {
-    appLogger.d('ControlRepository.addBibleVerseToCollection $collectionId ${ref.reference}');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.bibleVerse.value,
-      'item_order': order,
-      'content_json': ref.toJson(),
-    });
+  }) {
+    appLogger.d('ControlRepository.addBibleVerse | ${ref.reference}');
+    return _addItems(collectionId, [
+      {
+        'item_type': CollectionItemType.bibleVerse.value,
+        'content_json': ref.toJson(),
+      },
+    ]);
   }
+
+  Future<void> addFreeSlideToCollection({
+    required String collectionId,
+    required String text,
+    String? title,
+    required int order,
+  }) =>
+      _addItems(collectionId, [
+        {
+          'item_type': CollectionItemType.freeSlide.value,
+          'content_json': {'text': text, 'title': ?title},
+        },
+      ]);
 
   Future<void> addFreeSlideBatch({
     required String collectionId,
     required List<String> texts,
     required int startOrder,
     String? templateId,
-  }) async {
-    if (texts.isEmpty) return;
-    final rows = texts.asMap().entries.map((e) {
-      final row = {
-        'collection_id': collectionId,
-        'item_type': CollectionItemType.freeSlide.value,
-        'item_order': startOrder + e.key,
-        'content_json': {'text': e.value},
-      };
-      if (templateId != null) row['template_id'] = templateId;
-      return row;
-    }).toList();
-    await _supabase.client.from('collection_items').insert(rows);
+  }) {
+    if (texts.isEmpty) return Future.value();
+    return _addItems(collectionId, [
+      for (final text in texts)
+        {
+          'item_type': CollectionItemType.freeSlide.value,
+          'content_json': {'text': text},
+          'template_id': ?templateId,
+        },
+    ]);
   }
 
   Future<void> addSermonToCollection({
@@ -134,14 +117,14 @@ class ControlRepository {
     required String title,
     required List<String> points,
     required int order,
-  }) async {
-    appLogger.d('ControlRepository.addSermonToCollection | $title | ${points.length} points');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.sermon.value,
-      'item_order': order,
-      'content_json': {'title': title, 'points': points},
-    });
+  }) {
+    appLogger.d('ControlRepository.addSermon | $title | ${points.length} points');
+    return _addItems(collectionId, [
+      {
+        'item_type': CollectionItemType.sermon.value,
+        'content_json': {'title': title, 'points': points},
+      },
+    ]);
   }
 
   Future<void> addVideoToCollection({
@@ -149,29 +132,28 @@ class ControlRepository {
     required String videoPath,
     required String title,
     required int order,
-  }) async {
-    appLogger.d('ControlRepository.addVideoToCollection | $title');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.videoSlide.value,
-      'item_order': order,
-      'content_json': {'path': videoPath, 'title': title},
-    });
-  }
+  }) =>
+      _addItems(collectionId, [
+        {
+          'item_type': CollectionItemType.videoSlide.value,
+          'content_json': {'path': videoPath, 'title': title},
+        },
+      ]);
 
+  /// Adds an imported deck as one item holding every page.
   Future<void> addImageSlideBatch({
     required String collectionId,
     required List<String> imagePaths,
     required String title,
     required int startOrder,
-  }) async {
-    appLogger.d('ControlRepository.addImageSlideBatch | $title | ${imagePaths.length} images');
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.imageSlide.value,
-      'item_order': startOrder,
-      'content_json': {'title': title, 'paths': imagePaths},
-    });
+  }) {
+    appLogger.d('ControlRepository.addImageSlideBatch | $title | ${imagePaths.length}');
+    return _addItems(collectionId, [
+      {
+        'item_type': CollectionItemType.imageSlide.value,
+        'content_json': {'title': title, 'paths': imagePaths},
+      },
+    ]);
   }
 
   Future<void> addAnnouncement({
@@ -180,46 +162,42 @@ class ControlRepository {
     required int order,
     String? title,
     DateTime? timerTarget,
-  }) async {
-    await _supabase.client.from('collection_items').insert({
-      'collection_id': collectionId,
-      'item_type': CollectionItemType.announcement.value,
-      'item_order': order,
-      'content_json': {
-        'message': message,
-        if (title != null) 'title': title,
-        if (timerTarget != null) 'timerTarget': timerTarget.toIso8601String(),
-      },
-    });
+  }) =>
+      _addItems(collectionId, [
+        {
+          'item_type': CollectionItemType.announcement.value,
+          'content_json': {
+            'message': message,
+            'title': ?title,
+            'timerTarget': ?timerTarget?.toIso8601String(),
+          },
+        },
+      ]);
+
+  Future<void> removeItemFromCollection(String itemId) async {
+    await _api.delete<void>('/collections/items/$itemId');
   }
 
   Future<void> updateItemNotes(String itemId, String? notes) async {
-    await _supabase.client.from('collection_items').update({'notes': notes}).eq('id', itemId);
-  }
-
-  Future<void> updateCollectionBgAudio(String id, String? path) async {
-    await _supabase.client.from('collections').update({'bg_audio_path': path}).eq('id', id);
+    await _api.patch<void>('/collections/items/$itemId', data: {'notes': notes});
   }
 
   Future<void> updateItemAutoAdvance(String itemId, int? secs) async {
-    await _supabase.client
-        .from('collection_items')
-        .update({'auto_advance_secs': secs})
-        .eq('id', itemId);
+    await _api.patch<void>('/collections/items/$itemId',
+        data: {'auto_advance_secs': secs});
   }
 
+  /// Writes a whole new running order in one request, so the set list is never
+  /// briefly left with two items claiming the same position.
   Future<void> reorderItems(String collectionId, List<String> orderedIds) async {
-    final updates = orderedIds.asMap().entries.map(
-      (e) => {'id': e.value, 'collection_id': collectionId, 'item_order': e.key},
-    );
-    for (final u in updates) {
-      await _supabase.client
-          .from('collection_items')
-          .update({'item_order': u['item_order']})
-          .eq('id', u['id']!);
-    }
+    await _api.put<void>('/collections/$collectionId/order',
+        data: {'item_ids': orderedIds});
   }
 
+  // ── Live state ─────────────────────────────────────────────────────────────
+
+  /// Fallback for when the websocket is down. During a service the socket
+  /// carries these changes instead.
   Future<void> upsertPresentationState({
     required String? collectionId,
     required int itemIndex,
@@ -231,9 +209,7 @@ class ControlRepository {
     bool overlayVisible = false,
     String? overlayText,
   }) async {
-    final userId = _supabase.currentUser!.id;
-    await _supabase.client.from('presentation_state').upsert({
-      'user_id': userId,
+    await _api.put<void>('/presentation/state', data: {
       'collection_id': collectionId,
       'current_item_index': itemIndex,
       'current_slide_index': slideIndex,
@@ -243,6 +219,16 @@ class ControlRepository {
       'countdown_end': countdownEnd?.toUtc().toIso8601String(),
       'overlay_visible': overlayVisible,
       'overlay_text': overlayText,
-    }, onConflict: 'user_id');
+    });
   }
+
+  Future<void> _addItems(String collectionId, List<Map<String, dynamic>> items) async {
+    await _api.post<void>('/collections/$collectionId/items', data: {'items': items});
+  }
+
+  static String? _date(DateTime? d) => d == null
+      ? null
+      : '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
 }

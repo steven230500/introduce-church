@@ -37,7 +37,7 @@ void main() {
   setUp(() {
     repo = FakeControlRepository(rows: twoSongs());
     templates = FakeTemplateRepository();
-    cubit = ControlCubit(repo, templates, FakePrefsService());
+    cubit = ControlCubit(repo, templates, FakePrefsService(), FakePresentationSocket());
   });
 
   tearDown(() => cubit.close());
@@ -83,7 +83,7 @@ void main() {
 
     test('falls back to cached collections when the network is down', () async {
       final prefs = FakePrefsService();
-      final offline = ControlCubit(repo, templates, prefs);
+      final offline = ControlCubit(repo, templates, prefs, FakePresentationSocket());
       await offline.load(); // primes the cache
       repo.failWith = Exception('Failed host lookup: supabase.co');
 

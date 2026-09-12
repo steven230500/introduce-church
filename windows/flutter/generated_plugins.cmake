@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  app_links
   desktop_multi_window
   media_kit_libs_windows_video
   media_kit_video

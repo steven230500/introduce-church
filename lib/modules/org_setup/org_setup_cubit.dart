@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/models/organization.dart';
 import '../../core/repositories/organization_repository.dart';
-import '../../core/services/supabase_service.dart';
+import '../../core/api/api_client.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -48,17 +48,17 @@ class OrgSetupState extends Equatable {
 // ── Cubit ─────────────────────────────────────────────────────────────────────
 
 class OrgSetupCubit extends Cubit<OrgSetupState> {
-  OrgSetupCubit(this._repo, this._supabase) : super(const OrgSetupState());
+  OrgSetupCubit(this._repo, this._api) : super(const OrgSetupState());
 
   final OrganizationRepository _repo;
-  final SupabaseService _supabase;
+  final ApiClient _api;
 
   /// Called on page load — check for existing pending membership.
   /// Returns true if user already has an active org (caller should navigate away).
   Future<bool> init() async {
     emit(state.copyWith(loading: true));
     try {
-      final orgId = await _supabase.loadOrgId();
+      final orgId = (await _api.refreshSession())?.orgId;
       if (orgId != null) {
         emit(state.copyWith(loading: false));
         return true;
@@ -97,7 +97,7 @@ class OrgSetupCubit extends Cubit<OrgSetupState> {
     emit(state.copyWith(loading: true, error: null));
     try {
       await _repo.createOrganization(name);
-      await _supabase.loadOrgId();
+      (await _api.refreshSession())?.orgId;
       emit(state.copyWith(loading: false));
       return true;
     } catch (e) {
@@ -118,7 +118,7 @@ class OrgSetupCubit extends Cubit<OrgSetupState> {
 
   /// Poll — check if admin approved. Returns true if now active.
   Future<bool> checkApproval() async {
-    final orgId = await _supabase.loadOrgId();
+    final orgId = (await _api.refreshSession())?.orgId;
     return orgId != null;
   }
 }

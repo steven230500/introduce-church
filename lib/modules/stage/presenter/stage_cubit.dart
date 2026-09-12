@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/presentation_socket.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/collection_item_type.dart';
 import '../../../core/models/slide_template.dart';
@@ -52,27 +53,20 @@ class StageState {
 }
 
 class StageCubit extends Cubit<StageState> {
-  StageCubit(this._supabase, this._userId) : super(const StageState());
+  StageCubit(this._api, this._socket) : super(const StageState());
 
-  final SupabaseClient _supabase;
-  final String _userId;
-  StreamSubscription? _sub;
+  final ApiClient _api;
+  final PresentationSocket _socket;
+  StreamSubscription<Map<String, dynamic>>? _sub;
   final Map<String, SlideTemplate> _templateCache = {};
+  final Map<String, Collection> _collections = {};
 
-  void init() {
-    _sub = _supabase
-        .from('presentation_state')
-        .stream(primaryKey: ['user_id'])
-        .eq('user_id', _userId)
-        .listen(_onStateChange, onError: (_) {});
+  Future<void> init() async {
+    _sub = _socket.states.listen(_onStateChange, onError: (_) {});
+    await _socket.connect();
   }
 
-  Future<void> _onStateChange(List<Map<String, dynamic>> rows) async {
-    if (rows.isEmpty) {
-      emit(const StageState());
-      return;
-    }
-    final row = rows.first;
+  Future<void> _onStateChange(Map<String, dynamic> row) async {
 
     final isLive = row['is_live'] as bool? ?? false;
     final isBlank = row['blank_screen'] as bool? ?? false;
@@ -105,13 +99,11 @@ class StageCubit extends Cubit<StageState> {
     }
 
     try {
-      final data = await _supabase
-          .from('collections')
-          .select('*, collection_items(*, songs(*, verses(*)))')
-          .eq('id', collectionId)
-          .single();
-
-      final collection = Collection.fromJson(data);
+      final collection = await _collection(collectionId);
+      if (collection == null) {
+        emit(const StageState());
+        return;
+      }
       final current = await _buildSlide(collection, itemIndex, slideIndex);
       final next = await _buildNextSlide(collection, itemIndex, slideIndex);
 
@@ -178,6 +170,20 @@ class StageCubit extends Cubit<StageState> {
     return null;
   }
 
+  /// Returns a collection, reading through the cache, so a slide change does
+  /// not wait on the network.
+  Future<Collection?> _collection(String id) async {
+    final cached = _collections[id];
+    if (cached != null) return cached;
+
+    final rows = await _api.get<List<dynamic>>('/collections');
+    for (final row in rows ?? []) {
+      final collection = Collection.fromJson(row as Map<String, dynamic>);
+      _collections[collection.id] = collection;
+    }
+    return _collections[id];
+  }
+
   Future<SlideTemplate> _resolveTemplate(Collection col, CollectionItem item) async {
     final id = item.templateId ?? col.templateId;
     if (id == null) return SlideTemplate.defaultTemplate;
@@ -185,18 +191,16 @@ class StageCubit extends Cubit<StageState> {
     if (preset != null) return preset;
     if (_templateCache.containsKey(id)) return _templateCache[id]!;
     try {
-      final row = await _supabase
-          .from('templates')
-          .select('id, name, config')
-          .eq('id', id)
-          .single();
-      final t = SlideTemplate.fromJson(
-        id: row['id'] as String,
-        name: row['name'] as String,
-        json: row['config'] as Map<String, dynamic>,
-      );
-      _templateCache[id] = t;
-      return t;
+      final rows = await _api.get<List<dynamic>>('/templates');
+      for (final raw in rows ?? []) {
+        final row = raw as Map<String, dynamic>;
+        _templateCache[row['id'] as String] = SlideTemplate.fromJson(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          json: Map<String, dynamic>.from(row['config'] as Map),
+        );
+      }
+      return _templateCache[id] ?? SlideTemplate.defaultTemplate;
     } catch (_) {
       return SlideTemplate.defaultTemplate;
     }

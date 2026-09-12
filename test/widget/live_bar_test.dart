@@ -29,7 +29,7 @@ void main() {
         ],
       ),
     ]);
-    control = ControlCubit(repo, FakeTemplateRepository(), FakePrefsService());
+    control = ControlCubit(repo, FakeTemplateRepository(), FakePrefsService(), FakePresentationSocket());
     shell = ShellCubit();
   });
 
@@ -38,7 +38,9 @@ void main() {
     await shell.close();
   });
 
-  Future<void> pumpBar(WidgetTester tester) async {
+  Future<void> pumpBar(WidgetTester tester, {double width = 1400}) async {
+    await tester.binding.setSurfaceSize(Size(width, 200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
@@ -63,6 +65,47 @@ void main() {
     await pumpBar(tester);
 
     expect(find.text('Sin colección activa'), findsOneWidget);
+  });
+
+  testWidgets('the two output windows are named, never left as icons', (tester) async {
+    // Two near-identical monitor glyphs were impossible to tell apart. These
+    // two open different windows for different audiences, so they carry both
+    // distinct icons and permanent labels.
+    await pumpBar(tester);
+
+    expect(find.text('Proyector'), findsOneWidget);
+    expect(find.text('Escenario'), findsOneWidget);
+    expect(find.byIcon(Icons.present_to_all_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.co_present_outlined), findsOneWidget);
+  });
+
+  testWidgets('the screen-state controls are named on a wide window', (tester) async {
+    await pumpBar(tester, width: 1440);
+
+    for (final label in ['Cuenta', 'Aviso', 'Negro']) {
+      expect(find.text(label), findsOneWidget, reason: '$label must be readable');
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fits the default window without overflowing', (tester) async {
+    // The app opens at 80% of the screen, so on a 1440pt laptop the window is
+    // 1152pt. That is the width that matters most.
+    await pumpBar(tester, width: 1152);
+
+    expect(find.text('Proyector'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fits the minimum window by folding labels away', (tester) async {
+    await pumpBar(tester, width: 1024);
+
+    expect(find.text('Proyector'), findsNothing);
+    expect(tester.takeException(), isNull);
+    // Every control is still there, reachable by icon and tooltip.
+    expect(find.byIcon(Icons.present_to_all_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.co_present_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.timer_outlined), findsOneWidget);
   });
 
   testWidgets('names the collection and the slide on the projector', (tester) async {
@@ -100,7 +143,7 @@ void main() {
     await pumpBar(tester);
     await openCollection(tester);
 
-    await tester.tap(find.byTooltip('Pantalla negra  ·  B'));
+    await tester.tap(find.byTooltip('Poner la pantalla en negro  ·  B'));
     await tester.pumpAndSettle();
 
     expect((control.state as ControlLoadedState).model.blankScreen, isTrue);
@@ -110,11 +153,11 @@ void main() {
     await pumpBar(tester);
     expect(shell.state.dockOpen, isTrue);
 
-    await tester.tap(find.byTooltip('Ocultar biblioteca'));
+    await tester.tap(find.byTooltip('Ocultar la biblioteca  ·  F'));
     await tester.pumpAndSettle();
 
     expect(shell.state.dockOpen, isFalse);
-    expect(find.byTooltip('Mostrar biblioteca'), findsOneWidget);
+    expect(find.byTooltip('Mostrar la biblioteca  ·  F'), findsOneWidget);
   });
 
   testWidgets('every control is reachable while a library is open', (tester) async {
@@ -124,16 +167,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // The bar lives in the shell, so leaving the presenter must not remove it.
-    expect(find.byTooltip('Pantalla negra  ·  B'), findsOneWidget);
-    expect(find.byTooltip('Abrir pantalla de proyección'), findsOneWidget);
-    expect(find.byTooltip('Monitor de escenario'), findsOneWidget);
+    expect(find.byTooltip('Poner la pantalla en negro  ·  B'), findsOneWidget);
+    expect(find.byTooltip('Abrir la ventana de proyección para el público'), findsOneWidget);
+    expect(find.byTooltip('Abrir el monitor con notas para el equipo'), findsOneWidget);
     expect(find.text('En vivo'), findsOneWidget);
   });
 
   testWidgets('controls stay disabled until data has loaded', (tester) async {
     await pumpBar(tester);
 
-    await tester.tap(find.byTooltip('Pantalla negra  ·  B'));
+    await tester.tap(find.byTooltip('Poner la pantalla en negro  ·  B'));
     await tester.pumpAndSettle();
 
     expect(control.state, isA<ControlLoadingState>());

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app.dart';
@@ -54,10 +53,6 @@ Future<void> _runMainApp() async {
   windowManager.addListener(_WindowCloseHandler());
   await windowManager.setPreventClose(true);
   await dotenv.load(fileName: '.env');
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
   await BibleImportService(AppDatabase.instance).ensureBundledBiblesImported();
 
   final screen = await screenRetriever.getPrimaryDisplay();
@@ -85,15 +80,8 @@ Future<void> _runMainApp() async {
 Future<void> _runDisplayWindow(String argStr) async {
   await windowManager.ensureInitialized();
   await dotenv.load(fileName: '.env');
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
 
   final windowArgs = jsonDecode(argStr) as Map<String, dynamic>;
-  final userId = windowArgs['user_id'] as String?;
-  if (userId == null) return;
-
   final windowType = windowArgs['type'] as String? ?? 'display';
   final screenData = windowArgs['screen'] as Map<String, dynamic>?;
 
@@ -109,7 +97,7 @@ Future<void> _runDisplayWindow(String argStr) async {
       await windowManager.show();
       await windowManager.focus();
     });
-    runApp(StageApp(userId: userId));
+    runApp(const StageApp());
     return;
   }
 
@@ -138,5 +126,5 @@ Future<void> _runDisplayWindow(String argStr) async {
     });
   }
 
-  runApp(DisplayApp(userId: userId));
+  runApp(const DisplayApp());
 }

@@ -1,104 +1,65 @@
+import '../api/api_client.dart';
 import '../models/organization.dart';
-import '../services/supabase_service.dart';
 
 class OrganizationRepository {
-  const OrganizationRepository(this._supabase);
-  final SupabaseService _supabase;
+  const OrganizationRepository(this._api);
+  final ApiClient _api;
 
-  // ── My membership ─────────────────────────────────────────────────────────
-
-  /// Returns active membership or null if user has none.
+  /// The caller's organization and their standing in it, or null when they
+  /// belong to none yet.
   Future<({Organization org, OrgMember me})?> getMyMembership() async {
-    final uid = _supabase.currentUser?.id;
-    if (uid == null) return null;
-
-    final rows = await _supabase.client
-        .from('organization_members')
-        .select('*, organizations(id, name, created_at)')
-        .eq('user_id', uid)
-        .neq('status', 'rejected')
-        .order('joined_at', ascending: false)
-        .limit(1);
-
-    if (rows.isEmpty) return null;
-    final row = rows.first;
-    final orgData = row['organizations'] as Map<String, dynamic>?;
-    if (orgData == null) return null;
-
-    return (org: Organization.fromJson(orgData), me: OrgMember.fromJson(row));
+    try {
+      final body = await _api.get<Map<String, dynamic>>('/org/me');
+      if (body == null) return null;
+      return (
+        org: Organization.fromJson(body['organization'] as Map<String, dynamic>),
+        me: OrgMember.fromJson(body['member'] as Map<String, dynamic>),
+      );
+    } on ApiException catch (e) {
+      // 404 is the normal answer for a brand new account, not a failure.
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
   }
-
-  // ── Search ────────────────────────────────────────────────────────────────
 
   Future<List<Organization>> searchOrganizations(String query) async {
     if (query.trim().isEmpty) return [];
-    final rows = await _supabase.client
-        .from('organizations')
-        .select('id, name, created_at')
-        .ilike('name', '%${query.trim()}%')
-        .limit(10);
-    return rows.map((r) => Organization.fromJson(r)).toList();
+    final rows = await _api.get<List<dynamic>>('/org/search', query: {'q': query.trim()});
+    return (rows ?? [])
+        .map((r) => Organization.fromJson(r as Map<String, dynamic>))
+        .toList();
   }
 
-  // ── Create (via RPC to bypass RLS) ───────────────────────────────────────
-
+  /// Creates an organization and refreshes the session.
+  ///
+  /// The current access token was minted before the membership existed, so
+  /// without the refresh every org-scoped request would still be rejected.
   Future<Organization> createOrganization(String name) async {
-    final result = await _supabase.client.rpc(
-      'create_organization',
-      params: {'org_name': name.trim()},
-    );
-    final data = (result is List) ? result.first : result;
-    return Organization.fromJson(data as Map<String, dynamic>);
+    final body = await _api.post<Map<String, dynamic>>('/org', data: {'name': name.trim()});
+    await _api.refreshSession();
+    return Organization.fromJson(body!);
   }
-
-  // ── Join request ──────────────────────────────────────────────────────────
 
   Future<void> requestJoin(String orgId) async {
-    final user = _supabase.currentUser!;
-    await _supabase.client.from('organization_members').insert({
-      'org_id': orgId,
-      'user_id': user.id,
-      'role': 'member',
-      'status': 'pending',
-      'email': user.email,
-    });
+    await _api.post<void>('/org/join', data: {'org_id': orgId});
   }
 
-  // ── Admin: list pending requests ──────────────────────────────────────────
+  Future<List<OrgMember>> getPendingRequests() => _members('/org/pending');
 
-  Future<List<OrgMember>> getPendingRequests() async {
-    final orgId = _supabase.orgId;
-    if (orgId == null) return [];
-    final rows = await _supabase.client
-        .from('organization_members')
-        .select('*')
-        .eq('org_id', orgId)
-        .eq('status', 'pending')
-        .order('joined_at');
-    return rows.map((r) => OrgMember.fromJson(r)).toList();
-  }
-
-  // ── Admin: list active members ────────────────────────────────────────────
-
-  Future<List<OrgMember>> getMembers() async {
-    final orgId = _supabase.orgId;
-    if (orgId == null) return [];
-    final rows = await _supabase.client
-        .from('organization_members')
-        .select('*')
-        .eq('org_id', orgId)
-        .eq('status', 'active')
-        .order('joined_at');
-    return rows.map((r) => OrgMember.fromJson(r)).toList();
-  }
-
-  // ── Admin: approve / reject ───────────────────────────────────────────────
+  Future<List<OrgMember>> getMembers() => _members('/org/members');
 
   Future<void> approveRequest(String memberId) async {
-    await _supabase.client.rpc('approve_member', params: {'member_id': memberId});
+    await _api.post<void>('/org/members/$memberId/approve');
   }
 
   Future<void> rejectRequest(String memberId) async {
-    await _supabase.client.rpc('reject_member', params: {'member_id': memberId});
+    await _api.post<void>('/org/members/$memberId/reject');
+  }
+
+  Future<List<OrgMember>> _members(String path) async {
+    final rows = await _api.get<List<dynamic>>(path);
+    return (rows ?? [])
+        .map((r) => OrgMember.fromJson(r as Map<String, dynamic>))
+        .toList();
   }
 }

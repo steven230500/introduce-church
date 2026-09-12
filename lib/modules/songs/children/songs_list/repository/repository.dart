@@ -1,63 +1,62 @@
+import '../../../../../core/api/api_client.dart';
 import '../../../../../core/models/song.dart';
-import '../../../../../core/services/supabase_service.dart';
 import '../../../../../core/utils/app_logger.dart';
 
 class SongsListRepository {
-  final SupabaseService _supabase;
-
-  SongsListRepository(this._supabase);
+  const SongsListRepository(this._api);
+  final ApiClient _api;
 
   Future<List<Song>> getSongs({String? search}) async {
     appLogger.d('SongsListRepository.getSongs | search: $search');
-    var query = _supabase.client.from('songs').select('*, verses(*)');
-    if (search != null && search.isNotEmpty) {
-      query = query.ilike('title', '%$search%');
-    }
-    final result = await query.order('title');
-    return result.map((j) => Song.fromJson(j)).toList();
+    final rows = await _api.get<List<dynamic>>(
+      '/songs',
+      query: {'search': ?search},
+    );
+    return (rows ?? []).map((j) => Song.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  Future<Song> upsertSong({
+  /// Creates or replaces a song, verses included.
+  ///
+  /// One request rather than a save followed by a verse rewrite: the editor
+  /// hands back the whole song, and two requests could leave a song stored
+  /// with the previous set of verses if the second one failed.
+  Future<Song> saveSong({
     String? id,
     required String title,
     String? author,
     String? copyright,
     String? ccliNumber,
+    required List<({String type, String content, String? chords})> verses,
   }) async {
-    final userId = _supabase.currentUser!.id;
-    final data = {
+    appLogger.d('SongsListRepository.saveSong | id: $id title: $title');
+
+    final payload = {
       'title': title,
       'author': author,
       'copyright': copyright,
       'ccli_number': ccliNumber,
-      'user_id': userId,
+      'language': 'es',
+      'tags': <String>[],
+      'verses': [
+        for (final (index, verse) in verses.indexed)
+          {
+            'type': verse.type,
+            'verse_order': index,
+            'content': verse.content,
+            'chords': ?verse.chords,
+          },
+      ],
     };
-    if (id != null) {
-      data['id'] = id;
-    } else {
-      data['created_by'] = userId;
-      if (_supabase.orgId != null) data['org_id'] = _supabase.orgId!;
-    }
 
-    appLogger.d('SongsListRepository.upsertSong | id: $id title: $title');
-    final result = await _supabase.client
-        .from('songs')
-        .upsert(data)
-        .select('*, verses(*)')
-        .single();
-    return Song.fromJson(result);
-  }
+    final body = id == null
+        ? await _api.post<Map<String, dynamic>>('/songs', data: payload)
+        : await _api.put<Map<String, dynamic>>('/songs/$id', data: payload);
 
-  Future<void> replaceVerses(String songId, List<Map<String, dynamic>> verses) async {
-    appLogger.d('SongsListRepository.replaceVerses | songId: $songId count: ${verses.length}');
-    await _supabase.client.from('verses').delete().eq('song_id', songId);
-    if (verses.isNotEmpty) {
-      await _supabase.client.from('verses').insert(verses);
-    }
+    return Song.fromJson(body!);
   }
 
   Future<void> deleteSong(String id) async {
     appLogger.d('SongsListRepository.deleteSong | id: $id');
-    await _supabase.client.from('songs').delete().eq('id', id);
+    await _api.delete<void>('/songs/$id');
   }
 }

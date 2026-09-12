@@ -1,70 +1,50 @@
+import '../api/api_client.dart';
 import '../models/slide_template.dart';
-import '../services/supabase_service.dart';
 
 class TemplateRepository {
-  const TemplateRepository(this._supabase);
-  final SupabaseService _supabase;
+  const TemplateRepository(this._api);
+  final ApiClient _api;
 
   Future<List<SlideTemplate>> getTemplates() async {
-    final rows = await _supabase.client
-        .from('templates')
-        .select('id, name, config')
-        .order('created_at');
-    return rows
-        .map(
-          (r) => SlideTemplate.fromJson(
-            id: r['id'] as String,
-            name: r['name'] as String,
-            json: r['config'] as Map<String, dynamic>,
-          ),
-        )
-        .toList();
-  }
-
-  Future<SlideTemplate> saveTemplate(SlideTemplate t) async {
-    final userId = _supabase.currentUser!.id;
-    final isNew = t.id.startsWith('preset_') || t.id.isEmpty;
-    if (isNew) {
-      final row = await _supabase.client
-          .from('templates')
-          .insert({
-            'user_id': userId,
-            'created_by': userId,
-            if (_supabase.orgId != null) 'org_id': _supabase.orgId,
-            'name': t.name,
-            'config': t.toJson(),
-          })
-          .select('id, name, config')
-          .single();
+    final rows = await _api.get<List<dynamic>>('/templates');
+    return (rows ?? []).map((r) {
+      final row = r as Map<String, dynamic>;
       return SlideTemplate.fromJson(
         id: row['id'] as String,
         name: row['name'] as String,
-        json: row['config'] as Map<String, dynamic>,
+        json: Map<String, dynamic>.from(row['config'] as Map),
       );
-    } else {
-      await _supabase.client
-          .from('templates')
-          .update({'name': t.name, 'config': t.toJson()})
-          .eq('id', t.id);
-      return t;
-    }
+    }).toList();
+  }
+
+  /// Creates or replaces a design.
+  ///
+  /// A preset id means the operator started from a built-in and is saving their
+  /// own copy, so it is created rather than updated.
+  Future<SlideTemplate> saveTemplate(SlideTemplate t) async {
+    final isNew = t.id.startsWith('preset_') || t.id.isEmpty;
+    final payload = {'name': t.name, 'config': t.toJson()};
+
+    final body = isNew
+        ? await _api.post<Map<String, dynamic>>('/templates', data: payload)
+        : await _api.put<Map<String, dynamic>>('/templates/${t.id}', data: payload);
+
+    return SlideTemplate.fromJson(
+      id: body!['id'] as String,
+      name: body['name'] as String,
+      json: Map<String, dynamic>.from(body['config'] as Map),
+    );
   }
 
   Future<void> deleteTemplate(String id) async {
-    await _supabase.client.from('templates').delete().eq('id', id);
+    await _api.delete<void>('/templates/$id');
   }
 
   Future<void> setCollectionTemplate(String collectionId, String? templateId) async {
-    await _supabase.client
-        .from('collections')
-        .update({'template_id': templateId})
-        .eq('id', collectionId);
+    await _api.patch<void>('/collections/$collectionId', data: {'template_id': templateId});
   }
 
   Future<void> setItemTemplate(String itemId, String? templateId) async {
-    await _supabase.client
-        .from('collection_items')
-        .update({'template_id': templateId})
-        .eq('id', itemId);
+    await _api.patch<void>('/collections/items/$itemId', data: {'template_id': templateId});
   }
 }

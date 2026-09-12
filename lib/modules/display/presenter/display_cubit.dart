@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/presentation_socket.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/collection_item_type.dart';
 import '../../../core/models/slide_template.dart';
@@ -65,26 +66,28 @@ class DisplayAnnouncementState extends DisplayState {
 }
 
 class DisplayCubit extends Cubit<DisplayState> {
-  DisplayCubit(this._supabase, this._userId) : super(DisplayIdleState());
+  DisplayCubit(this._api, this._socket) : super(DisplayIdleState());
 
-  final SupabaseClient _supabase;
-  final String _userId;
-  StreamSubscription? _sub;
+  final ApiClient _api;
+  final PresentationSocket _socket;
+  StreamSubscription<Map<String, dynamic>>? _sub;
 
-  void init() {
-    _sub = _supabase
-        .from('presentation_state')
-        .stream(primaryKey: ['user_id'])
-        .eq('user_id', _userId)
-        .listen(_onStateChange, onError: (_) => emit(DisplayIdleState()));
+  /// Collections, cached by id.
+  ///
+  /// The operator changes slide every few seconds and each change resolves the
+  /// same collection, so re-fetching it every time would put the projector at
+  /// the mercy of the network.
+  final Map<String, Collection> _collections = {};
+
+  Future<void> init() async {
+    _sub = _socket.states.listen(
+      _onStateChange,
+      onError: (_) => emit(DisplayIdleState()),
+    );
+    await _socket.connect();
   }
 
-  Future<void> _onStateChange(List<Map<String, dynamic>> rows) async {
-    if (rows.isEmpty) {
-      emit(DisplayIdleState());
-      return;
-    }
-    final row = rows.first;
+  Future<void> _onStateChange(Map<String, dynamic> row) async {
     final isLive = row['is_live'] as bool? ?? false;
     final blank = row['blank_screen'] as bool? ?? false;
     final countdownActive = row['countdown_active'] as bool? ?? false;
@@ -126,13 +129,11 @@ class DisplayCubit extends Cubit<DisplayState> {
     }
 
     try {
-      final data = await _supabase
-          .from('collections')
-          .select('*, collection_items(*, songs(*, verses(*)))')
-          .eq('id', collectionId)
-          .single();
-
-      final collection = Collection.fromJson(data);
+      final collection = await _collection(collectionId);
+      if (collection == null) {
+        emit(DisplayIdleState());
+        return;
+      }
 
       if (itemIndex >= collection.items.length) {
         emit(DisplayIdleState());
@@ -215,7 +216,23 @@ class DisplayCubit extends Cubit<DisplayState> {
     }
   }
 
-  // Cache to avoid re-fetching same custom template on every slide change
+  /// Returns a collection, reading through the cache.
+  ///
+  /// A miss means the operator opened a plan this window has not seen, so the
+  /// list is pulled once and every collection cached at the same time.
+  Future<Collection?> _collection(String id) async {
+    final cached = _collections[id];
+    if (cached != null) return cached;
+
+    final rows = await _api.get<List<dynamic>>('/collections');
+    for (final row in rows ?? []) {
+      final collection = Collection.fromJson(row as Map<String, dynamic>);
+      _collections[collection.id] = collection;
+    }
+    return _collections[id];
+  }
+
+  // Cache to avoid re-resolving the same custom design on every slide change.
   final Map<String, SlideTemplate> _templateCache = {};
 
   Future<SlideTemplate> _resolveTemplate(Collection collection, CollectionItem item) async {
@@ -230,18 +247,16 @@ class DisplayCubit extends Cubit<DisplayState> {
     if (_templateCache.containsKey(id)) return _templateCache[id]!;
 
     try {
-      final row = await _supabase
-          .from('templates')
-          .select('id, name, config')
-          .eq('id', id)
-          .single();
-      final t = SlideTemplate.fromJson(
-        id: row['id'] as String,
-        name: row['name'] as String,
-        json: row['config'] as Map<String, dynamic>,
-      );
-      _templateCache[id] = t;
-      return t;
+      final rows = await _api.get<List<dynamic>>('/templates');
+      for (final raw in rows ?? []) {
+        final row = raw as Map<String, dynamic>;
+        _templateCache[row['id'] as String] = SlideTemplate.fromJson(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          json: Map<String, dynamic>.from(row['config'] as Map),
+        );
+      }
+      return _templateCache[id] ?? SlideTemplate.defaultTemplate;
     } catch (_) {
       return SlideTemplate.defaultTemplate;
     }
