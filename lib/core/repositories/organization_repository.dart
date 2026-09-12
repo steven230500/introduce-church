@@ -25,9 +25,7 @@ class OrganizationRepository {
   Future<List<Organization>> searchOrganizations(String query) async {
     if (query.trim().isEmpty) return [];
     final rows = await _api.get<List<dynamic>>('/org/search', query: {'q': query.trim()});
-    return (rows ?? [])
-        .map((r) => Organization.fromJson(r as Map<String, dynamic>))
-        .toList();
+    return (rows ?? []).map((r) => Organization.fromJson(r as Map<String, dynamic>)).toList();
   }
 
   /// Creates an organization and refreshes the session.
@@ -58,8 +56,6 @@ class OrganizationRepository {
 
   Future<List<OrgMember>> _members(String path) async {
     final rows = await _api.get<List<dynamic>>(path);
-    return (rows ?? [])
-        .map((r) => OrgMember.fromJson(r as Map<String, dynamic>))
-        .toList();
+    return (rows ?? []).map((r) => OrgMember.fromJson(r as Map<String, dynamic>)).toList();
   }
 }

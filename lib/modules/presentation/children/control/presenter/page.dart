@@ -35,6 +35,7 @@ part 'widgets/set_list/items.dart';
 part 'widgets/set_list/export.dart';
 part 'widgets/slide_preview.dart';
 part 'widgets/slide_queue.dart';
+part 'widgets/up_next.dart';
 
 /// The presenter workspace: set list, live preview, slide queue.
 ///

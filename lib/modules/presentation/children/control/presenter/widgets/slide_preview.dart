@@ -159,77 +159,121 @@ class _SlideGrid extends StatelessWidget {
       builder: (context, constraints) {
         const spacing = AppSpace.sm;
         const pad = AppSpace.lg;
-        // Aim for ~240px tiles, but never fewer than two or more than five
-        // columns, so the grid stays readable as the dock opens and closes.
-        final columns = ((constraints.maxWidth - pad * 2) / 240).round().clamp(2, 5);
-        return GridView.builder(
-          padding: const EdgeInsets.all(pad),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-            childAspectRatio: 16 / 9,
-          ),
-          itemCount: slides.length,
-          itemBuilder: (context, index) {
-            final isSelected = index == model.currentSlideIndex;
-            final label = index < labels.length ? labels[index] : '';
+        final available = constraints.maxWidth - pad * 2;
+        final columns = _columnsFor(slides.length, available, constraints.maxHeight - pad * 2);
+        final gridWidth = _gridWidth(columns, available);
+        final tile = (gridWidth - spacing * (columns - 1)) / columns;
+        final inset = (available - gridWidth) / 2;
 
-            return GestureDetector(
-              onTap: () => cubit.selectSlide(index),
-              child: AnimatedContainer(
-                duration: AppMotion.fast,
-                decoration: BoxDecoration(
-                  borderRadius: AppRadius.all(AppRadius.sm),
-                  border: Border.all(
-                    color: isSelected ? AppColors.accent : AppColors.divider,
-                    width: isSelected ? 2 : 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 6)]
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: AppRadius.all(AppRadius.xs + 1),
-                  child: Stack(
-                    fit: StackFit.expand,
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: inset),
+          // Centred, not top-aligned: a short song otherwise hangs from the
+          // ceiling of a tall empty column.
+          child: Center(
+            child: GridView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(pad),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                childAspectRatio: tile / (tile * 9 / 16 + _captionHeight),
+              ),
+              itemCount: slides.length,
+              itemBuilder: (context, index) {
+                final isSelected = index == model.currentSlideIndex;
+                final label = index < labels.length ? labels[index] : '';
+
+                return GestureDetector(
+                  onTap: () => cubit.selectSlide(index),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SlideView(
-                        content: isImageSlide ? '' : slides[index],
-                        reference: '',
-                        template: model.activeTemplate,
-                        imagePath: isImageSlide ? slides[index] : null,
-                      ),
-                      if (label.isNotEmpty)
-                        Positioned(
-                          bottom: 3,
-                          left: 3,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.scrim,
-                              borderRadius: AppRadius.all(3),
+                      Expanded(
+                        child: AnimatedContainer(
+                          duration: AppMotion.fast,
+                          decoration: BoxDecoration(
+                            borderRadius: AppRadius.all(AppRadius.sm),
+                            border: Border.all(
+                              color: isSelected ? AppColors.accent : AppColors.divider,
+                              width: isSelected ? 2 : 1,
                             ),
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                color: isSelected ? AppColors.accentLight : Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.accent.withValues(alpha: 0.3),
+                                      blurRadius: 6,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: AppRadius.all(AppRadius.xs + 1),
+                            child: SlideView(
+                              content: isImageSlide ? '' : slides[index],
+                              reference: '',
+                              template: model.activeTemplate,
+                              imagePath: isImageSlide ? slides[index] : null,
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 3),
+                      // Under the slide, not on top of it. As a badge inside
+                      // the frame it landed on the words whenever the lyric
+                      // ran long, which is exactly when you need to read both.
+                      Text(
+                        label.isEmpty ? 'Slide ${index + 1}' : label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isSelected ? AppColors.accentLight : AppColors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         );
       },
     );
   }
+
+  /// Columns that make the slides as big as they can be while still all
+  /// fitting on screen.
+  ///
+  /// The old rule was a fixed ~240px tile with a floor of two columns, so a
+  /// one-slide item drew a single stamp in the corner of an otherwise empty
+  /// column, and a four-slide song was four stamps in a strip across the top.
+  static int _columnsFor(int count, double width, double height) {
+    final most = count.clamp(1, _maxColumns);
+    for (var columns = 1; columns < most; columns++) {
+      final tile = (width - AppSpace.sm * (columns - 1)) / columns;
+      if (tile > _maxTile) continue;
+      final rows = (count / columns).ceil();
+      final needed = rows * (tile * 9 / 16 + _captionHeight) + AppSpace.sm * (rows - 1);
+      if (needed <= height) return columns;
+    }
+    return most;
+  }
+
+  /// How wide the grid is allowed to be, so a single slide does not stretch
+  /// into a second copy of the large preview.
+  static double _gridWidth(int columns, double available) {
+    final tile = (available - AppSpace.sm * (columns - 1)) / columns;
+    if (tile <= _maxTile) return available;
+    return _maxTile * columns + AppSpace.sm * (columns - 1);
+  }
+
+  static const _maxColumns = 5;
+  static const _maxTile = 520.0;
+
+  /// Room under each tile for the slide's label.
+  static const _captionHeight = 18.0;
 }
 
 // ── Output panel shown beside the grid ────────────────────────────────────────
@@ -274,9 +318,20 @@ class _SidePreviewPanel extends StatelessWidget {
             ),
           const SizedBox(height: AppSpace.lg),
           _NavRow(model: model),
-          const Spacer(),
-          if (model.currentItem?.notes?.isNotEmpty == true)
-            _NotePreview(note: model.currentItem!.notes!),
+          const SizedBox(height: AppSpace.lg),
+          const Divider(height: 1, color: AppColors.divider),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _UpNext(model: model),
+                  if (model.currentItem?.notes?.isNotEmpty == true)
+                    _NotePreview(note: model.currentItem!.notes!),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

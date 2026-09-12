@@ -8,10 +8,7 @@ class SongsListRepository {
 
   Future<List<Song>> getSongs({String? search}) async {
     appLogger.d('SongsListRepository.getSongs | search: $search');
-    final rows = await _api.get<List<dynamic>>(
-      '/songs',
-      query: {'search': ?search},
-    );
+    final rows = await _api.get<List<dynamic>>('/songs', query: {'search': ?search});
     return (rows ?? []).map((j) => Song.fromJson(j as Map<String, dynamic>)).toList();
   }
 

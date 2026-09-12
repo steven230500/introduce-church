@@ -47,10 +47,7 @@ class _SignOutButton extends StatelessWidget {
     return Row(
       children: [
         if (email != null)
-          Text(
-            email,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-          ),
+          Text(email, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
         const SizedBox(width: 8),
         TextButton.icon(
           icon: const Icon(Icons.logout_rounded, size: 15),

@@ -88,18 +88,19 @@ class LoginCubit extends Cubit<LoginState> {
 
   void onEmailChanged(String value) => _update(_model.copyWith(email: value));
   void onPasswordChanged(String value) => _update(_model.copyWith(password: value));
-  void onConfirmPasswordChanged(String value) =>
-      _update(_model.copyWith(confirmPassword: value));
+  void onConfirmPasswordChanged(String value) => _update(_model.copyWith(confirmPassword: value));
   void onDisplayNameChanged(String value) => _update(_model.copyWith(displayName: value));
 
   /// Switches between signing in and creating an account, keeping whatever the
   /// operator already typed.
   void toggleMode() {
     final model = _model;
-    _update(model.copyWith(
-      mode: model.isRegistering ? LoginMode.signIn : LoginMode.register,
-      confirmPassword: '',
-    ));
+    _update(
+      model.copyWith(
+        mode: model.isRegistering ? LoginMode.signIn : LoginMode.register,
+        confirmPassword: '',
+      ),
+    );
   }
 
   void _update(LoginModel model) => emit(LoginIdleState(model));
@@ -126,4 +127,3 @@ class LoginCubit extends Cubit<LoginState> {
     }
   }
 }
-

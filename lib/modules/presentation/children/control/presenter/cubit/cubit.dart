@@ -54,8 +54,10 @@ class ControlModel extends Equatable {
   SlideTemplate? findTemplate(String id) =>
       SlideTemplate.findPreset(id) ?? userTemplates.where((t) => t.id == id).firstOrNull;
 
-  SlideTemplate get activeTemplate {
-    final itemId = currentItem?.templateId;
+  /// The design [item] will be drawn with: its own, else the collection's,
+  /// else the built-in default.
+  SlideTemplate templateFor(CollectionItem? item) {
+    final itemId = item?.templateId;
     if (itemId != null) {
       final t = findTemplate(itemId);
       if (t != null) return t;
@@ -63,6 +65,8 @@ class ControlModel extends Equatable {
     final id = activeCollection?.templateId;
     return (id != null ? findTemplate(id) : null) ?? SlideTemplate.defaultTemplate;
   }
+
+  SlideTemplate get activeTemplate => templateFor(currentItem);
 
   CollectionItem? get currentItem => activeCollection != null && activeCollection!.items.isNotEmpty
       ? activeCollection!.items[currentItemIndex.clamp(0, activeCollection!.items.length - 1)]
@@ -81,6 +85,25 @@ class ControlModel extends Equatable {
     if (refs.isEmpty) return currentItem?.displayTitle ?? '';
     final ref = refs[currentSlideIndex.clamp(0, refs.length - 1)];
     return ref.isNotEmpty ? ref : (currentItem?.displayTitle ?? '');
+  }
+
+  /// What pressing Next will put on the projector, crossing into the following
+  /// item when the current one runs out.
+  ///
+  /// The operator could always see the slides of the item they were on, but
+  /// never the first slide of the one after it, which is exactly the moment a
+  /// service goes wrong.
+  ({CollectionItem item, int slide})? get upNext {
+    final collection = activeCollection;
+    final item = currentItem;
+    if (collection == null || item == null) return null;
+
+    if (currentSlideIndex + 1 < item.slides.length) {
+      return (item: item, slide: currentSlideIndex + 1);
+    }
+    final next = currentItemIndex.clamp(0, collection.items.length - 1) + 1;
+    if (next >= collection.items.length) return null;
+    return (item: collection.items[next], slide: 0);
   }
 
   bool get hasPrevSlide {
@@ -576,10 +599,7 @@ class ControlCubit extends Cubit<ControlState> {
     // The window reads the stored session itself, so it only needs to be told
     // which kind of window to be.
     final controller = await WindowController.create(
-      WindowConfiguration(
-        hiddenAtLaunch: true,
-        arguments: jsonEncode({'type': 'stage'}),
-      ),
+      WindowConfiguration(hiddenAtLaunch: true, arguments: jsonEncode({'type': 'stage'})),
     );
     await controller.show();
   }

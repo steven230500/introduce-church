@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/local_db/app_database.dart';
 import 'core/local_db/bible_import_service.dart';
+import 'core/services/window_bounds_store.dart';
 import 'module.dart';
 import 'modules/display/display_app.dart';
 import 'modules/stage/stage_app.dart';
@@ -27,9 +29,37 @@ Future<void> main(List<String> args) async {
   }
 }
 
-class _WindowCloseHandler extends WindowListener {
+class _MainWindowListener extends WindowListener {
+  _MainWindowListener(this._bounds);
+
+  final WindowBoundsStore _bounds;
+  Timer? _saveTimer;
+
+  /// macOS reports a resize or a move continuously while the mouse is down, so
+  /// write once the operator has stopped rather than on every frame.
+  void _scheduleSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 400), _save);
+  }
+
+  Future<void> _save() async {
+    // A minimised or full-screen window would be remembered as the size to
+    // reopen at, which is not what the operator chose.
+    if (await windowManager.isMinimized()) return;
+    if (await windowManager.isFullScreen()) return;
+    await _bounds.save(await windowManager.getBounds());
+  }
+
+  @override
+  void onWindowResized() => _scheduleSave();
+
+  @override
+  void onWindowMoved() => _scheduleSave();
+
   @override
   void onWindowClose() async {
+    _saveTimer?.cancel();
+    await _save();
     // Close drift DB before window destroys — unregisters sqlite3_update_hook
     // preventing null-pointer crash when Dart VM tears down mid-cleanup.
     await AppDatabase.instance.close();
@@ -50,31 +80,37 @@ Future<void> _runMainApp() async {
   };
 
   await windowManager.ensureInitialized();
-  windowManager.addListener(_WindowCloseHandler());
+  final boundsStore = WindowBoundsStore();
+  windowManager.addListener(_MainWindowListener(boundsStore));
   await windowManager.setPreventClose(true);
   await dotenv.load(fileName: '.env');
   await BibleImportService(AppDatabase.instance).ensureBundledBiblesImported();
 
-  final screen = await screenRetriever.getPrimaryDisplay();
-  final sw = screen.size.width;
-  final sh = screen.size.height;
-  final w = sw * 0.8;
-  final h = sh * 0.8;
-  final x = (sw - w) / 2;
-  final y = (sh - h) / 2;
+  final bounds = resolveWindowBounds(
+    saved: await boundsStore.load(),
+    primary: _workArea(await screenRetriever.getPrimaryDisplay()),
+    displays: (await screenRetriever.getAllDisplays()).map(_workArea).toList(),
+  );
   const windowOptions = WindowOptions(
     backgroundColor: Colors.transparent,
     titleBarStyle: TitleBarStyle.hidden,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.setBounds(Rect.fromLTWH(x, y, w, h));
-    await windowManager.setMinimumSize(const Size(1024, 600));
+    await windowManager.setBounds(bounds);
+    await windowManager.setMinimumSize(kMinWindowSize);
     await windowManager.setTitle('');
     await windowManager.show();
     await windowManager.focus();
   });
 
   runApp(ModularApp(module: AppModule(), child: const App()));
+}
+
+/// The part of a display a window may occupy, menu bar and dock excluded.
+Rect _workArea(Display display) {
+  final origin = display.visiblePosition ?? Offset.zero;
+  final size = display.visibleSize ?? display.size;
+  return Rect.fromLTWH(origin.dx, origin.dy, size.width, size.height);
 }
 
 Future<void> _runDisplayWindow(String argStr) async {

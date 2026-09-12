@@ -25,15 +25,12 @@ class ControlRepository {
 
   // ── Collections ────────────────────────────────────────────────────────────
 
-  Future<Collection> createCollection({
-    required String name,
-    DateTime? serviceDate,
-  }) async {
+  Future<Collection> createCollection({required String name, DateTime? serviceDate}) async {
     appLogger.d('ControlRepository.createCollection | name: $name');
-    final body = await _api.post<Map<String, dynamic>>('/collections', data: {
-      'name': name,
-      'service_date': ?_date(serviceDate),
-    });
+    final body = await _api.post<Map<String, dynamic>>(
+      '/collections',
+      data: {'name': name, 'service_date': ?_date(serviceDate)},
+    );
     return Collection.fromJson(body!);
   }
 
@@ -42,11 +39,14 @@ class ControlRepository {
     required String name,
     DateTime? serviceDate,
   }) async {
-    await _api.patch<void>('/collections/$id', data: {
-      'name': name,
-      // Always sent, so clearing the date actually clears it.
-      'service_date': _date(serviceDate),
-    });
+    await _api.patch<void>(
+      '/collections/$id',
+      data: {
+        'name': name,
+        // Always sent, so clearing the date actually clears it.
+        'service_date': _date(serviceDate),
+      },
+    );
   }
 
   Future<void> deleteCollection(String id) async {
@@ -63,10 +63,9 @@ class ControlRepository {
     required String collectionId,
     required String songId,
     required int order,
-  }) =>
-      _addItems(collectionId, [
-        {'item_type': CollectionItemType.song.value, 'song_id': songId},
-      ]);
+  }) => _addItems(collectionId, [
+    {'item_type': CollectionItemType.song.value, 'song_id': songId},
+  ]);
 
   Future<void> addBibleVerseToCollection({
     required String collectionId,
@@ -75,10 +74,7 @@ class ControlRepository {
   }) {
     appLogger.d('ControlRepository.addBibleVerse | ${ref.reference}');
     return _addItems(collectionId, [
-      {
-        'item_type': CollectionItemType.bibleVerse.value,
-        'content_json': ref.toJson(),
-      },
+      {'item_type': CollectionItemType.bibleVerse.value, 'content_json': ref.toJson()},
     ]);
   }
 
@@ -87,13 +83,12 @@ class ControlRepository {
     required String text,
     String? title,
     required int order,
-  }) =>
-      _addItems(collectionId, [
-        {
-          'item_type': CollectionItemType.freeSlide.value,
-          'content_json': {'text': text, 'title': ?title},
-        },
-      ]);
+  }) => _addItems(collectionId, [
+    {
+      'item_type': CollectionItemType.freeSlide.value,
+      'content_json': {'text': text, 'title': ?title},
+    },
+  ]);
 
   Future<void> addFreeSlideBatch({
     required String collectionId,
@@ -132,13 +127,12 @@ class ControlRepository {
     required String videoPath,
     required String title,
     required int order,
-  }) =>
-      _addItems(collectionId, [
-        {
-          'item_type': CollectionItemType.videoSlide.value,
-          'content_json': {'path': videoPath, 'title': title},
-        },
-      ]);
+  }) => _addItems(collectionId, [
+    {
+      'item_type': CollectionItemType.videoSlide.value,
+      'content_json': {'path': videoPath, 'title': title},
+    },
+  ]);
 
   /// Adds an imported deck as one item holding every page.
   Future<void> addImageSlideBatch({
@@ -162,17 +156,16 @@ class ControlRepository {
     required int order,
     String? title,
     DateTime? timerTarget,
-  }) =>
-      _addItems(collectionId, [
-        {
-          'item_type': CollectionItemType.announcement.value,
-          'content_json': {
-            'message': message,
-            'title': ?title,
-            'timerTarget': ?timerTarget?.toIso8601String(),
-          },
-        },
-      ]);
+  }) => _addItems(collectionId, [
+    {
+      'item_type': CollectionItemType.announcement.value,
+      'content_json': {
+        'message': message,
+        'title': ?title,
+        'timerTarget': ?timerTarget?.toIso8601String(),
+      },
+    },
+  ]);
 
   Future<void> removeItemFromCollection(String itemId) async {
     await _api.delete<void>('/collections/items/$itemId');
@@ -183,15 +176,13 @@ class ControlRepository {
   }
 
   Future<void> updateItemAutoAdvance(String itemId, int? secs) async {
-    await _api.patch<void>('/collections/items/$itemId',
-        data: {'auto_advance_secs': secs});
+    await _api.patch<void>('/collections/items/$itemId', data: {'auto_advance_secs': secs});
   }
 
   /// Writes a whole new running order in one request, so the set list is never
   /// briefly left with two items claiming the same position.
   Future<void> reorderItems(String collectionId, List<String> orderedIds) async {
-    await _api.put<void>('/collections/$collectionId/order',
-        data: {'item_ids': orderedIds});
+    await _api.put<void>('/collections/$collectionId/order', data: {'item_ids': orderedIds});
   }
 
   // ── Live state ─────────────────────────────────────────────────────────────
@@ -209,17 +200,20 @@ class ControlRepository {
     bool overlayVisible = false,
     String? overlayText,
   }) async {
-    await _api.put<void>('/presentation/state', data: {
-      'collection_id': collectionId,
-      'current_item_index': itemIndex,
-      'current_slide_index': slideIndex,
-      'is_live': isLive,
-      'blank_screen': blankScreen,
-      'countdown_active': countdownActive,
-      'countdown_end': countdownEnd?.toUtc().toIso8601String(),
-      'overlay_visible': overlayVisible,
-      'overlay_text': overlayText,
-    });
+    await _api.put<void>(
+      '/presentation/state',
+      data: {
+        'collection_id': collectionId,
+        'current_item_index': itemIndex,
+        'current_slide_index': slideIndex,
+        'is_live': isLive,
+        'blank_screen': blankScreen,
+        'countdown_active': countdownActive,
+        'countdown_end': countdownEnd?.toUtc().toIso8601String(),
+        'overlay_visible': overlayVisible,
+        'overlay_text': overlayText,
+      },
+    );
   }
 
   Future<void> _addItems(String collectionId, List<Map<String, dynamic>> items) async {
@@ -229,6 +223,6 @@ class ControlRepository {
   static String? _date(DateTime? d) => d == null
       ? null
       : '${d.year.toString().padLeft(4, '0')}-'
-          '${d.month.toString().padLeft(2, '0')}-'
-          '${d.day.toString().padLeft(2, '0')}';
+            '${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}';
 }

@@ -67,7 +67,9 @@ class CollectionItem extends Equatable {
     CollectionItemType.bibleVerse => contentJson?['version'] as String? ?? '',
     CollectionItemType.sermon => '${(_sermonSlides.length)} puntos',
     CollectionItemType.freeSlide => '',
-    CollectionItemType.imageSlide => '${slides.length} slides',
+    // No slide count here: every row that shows a subtitle already shows one,
+    // and this type is the only one that used to say it twice.
+    CollectionItemType.imageSlide => '',
     CollectionItemType.videoSlide => contentJson?['duration'] as String? ?? '',
     CollectionItemType.announcement =>
       contentJson?['timerTarget'] != null ? 'Con cuenta regresiva' : '',

@@ -128,8 +128,8 @@ class SlideTemplate {
       paddingV: (json['paddingV'] as num?)?.toDouble() ?? _fallback.paddingV,
       textShadow: json['textShadow'] as bool? ?? true,
       showReference: json['showReference'] as bool? ?? true,
-      referenceFontSize: (json['referenceFontSize'] as num?)?.toDouble() ??
-          _fallback.referenceFontSize,
+      referenceFontSize:
+          (json['referenceFontSize'] as num?)?.toDouble() ?? _fallback.referenceFontSize,
       referenceColor: (json['referenceColor'] as num?)?.toInt() ?? _fallback.referenceColor,
       referencePosition: ReferencePosition.values.firstWhere(
         (e) => e.name == json['referencePosition'],

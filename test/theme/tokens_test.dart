@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/theme/app_colors.dart';
+import 'package:introduce_church/core/services/window_bounds_store.dart';
 import 'package:introduce_church/core/theme/app_dimens.dart';
 import 'package:introduce_church/core/theme/app_text.dart';
 
@@ -55,10 +56,7 @@ void main() {
     });
 
     test('body copy clears the WCAG AA ratio on its surface', () {
-      expect(
-        _contrast(AppColors.textSecondary, AppColors.surface),
-        greaterThanOrEqualTo(4.5),
-      );
+      expect(_contrast(AppColors.textSecondary, AppColors.surface), greaterThanOrEqualTo(4.5));
     });
 
     test('primary text clears AA on every surface', () {
@@ -68,10 +66,7 @@ void main() {
         AppColors.surface,
         AppColors.surfaceControl,
       ]) {
-        expect(
-          _contrast(AppColors.textPrimary, surface),
-          greaterThanOrEqualTo(4.5),
-        );
+        expect(_contrast(AppColors.textPrimary, surface), greaterThanOrEqualTo(4.5));
       }
     });
   });
@@ -89,23 +84,13 @@ void main() {
     });
 
     test('accent text is readable on the panel surface', () {
-      expect(
-        _contrast(AppColors.accent, AppColors.surface),
-        greaterThanOrEqualTo(3.0),
-      );
+      expect(_contrast(AppColors.accent, AppColors.surface), greaterThanOrEqualTo(3.0));
     });
   });
 
   group('dimensions', () {
     test('the spacing scale only grows', () {
-      final scale = [
-        AppSpace.xs,
-        AppSpace.sm,
-        AppSpace.md,
-        AppSpace.lg,
-        AppSpace.xl,
-        AppSpace.xxl,
-      ];
+      final scale = [AppSpace.xs, AppSpace.sm, AppSpace.md, AppSpace.lg, AppSpace.xl, AppSpace.xxl];
 
       for (var i = 1; i < scale.length; i++) {
         expect(scale[i], greaterThan(scale[i - 1]));
@@ -113,13 +98,7 @@ void main() {
     });
 
     test('the radius scale only grows', () {
-      final scale = [
-        AppRadius.xs,
-        AppRadius.sm,
-        AppRadius.md,
-        AppRadius.lg,
-        AppRadius.xl,
-      ];
+      final scale = [AppRadius.xs, AppRadius.sm, AppRadius.md, AppRadius.lg, AppRadius.xl];
 
       for (var i = 1; i < scale.length; i++) {
         expect(scale[i], greaterThan(scale[i - 1]));
@@ -127,13 +106,12 @@ void main() {
     });
 
     test('the fixed columns leave real room for the slide preview', () {
-      final columns = AppSizes.sidebarWidth +
-          AppSizes.setListWidth +
-          AppSizes.queueWidth +
-          AppSizes.dockWidth;
+      final columns =
+          AppSizes.sidebarWidth + AppSizes.setListWidth + AppSizes.queueWidth + AppSizes.dockWidth;
 
-      // A 1280px laptop is the smallest screen this runs a service on.
-      expect(columns, lessThan(1280 - 400));
+      // Measured against the window the app refuses to shrink below, so
+      // widening a panel cannot quietly squeeze the preview into a sliver.
+      expect(columns, lessThan(kMinWindowSize.width - 360));
     });
   });
 

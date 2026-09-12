@@ -15,9 +15,7 @@ import 'session.dart';
 /// never think about tokens.
 class ApiClient {
   ApiClient(this._dio, this._prefs) {
-    _dio.interceptors.add(
-      InterceptorsWrapper(onRequest: _onRequest, onError: _onError),
-    );
+    _dio.interceptors.add(InterceptorsWrapper(onRequest: _onRequest, onError: _onError));
   }
 
   final Dio _dio;
@@ -66,21 +64,22 @@ class ApiClient {
     required String password,
     String? displayName,
   }) async {
-    final body = await post<Map<String, dynamic>>('/auth/register', data: {
-      'email': email,
-      'password': password,
-      'display_name': ?displayName,
-    }, authenticated: false);
+    final body = await post<Map<String, dynamic>>(
+      '/auth/register',
+      data: {'email': email, 'password': password, 'display_name': ?displayName},
+      authenticated: false,
+    );
     final session = Session.fromResponse(body!);
     await _adopt(session);
     return session;
   }
 
   Future<Session> signIn({required String email, required String password}) async {
-    final body = await post<Map<String, dynamic>>('/auth/login', data: {
-      'email': email,
-      'password': password,
-    }, authenticated: false);
+    final body = await post<Map<String, dynamic>>(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+      authenticated: false,
+    );
     final session = Session.fromResponse(body!);
     await _adopt(session);
     return session;
@@ -94,10 +93,10 @@ class ApiClient {
     required String currentPassword,
     required String newPassword,
   }) async {
-    await post<void>('/account/password', data: {
-      'current_password': currentPassword,
-      'new_password': newPassword,
-    });
+    await post<void>(
+      '/account/password',
+      data: {'current_password': currentPassword, 'new_password': newPassword},
+    );
     await _forgetSession();
   }
 
@@ -151,10 +150,7 @@ class ApiClient {
 
   // ── Interceptors ───────────────────────────────────────────────────────────
 
-  Future<void> _onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
+  Future<void> _onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (options.headers.remove('X-Skip-Auth') != null) {
       return handler.next(options);
     }
@@ -199,15 +195,15 @@ class ApiClient {
   Future<T?> get<T>(String path, {Map<String, dynamic>? query}) =>
       _send<T>(() => _dio.get<T>(path, queryParameters: query));
 
-  Future<T?> post<T>(String path, {Object? data, bool authenticated = true}) =>
-      _send<T>(() => _dio.post<T>(
-            path,
-            data: data,
-            options: authenticated ? null : Options(headers: {'X-Skip-Auth': 'true'}),
-          ));
+  Future<T?> post<T>(String path, {Object? data, bool authenticated = true}) => _send<T>(
+    () => _dio.post<T>(
+      path,
+      data: data,
+      options: authenticated ? null : Options(headers: {'X-Skip-Auth': 'true'}),
+    ),
+  );
 
-  Future<T?> put<T>(String path, {Object? data}) =>
-      _send<T>(() => _dio.put<T>(path, data: data));
+  Future<T?> put<T>(String path, {Object? data}) => _send<T>(() => _dio.put<T>(path, data: data));
 
   Future<T?> patch<T>(String path, {Object? data}) =>
       _send<T>(() => _dio.patch<T>(path, data: data));
@@ -243,10 +239,8 @@ class ApiClient {
     final message = switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.receiveTimeout ||
-      DioExceptionType.sendTimeout =>
-        'El servidor tardó demasiado en responder.',
-      DioExceptionType.connectionError =>
-        'No hay conexión con el servidor.',
+      DioExceptionType.sendTimeout => 'El servidor tardó demasiado en responder.',
+      DioExceptionType.connectionError => 'No hay conexión con el servidor.',
       _ => status != null ? 'Error del servidor ($status).' : 'Error de red.',
     };
     return ApiException(message, statusCode: status);

@@ -14,7 +14,9 @@ void main() {
 
   setUp(() {
     control = ControlCubit(
-      FakeControlRepository(rows: [collectionRow(id: 'c1', name: 'Culto domingo')]),
+      FakeControlRepository(
+        rows: [collectionRow(id: 'c1', name: 'Culto domingo')],
+      ),
       FakeTemplateRepository(),
       FakePrefsService(),
       FakePresentationSocket(),
@@ -42,9 +44,7 @@ void main() {
 
   Future<void> openCollection(WidgetTester tester) async {
     await control.load();
-    control.selectCollection(
-      (control.state as ControlLoadedState).model.collections.first,
-    );
+    control.selectCollection((control.state as ControlLoadedState).model.collections.first);
     await tester.pumpAndSettle();
   }
 
@@ -90,13 +90,7 @@ void main() {
 
   group('DockPanel', () {
     testWidgets('keeps the toolbar above a scrolling body', (tester) async {
-      await pump(
-        tester,
-        const DockPanel(
-          toolbar: Text('barra'),
-          body: Text('contenido'),
-        ),
-      );
+      await pump(tester, const DockPanel(toolbar: Text('barra'), body: Text('contenido')));
 
       expect(find.text('barra'), findsOneWidget);
       expect(find.text('contenido'), findsOneWidget);
@@ -118,10 +112,7 @@ void main() {
       await tester.tap(find.text('agregar'));
       await tester.pump();
 
-      expect(
-        find.text('Sublime Gracia agregado al set list'),
-        findsOneWidget,
-      );
+      expect(find.text('Sublime Gracia agregado al set list'), findsOneWidget);
     });
   });
 }

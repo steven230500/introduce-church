@@ -70,13 +70,8 @@ class AppIconButton extends StatelessWidget {
           duration: AppMotion.normal,
           height: size,
           width: label == null ? size : null,
-          padding: label == null
-              ? null
-              : const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: AppRadius.all(AppRadius.sm),
-          ),
+          padding: label == null ? null : const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2),
+          decoration: BoxDecoration(color: background, borderRadius: AppRadius.all(AppRadius.sm)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -86,11 +81,7 @@ class AppIconButton extends StatelessWidget {
                 const SizedBox(width: AppSpace.sm - 2),
                 Text(
                   label!,
-                  style: TextStyle(
-                    color: foreground,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: foreground, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ],

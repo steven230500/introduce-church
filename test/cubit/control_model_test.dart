@@ -6,20 +6,10 @@ import 'package:introduce_church/modules/presentation/children/control/presenter
 import '../helpers/builders.dart';
 
 void main() {
-  Collection collection({
-    String? templateId,
-    List<Map<String, dynamic>> items = const [],
-  }) =>
-      Collection.fromJson(
-        collectionRow(id: 'c1', templateId: templateId, items: items),
-      );
+  Collection collection({String? templateId, List<Map<String, dynamic>> items = const []}) =>
+      Collection.fromJson(collectionRow(id: 'c1', templateId: templateId, items: items));
 
-  final song = songItemRow(
-    id: 'i1',
-    collectionId: 'c1',
-    order: 0,
-    verses: ['a', 'b', 'c'],
-  );
+  final song = songItemRow(id: 'i1', collectionId: 'c1', order: 0, verses: ['a', 'b', 'c']);
 
   group('with no collection open', () {
     const empty = ControlModel();
@@ -47,10 +37,7 @@ void main() {
       ),
     );
 
-    expect(
-      model.activeCollection!.items.map((i) => i.displayTitle),
-      ['A', 'B', 'C'],
-    );
+    expect(model.activeCollection!.items.map((i) => i.displayTitle), ['A', 'B', 'C']);
   });
 
   group('slide cursor', () {
@@ -64,12 +51,70 @@ void main() {
     });
 
     test('clamps an out-of-range item index instead of throwing', () {
-      final model = ControlModel(
-        activeCollection: collection(items: [song]),
-        currentItemIndex: 99,
-      );
+      final model = ControlModel(activeCollection: collection(items: [song]), currentItemIndex: 99);
 
       expect(model.currentItem, isNotNull);
+    });
+  });
+
+  group('what comes next', () {
+    test('is the next slide while the item still has one', () {
+      final model = ControlModel(activeCollection: collection(items: [song]), currentSlideIndex: 0);
+
+      expect(model.upNext?.item.id, 'i1');
+      expect(model.upNext?.slide, 1);
+    });
+
+    test('crosses into the following item on the last slide', () {
+      // The seam between two items is the one place an operator could not see
+      // ahead, and it is where a service actually goes wrong.
+      final model = ControlModel(
+        activeCollection: collection(
+          items: [
+            song,
+            songItemRow(id: 'i2', collectionId: 'c1', order: 1, title: 'Segunda'),
+          ],
+        ),
+        currentSlideIndex: 2,
+      );
+
+      expect(model.upNext?.item.id, 'i2');
+      expect(model.upNext?.slide, 0);
+    });
+
+    test('is nothing at the end of the set list', () {
+      final model = ControlModel(
+        activeCollection: collection(items: [song]),
+        currentItemIndex: 0,
+        currentSlideIndex: 2,
+      );
+
+      expect(model.upNext, isNull);
+    });
+
+    test('is nothing when no collection is open', () {
+      expect(const ControlModel().upNext, isNull);
+    });
+
+    test('is drawn with the design of the item it belongs to, not the one on screen', () {
+      final model = ControlModel(
+        activeCollection: collection(
+          templateId: SlideTemplate.darkClassic.id,
+          items: [
+            song,
+            songItemRow(
+              id: 'i2',
+              collectionId: 'c1',
+              order: 1,
+              templateId: SlideTemplate.blueNight.id,
+            ),
+          ],
+        ),
+        currentSlideIndex: 2,
+      );
+
+      expect(model.activeTemplate.id, SlideTemplate.darkClassic.id);
+      expect(model.templateFor(model.upNext!.item).id, SlideTemplate.blueNight.id);
     });
   });
 
@@ -80,10 +125,7 @@ void main() {
       final model = ControlModel(
         activeCollection: collection(
           templateId: SlideTemplate.blueNight.id,
-          items: [
-            songItemRow(id: 'i1', collectionId: 'c1', order: 0)
-              ..['template_id'] = custom.id,
-          ],
+          items: [songItemRow(id: 'i1', collectionId: 'c1', order: 0)..['template_id'] = custom.id],
         ),
         userTemplates: [custom],
       );
@@ -93,10 +135,7 @@ void main() {
 
     test('the collection design applies when the item has none', () {
       final model = ControlModel(
-        activeCollection: collection(
-          templateId: SlideTemplate.blueNight.id,
-          items: [song],
-        ),
+        activeCollection: collection(templateId: SlideTemplate.blueNight.id, items: [song]),
       );
 
       expect(model.activeTemplate.id, SlideTemplate.blueNight.id);
@@ -123,14 +162,7 @@ void main() {
     test('a song slide falls back to the item title', () {
       final model = ControlModel(
         activeCollection: collection(
-          items: [
-            songItemRow(
-              id: 'i1',
-              collectionId: 'c1',
-              order: 0,
-              title: 'Sublime Gracia',
-            ),
-          ],
+          items: [songItemRow(id: 'i1', collectionId: 'c1', order: 0, title: 'Sublime Gracia')],
         ),
       );
 

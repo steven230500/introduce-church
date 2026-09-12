@@ -77,6 +77,10 @@ class _SetListItems extends StatelessWidget {
           child: ReorderableListView.builder(
             padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
             itemCount: items.length,
+            // The default handle is a second trailing control on a panel that
+            // is already too narrow for its titles. The order badge drags
+            // instead, which costs no width because it is there regardless.
+            buildDefaultDragHandles: false,
             onReorder: (oldIndex, newIndex) {
               if (newIndex > oldIndex) newIndex--;
               context.read<ControlCubit>().reorderItem(oldIndex, newIndex);
@@ -136,7 +140,17 @@ class _SetListTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _OrderBadge(index: index, isActive: isActive),
+            ReorderableDragStartListener(
+              index: index,
+              child: Tooltip(
+                message: 'Arrastra para cambiar el orden',
+                waitDuration: const Duration(milliseconds: 600),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.grab,
+                  child: _OrderBadge(index: index, isActive: isActive),
+                ),
+              ),
+            ),
             const SizedBox(width: AppSpace.sm + 2),
             Expanded(
               child: Column(
@@ -163,28 +177,35 @@ class _SetListTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (item.displaySubtitle.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: Text(
-                        item.displaySubtitle,
-                        style: AppText.rowSubtitle,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      _subtitle(item),
+                      style: AppText.rowSubtitle,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
                   _TileFlags(model: model, item: item),
                 ],
               ),
-            ),
-            Text(
-              '${item.slides.length}',
-              style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
             ),
             _ItemMenuButton(model: model, item: item),
           ],
         ),
       ),
     );
+  }
+
+  /// One line under the title, holding what the item is and how long it runs.
+  ///
+  /// The slide count used to be a bare number wedged between the title and the
+  /// kebab, where it read as part of the title and ate the width that made
+  /// titles fit in the first place.
+  static String _subtitle(CollectionItem item) {
+    final count = item.slides.length;
+    final slides = '$count slide${count == 1 ? '' : 's'}';
+    final detail = item.displaySubtitle;
+    return detail.isEmpty ? slides : '$detail  ·  $slides';
   }
 
   static IconData _typeIcon(CollectionItemType type) => switch (type) {

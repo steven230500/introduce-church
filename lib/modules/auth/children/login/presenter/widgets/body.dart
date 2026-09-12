@@ -161,10 +161,7 @@ class _BodyState extends State<_Body> {
                               )
                             : Text(
                                 model.isRegistering ? 'Crear cuenta' : 'Entrar',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                               ),
                       ),
                     ),

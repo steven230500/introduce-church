@@ -23,11 +23,7 @@ class LoginRepository {
     String? displayName,
   }) async {
     appLogger.d('LoginRepository.register | email: $email');
-    final session = await _api.register(
-      email: email,
-      password: password,
-      displayName: displayName,
-    );
+    final session = await _api.register(email: email, password: password, displayName: displayName);
     return (session: session, hasOrg: session.hasOrg);
   }
 }

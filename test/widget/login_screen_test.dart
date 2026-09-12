@@ -42,8 +42,8 @@ void main() {
     await pumpLogin(tester);
 
     FilledButton button() => tester.widget<FilledButton>(
-          find.ancestor(of: find.text('Entrar'), matching: find.byType(FilledButton)),
-        );
+      find.ancestor(of: find.text('Entrar'), matching: find.byType(FilledButton)),
+    );
 
     expect(button().onPressed, isNull, reason: 'an empty form must not submit');
 

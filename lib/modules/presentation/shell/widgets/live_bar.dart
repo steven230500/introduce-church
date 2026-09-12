@@ -36,9 +36,16 @@ class LiveBar extends StatelessWidget {
             // window is wide enough to hold them; its icons carry meaning on
             // their own. The library toggle never gets one, because a split
             // panel glyph already looks like the panel it opens.
+            //
+            // Both thresholds sit below the minimum window width, so in
+            // practice every button is labelled. They only bite if a future
+            // layout puts the bar somewhere narrower. The old state threshold
+            // was 1180 against a window that opened at 1152, so the three
+            // buttons an operator most needs to read were the three that never
+            // said anything.
             final width = constraints.maxWidth;
-            final labelOutputs = width >= 1040;
-            final labelState = width >= 1180;
+            final labelOutputs = width >= 960;
+            final labelState = width >= 1100;
 
             return Container(
               height: AppSizes.liveBarHeight,
@@ -256,12 +263,8 @@ class _DockToggle extends StatelessWidget {
       builder: (context, shell) {
         final inPresenter = shell.section == ShellSection.presenter;
         return AppIconButton(
-          icon: shell.dockOpen
-              ? Icons.vertical_split_rounded
-              : Icons.view_sidebar_rounded,
-          tooltip: shell.dockOpen
-              ? 'Ocultar la biblioteca  ·  F'
-              : 'Mostrar la biblioteca  ·  F',
+          icon: shell.dockOpen ? Icons.vertical_split_rounded : Icons.view_sidebar_rounded,
+          tooltip: shell.dockOpen ? 'Ocultar la biblioteca  ·  F' : 'Mostrar la biblioteca  ·  F',
           active: shell.dockOpen && inPresenter,
           // Subtle: this moves a panel, it does not change what is projected.
           // A solid fill here competed with the live button for attention.

@@ -225,10 +225,7 @@ class _AccountButton extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                Text(
-                  user.email,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                ),
+                Text(user.email, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
               ],
             ),
           ),
@@ -241,11 +238,7 @@ class _AccountButton extends StatelessWidget {
         const PopupMenuItem(
           value: 'signout',
           height: 38,
-          child: AppMenuRow(
-            icon: Icons.logout_rounded,
-            label: 'Cerrar sesión',
-            danger: true,
-          ),
+          child: AppMenuRow(icon: Icons.logout_rounded, label: 'Cerrar sesión', danger: true),
         ),
       ],
       onSelected: (value) async {
@@ -260,11 +253,7 @@ class _AccountButton extends StatelessWidget {
         width: AppSizes.sidebarWidth,
         height: 54,
         child: Center(
-          child: Icon(
-            Icons.account_circle_outlined,
-            size: 22,
-            color: AppColors.textMuted,
-          ),
+          child: Icon(Icons.account_circle_outlined, size: 22, color: AppColors.textMuted),
         ),
       ),
     );

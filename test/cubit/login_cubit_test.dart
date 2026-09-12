@@ -33,16 +33,14 @@ class FakeLoginRepository extends LoginRepository {
   Future<({Session session, bool hasOrg})> signIn({
     required String email,
     required String password,
-  }) async =>
-      _answer('signIn:$email');
+  }) async => _answer('signIn:$email');
 
   @override
   Future<({Session session, bool hasOrg})> register({
     required String email,
     required String password,
     String? displayName,
-  }) async =>
-      _answer('register:$email:${displayName ?? "-"}');
+  }) async => _answer('register:$email:${displayName ?? "-"}');
 }
 
 void main() {

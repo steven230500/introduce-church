@@ -12,27 +12,21 @@ void main() {
 
   /// One collection holding a three-verse song and a two-verse song.
   List<Map<String, dynamic>> twoSongs() => [
-        collectionRow(
-          id: 'c1',
-          name: 'Culto domingo',
-          items: [
-            songItemRow(
-              id: 'i1',
-              collectionId: 'c1',
-              order: 0,
-              title: 'Primera',
-              verses: ['a', 'b', 'c'],
-            ),
-            songItemRow(
-              id: 'i2',
-              collectionId: 'c1',
-              order: 1,
-              title: 'Segunda',
-              verses: ['d', 'e'],
-            ),
-          ],
+    collectionRow(
+      id: 'c1',
+      name: 'Culto domingo',
+      items: [
+        songItemRow(
+          id: 'i1',
+          collectionId: 'c1',
+          order: 0,
+          title: 'Primera',
+          verses: ['a', 'b', 'c'],
         ),
-      ];
+        songItemRow(id: 'i2', collectionId: 'c1', order: 1, title: 'Segunda', verses: ['d', 'e']),
+      ],
+    ),
+  ];
 
   setUp(() {
     repo = FakeControlRepository(rows: twoSongs());
@@ -306,10 +300,7 @@ void main() {
       await cubit.setCollectionTemplate('c1', SlideTemplate.light.id);
 
       expect(model().activeCollection!.templateId, SlideTemplate.light.id);
-      expect(
-        templates.calls,
-        contains('collectionTemplate:c1:${SlideTemplate.light.id}'),
-      );
+      expect(templates.calls, contains('collectionTemplate:c1:${SlideTemplate.light.id}'));
     });
 
     test('an item design overrides the collection design', () async {

@@ -16,9 +16,7 @@ class MediaRepository {
 
   Future<List<MediaItem>> listMedia() async {
     final rows = await _api.get<List<dynamic>>('/media');
-    return (rows ?? [])
-        .map((r) => MediaItem.fromJson(r as Map<String, dynamic>))
-        .toList();
+    return (rows ?? []).map((r) => MediaItem.fromJson(r as Map<String, dynamic>)).toList();
   }
 
   Future<MediaItem> upload(File file, {String? displayName}) async {

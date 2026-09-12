@@ -4,8 +4,7 @@ import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/core/widgets/slide_view.dart';
 
 void main() {
-  const verse =
-      '"EN el principio crió Dios los cielos y la tierra."';
+  const verse = '"EN el principio crió Dios los cielos y la tierra."';
 
   /// Renders a slide at [width], 16:9, and returns the font size it chose.
   ///

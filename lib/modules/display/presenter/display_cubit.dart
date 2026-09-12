@@ -80,10 +80,7 @@ class DisplayCubit extends Cubit<DisplayState> {
   final Map<String, Collection> _collections = {};
 
   Future<void> init() async {
-    _sub = _socket.states.listen(
-      _onStateChange,
-      onError: (_) => emit(DisplayIdleState()),
-    );
+    _sub = _socket.states.listen(_onStateChange, onError: (_) => emit(DisplayIdleState()));
     await _socket.connect();
   }
 

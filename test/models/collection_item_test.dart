@@ -75,20 +75,20 @@ void main() {
 
   group('bible items', () {
     Map<String, dynamic> passage() => itemRow(
-          id: 'i1',
-          collectionId: 'c1',
-          type: 'bible_verse',
-          order: 0,
-          contentJson: {
-            'version': 'RVR1960',
-            'book': 'Juan',
-            'book_id': 'JHN',
-            'chapter': 3,
-            'verse': 16,
-            'verseEnd': 18,
-            'texts': ['Porque de tal manera', 'Porque no envió', 'El que en él cree'],
-          },
-        );
+      id: 'i1',
+      collectionId: 'c1',
+      type: 'bible_verse',
+      order: 0,
+      contentJson: {
+        'version': 'RVR1960',
+        'book': 'Juan',
+        'book_id': 'JHN',
+        'chapter': 3,
+        'verse': 16,
+        'verseEnd': 18,
+        'texts': ['Porque de tal manera', 'Porque no envió', 'El que en él cree'],
+      },
+    );
 
     test('splits a passage into one slide per verse', () {
       final item = CollectionItem.fromJson(passage());
@@ -164,7 +164,8 @@ void main() {
       expect(item.type, CollectionItemType.imageSlide);
       expect(item.slides, ['/tmp/s1.png', '/tmp/s2.png']);
       expect(item.slideLabels, ['Slide 1', 'Slide 2']);
-      expect(item.displaySubtitle, '2 slides');
+      // The slide count belongs to the row, which shows one for every type.
+      expect(item.displaySubtitle, '');
     });
 
     test('an announcement says when it carries a countdown', () {
@@ -183,10 +184,7 @@ void main() {
           collectionId: 'c1',
           type: 'announcement',
           order: 1,
-          contentJson: {
-            'message': 'Empezamos pronto',
-            'timerTarget': '2026-09-11T10:00:00Z',
-          },
+          contentJson: {'message': 'Empezamos pronto', 'timerTarget': '2026-09-11T10:00:00Z'},
         ),
       );
 

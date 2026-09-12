@@ -15,6 +15,13 @@ class _Body extends StatelessWidget {
           message: message,
           onRetry: context.read<ControlCubit>().load,
         ),
+        // With nothing open there is nothing for three columns to show, and
+        // each used to announce its own emptiness in its own words. One screen
+        // that says it once and offers the way out reads better than three
+        // panels apologising in parallel.
+        ControlLoadedState(:final model) when model.activeCollection == null => _NoCollection(
+          model: model,
+        ),
         ControlLoadedState(:final model) => Row(
           children: [
             _SetListPanel(model: model),
@@ -28,6 +35,131 @@ class _Body extends StatelessWidget {
           ],
         ),
       },
+    );
+  }
+}
+
+// ── Nothing open ──────────────────────────────────────────────────────────────
+
+/// The presenter with no collection loaded.
+///
+/// Doubles as the way in: the collections an operator already has are one
+/// click away, rather than two panels and a menu away.
+class _NoCollection extends StatelessWidget {
+  const _NoCollection({required this.model});
+
+  final ControlModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = model.collections.take(5).toList();
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpace.xxl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.slideshow_outlined, size: 44, color: AppColors.textDisabled),
+              const SizedBox(height: AppSpace.lg),
+              const Text(
+                'Nada en pantalla',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                recent.isEmpty
+                    ? 'Una colección es el plan de un servicio: las canciones, '
+                          'los versículos y la media en el orden en que van.'
+                    : 'Abre una colección para empezar.',
+                textAlign: TextAlign.center,
+                style: AppText.rowSubtitle,
+              ),
+              const SizedBox(height: AppSpace.xl),
+              if (recent.isNotEmpty) ...[
+                for (final collection in recent) _CollectionShortcut(collection: collection),
+                const SizedBox(height: AppSpace.lg),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _create(context),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Nueva colección'),
+                  ),
+                  if (model.collections.length > recent.length) ...[
+                    const SizedBox(width: AppSpace.sm),
+                    FilledButton.tonal(
+                      onPressed: () => context.read<ShellCubit>().goTo(ShellSection.collections),
+                      child: const Text('Ver todas'),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _create(BuildContext context) async {
+    final cubit = context.read<ControlCubit>();
+    final draft = await showCollectionDialog(context);
+    if (draft != null) {
+      await cubit.createCollection(draft.name, serviceDate: draft.date);
+    }
+  }
+}
+
+class _CollectionShortcut extends StatelessWidget {
+  const _CollectionShortcut({required this.collection});
+
+  final Collection collection;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = collection.items.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm - 2),
+      child: GestureDetector(
+        onTap: () => context.read<ControlCubit>().selectCollection(collection),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm + 2),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadius.all(AppRadius.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.folder_outlined, size: 15, color: AppColors.textMuted),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: Text(
+                    collection.name,
+                    style: AppText.rowTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text('$count elemento${count == 1 ? '' : 's'}', style: AppText.rowSubtitle),
+                const SizedBox(width: AppSpace.sm),
+                const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textDisabled),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

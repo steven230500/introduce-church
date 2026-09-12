@@ -42,9 +42,6 @@ void main() {
   });
 
   test('every library tab has a Spanish label', () {
-    expect(
-      LibraryTab.values.map((t) => t.label),
-      ['Canciones', 'Biblia', 'Media', 'Diseños'],
-    );
+    expect(LibraryTab.values.map((t) => t.label), ['Canciones', 'Biblia', 'Media', 'Diseños']);
   });
 }

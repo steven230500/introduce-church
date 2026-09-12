@@ -46,13 +46,16 @@ abstract final class AppSizes {
   static const liveBarHeight = 52.0;
 
   /// Set list panel on the left of the presenter.
-  static const setListWidth = 260.0;
+  ///
+  /// Sized so a typical song title fits without an ellipsis. Anything narrower
+  /// and the list turns into a column of "NADA ES IMPOSIB…".
+  static const setListWidth = 284.0;
 
   /// Library dock on the right of the presenter.
   static const dockWidth = 300.0;
 
-  /// Slide queue strip.
-  static const queueWidth = 220.0;
+  /// Slide queue strip, and the output panel that replaces it in grid mode.
+  static const queueWidth = 248.0;
 
   /// Header strip inside a panel.
   static const panelHeaderHeight = 40.0;

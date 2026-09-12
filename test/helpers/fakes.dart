@@ -46,8 +46,7 @@ class FakePrefsService extends AppPrefsService {
 /// Control repository that serves canned rows and records what was asked of it,
 /// so cubit behaviour can be asserted without a server.
 class FakeControlRepository extends ControlRepository {
-  FakeControlRepository({this.rows = const []})
-      : super(fakeApiClient());
+  FakeControlRepository({this.rows = const []}) : super(fakeApiClient());
 
   /// Rows returned by [getCollectionsRaw], in the API's wire shape.
   List<Map<String, dynamic>> rows;
@@ -96,14 +95,9 @@ class FakeControlRepository extends ControlRepository {
     required int order,
   }) async {
     calls.add('addSong:$songId');
-    _items(collectionId).add(
-      songItemRow(
-        id: 'item-$songId',
-        collectionId: collectionId,
-        order: order,
-        title: songId,
-      ),
-    );
+    _items(
+      collectionId,
+    ).add(songItemRow(id: 'item-$songId', collectionId: collectionId, order: order, title: songId));
   }
 
   @override
@@ -132,10 +126,7 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
-  Future<Collection> createCollection({
-    required String name,
-    DateTime? serviceDate,
-  }) async {
+  Future<Collection> createCollection({required String name, DateTime? serviceDate}) async {
     calls.add('createCollection:$name');
     return Collection(id: 'new-collection', name: name, serviceDate: serviceDate);
   }
@@ -148,8 +139,7 @@ class FakeControlRepository extends ControlRepository {
 
 /// Template repository backed by a plain list.
 class FakeTemplateRepository extends TemplateRepository {
-  FakeTemplateRepository({this.templates = const []})
-      : super(fakeApiClient());
+  FakeTemplateRepository({this.templates = const []}) : super(fakeApiClient());
 
   List<SlideTemplate> templates;
   final List<String> calls = [];

@@ -38,11 +38,7 @@ class CoreModule extends Module {
     i.addLazySingleton<OrganizationRepository>(
       () => OrganizationRepository(Modular.get<ApiClient>()),
     );
-    i.addLazySingleton<TemplateRepository>(
-      () => TemplateRepository(Modular.get<ApiClient>()),
-    );
-    i.addLazySingleton<MediaRepository>(
-      () => MediaRepository(Modular.get<ApiClient>()),
-    );
+    i.addLazySingleton<TemplateRepository>(() => TemplateRepository(Modular.get<ApiClient>()));
+    i.addLazySingleton<MediaRepository>(() => MediaRepository(Modular.get<ApiClient>()));
   }
 }

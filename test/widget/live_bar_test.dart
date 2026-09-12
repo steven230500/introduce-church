@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/services/window_bounds_store.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 import 'package:introduce_church/modules/presentation/shell/shell_cubit.dart';
 import 'package:introduce_church/modules/presentation/shell/widgets/live_bar.dart';
@@ -14,22 +15,29 @@ void main() {
   late ShellCubit shell;
 
   setUp(() {
-    repo = FakeControlRepository(rows: [
-      collectionRow(
-        id: 'c1',
-        name: 'Culto domingo',
-        items: [
-          songItemRow(
-            id: 'i1',
-            collectionId: 'c1',
-            order: 0,
-            title: 'Sublime Gracia',
-            verses: ['a', 'b'],
-          ),
-        ],
-      ),
-    ]);
-    control = ControlCubit(repo, FakeTemplateRepository(), FakePrefsService(), FakePresentationSocket());
+    repo = FakeControlRepository(
+      rows: [
+        collectionRow(
+          id: 'c1',
+          name: 'Culto domingo',
+          items: [
+            songItemRow(
+              id: 'i1',
+              collectionId: 'c1',
+              order: 0,
+              title: 'Sublime Gracia',
+              verses: ['a', 'b'],
+            ),
+          ],
+        ),
+      ],
+    );
+    control = ControlCubit(
+      repo,
+      FakeTemplateRepository(),
+      FakePrefsService(),
+      FakePresentationSocket(),
+    );
     shell = ShellCubit();
   });
 
@@ -55,9 +63,7 @@ void main() {
 
   Future<void> openCollection(WidgetTester tester) async {
     await control.load();
-    control.selectCollection(
-      (control.state as ControlLoadedState).model.collections.first,
-    );
+    control.selectCollection((control.state as ControlLoadedState).model.collections.first);
     await tester.pumpAndSettle();
   }
 
@@ -88,19 +94,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('fits the default window without overflowing', (tester) async {
-    // The app opens at 80% of the screen, so on a 1440pt laptop the window is
-    // 1152pt. That is the width that matters most.
-    await pumpBar(tester, width: 1152);
+  testWidgets('every button is labelled at the narrowest allowed window', (tester) async {
+    // The label thresholds used to sit above the width the app actually
+    // opened at, so the three buttons that change what a congregation sees
+    // were the three that never said what they did. Measured against the
+    // window the app refuses to shrink below, they cannot drift apart again.
+    await pumpBar(tester, width: kMinWindowSize.width);
 
-    expect(find.text('Proyector'), findsOneWidget);
+    for (final label in ['Cuenta', 'Aviso', 'Negro', 'Proyector', 'Escenario']) {
+      expect(find.text(label), findsOneWidget, reason: '$label must be readable');
+    }
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('fits the minimum window by folding labels away', (tester) async {
-    await pumpBar(tester, width: 1024);
+  testWidgets('folds labels away rather than overflow if put somewhere narrow', (tester) async {
+    await pumpBar(tester, width: 900);
 
     expect(find.text('Proyector'), findsNothing);
+    expect(find.text('Negro'), findsNothing);
     expect(tester.takeException(), isNull);
     // Every control is still there, reachable by icon and tooltip.
     expect(find.byIcon(Icons.present_to_all_outlined), findsOneWidget);

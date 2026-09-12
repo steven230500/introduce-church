@@ -30,10 +30,25 @@ class _SlideQueue extends StatelessWidget {
                   )
                 : _SlideList(model: model, item: item),
           ),
+          // Only at the seam. Inside an item the list above already shows what
+          // comes next, and repeating it here would be noise — including the
+          // rule above it, which would otherwise underline nothing.
+          if (_showsSeam(model, item)) ...[
+            const Divider(height: 1, color: AppColors.divider),
+            _UpNext(model: model, onlyAcrossItems: true),
+          ],
         ],
       ),
     );
   }
+}
+
+/// Whether the card under the list has anything to say: the next press either
+/// leaves this item, or ends the service.
+bool _showsSeam(ControlModel model, CollectionItem? item) {
+  if (item == null) return false;
+  final next = model.upNext;
+  return next == null || next.item.id != item.id;
 }
 
 class _TypeChip extends StatelessWidget {

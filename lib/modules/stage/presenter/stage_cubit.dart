@@ -67,7 +67,6 @@ class StageCubit extends Cubit<StageState> {
   }
 
   Future<void> _onStateChange(Map<String, dynamic> row) async {
-
     final isLive = row['is_live'] as bool? ?? false;
     final isBlank = row['blank_screen'] as bool? ?? false;
     final countdownActive = row['countdown_active'] as bool? ?? false;

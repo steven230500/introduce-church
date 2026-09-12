@@ -14,11 +14,7 @@ class AuthUser extends Equatable {
     displayName: json['display_name'] as String?,
   );
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'email': email,
-    'display_name': displayName,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'email': email, 'display_name': displayName};
 
   @override
   List<Object?> get props => [id, email, displayName];
@@ -48,8 +44,7 @@ class Session extends Equatable {
 
   /// True shortly before the real expiry, so a request in flight does not
   /// arrive with a token that died on the way.
-  bool get isExpiring =>
-      DateTime.now().isAfter(expiresAt.subtract(const Duration(seconds: 30)));
+  bool get isExpiring => DateTime.now().isAfter(expiresAt.subtract(const Duration(seconds: 30)));
 
   factory Session.fromResponse(Map<String, dynamic> json) {
     final expiresIn = json['expires_in'] as int? ?? 900;
@@ -58,9 +53,7 @@ class Session extends Equatable {
       refreshToken: json['refresh_token'] as String,
       user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
       expiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
-      orgId: (json['org_id'] as String?)?.isEmpty ?? true
-          ? null
-          : json['org_id'] as String,
+      orgId: (json['org_id'] as String?)?.isEmpty ?? true ? null : json['org_id'] as String,
     );
   }
 
