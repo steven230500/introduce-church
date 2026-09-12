@@ -143,6 +143,9 @@ class _SlideListState extends State<_SlideList> {
       itemCount: slides.length,
       itemBuilder: (context, index) {
         final isActive = widget.model.currentSlideIndex == index;
+        // Red for the slide on the projector, blue for the one being browsed.
+        // They are the same tile until the operator holds the screen.
+        final isOnAir = widget.model.isLiveAt(widget.model.currentItemIndex, index);
 
         return GestureDetector(
           onTap: () => context.read<ControlCubit>().selectSlide(index),
@@ -153,7 +156,11 @@ class _SlideListState extends State<_SlideList> {
             decoration: BoxDecoration(
               color: isActive ? AppColors.accentFillSoft : AppColors.surfaceControl,
               borderRadius: AppRadius.all(AppRadius.md),
-              border: Border.all(color: isActive ? AppColors.accent : Colors.transparent),
+              border: Border.all(
+                color: isOnAir
+                    ? AppColors.live
+                    : (isActive ? AppColors.accent : Colors.transparent),
+              ),
             ),
             child: _SlideTile(
               item: item,

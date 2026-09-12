@@ -55,6 +55,29 @@ class _PreviewHeader extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // Grid mode only. The large slide badges its own frame, which is
+          // where the eye already is; the grid has no frame to badge, and a
+          // blue outline there used to mean live.
+          if (model.isHolding && model.gridView) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm - 2, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.accentFill,
+                borderRadius: AppRadius.all(AppRadius.xs),
+                border: Border.all(color: AppColors.accentOutline),
+              ),
+              child: const Text(
+                'SIN ENVIAR',
+                style: TextStyle(
+                  color: AppColors.accentLight,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+          ],
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
@@ -182,6 +205,12 @@ class _SlideGrid extends StatelessWidget {
               itemCount: slides.length,
               itemBuilder: (context, index) {
                 final isSelected = index == model.currentSlideIndex;
+                // Red for what the congregation sees, blue for what the
+                // operator has picked. The same tile until the screen is held.
+                final isOnAir = model.isLiveAt(model.currentItemIndex, index);
+                final outline = isOnAir
+                    ? AppColors.live
+                    : (isSelected ? AppColors.accent : AppColors.divider);
                 final label = index < labels.length ? labels[index] : '';
 
                 return GestureDetector(
@@ -195,16 +224,11 @@ class _SlideGrid extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: AppRadius.all(AppRadius.sm),
                             border: Border.all(
-                              color: isSelected ? AppColors.accent : AppColors.divider,
-                              width: isSelected ? 2 : 1,
+                              color: outline,
+                              width: isSelected || isOnAir ? 2 : 1,
                             ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.accent.withValues(alpha: 0.3),
-                                      blurRadius: 6,
-                                    ),
-                                  ]
+                            boxShadow: isSelected || isOnAir
+                                ? [BoxShadow(color: outline.withValues(alpha: 0.3), blurRadius: 6)]
                                 : null,
                           ),
                           child: ClipRRect(
@@ -288,7 +312,9 @@ class _SidePreviewPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final item = model.currentItem;
+    // The projector's item, not the operator's. This panel is the one place
+    // that always answers "what are they seeing".
+    final item = model.liveItem;
 
     return Container(
       width: AppSizes.queueWidth,
@@ -310,7 +336,7 @@ class _SidePreviewPanel extends StatelessWidget {
                   Text(item.displayTitle, style: AppText.rowTitle, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text(
-                    '${model.currentSlideIndex + 1} de ${item.slides.length}',
+                    '${model.liveSlideIndex + 1} de ${item.slides.length}',
                     style: AppText.rowSubtitle,
                   ),
                 ],
@@ -326,8 +352,8 @@ class _SidePreviewPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _UpNext(model: model),
-                  if (model.currentItem?.notes?.isNotEmpty == true)
-                    _NotePreview(note: model.currentItem!.notes!),
+                  if (model.liveItem?.notes?.isNotEmpty == true)
+                    _NotePreview(note: model.liveItem!.notes!),
                 ],
               ),
             ),
@@ -346,11 +372,11 @@ class _OutputThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final item = model.currentItem;
+    final item = model.liveItem;
     final isImage = item?.type == CollectionItemType.imageSlide;
     final isVideo = item?.type == CollectionItemType.videoSlide;
     final isBlank = model.blankScreen;
-    final hasContent = model.currentSlideContent != null;
+    final hasContent = model.liveSlideContent != null;
 
     return ClipRRect(
       borderRadius: AppRadius.all(AppRadius.sm),
@@ -369,15 +395,15 @@ class _OutputThumbnail extends StatelessWidget {
               children: [
                 if (isVideo && hasContent && !isBlank)
                   _VideoPreview(
-                    key: ValueKey('side_${model.currentSlideContent}'),
-                    videoPath: model.currentSlideContent!,
+                    key: ValueKey('side_${model.liveSlideContent}'),
+                    videoPath: model.liveSlideContent!,
                   )
                 else if (hasContent && !isBlank)
                   SlideView(
-                    content: isImage ? '' : model.currentSlideContent!,
-                    reference: model.currentSlideReference,
-                    template: model.activeTemplate,
-                    imagePath: isImage ? model.currentSlideContent : null,
+                    content: isImage ? '' : model.liveSlideContent!,
+                    reference: model.liveSlideReference,
+                    template: model.liveTemplate,
+                    imagePath: isImage ? model.liveSlideContent : null,
                   )
                 else
                   const ColoredBox(color: Colors.black),
@@ -474,7 +500,12 @@ class _Preview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasContent = model.currentSlideContent != null;
-    final isBlank = model.blankScreen;
+    // While the operator is looking away from the projector this frame shows
+    // where they are looking, so the blank overlay and the live badge, which
+    // both describe the projector, do not belong on it.
+    final holding = model.isHolding;
+    final isBlank = model.blankScreen && !holding;
+    final onAir = model.isLive && !holding;
     final isVideo = model.currentItem?.type == CollectionItemType.videoSlide;
     final isImage = model.currentItem?.type == CollectionItemType.imageSlide;
 
@@ -487,8 +518,8 @@ class _Preview extends StatelessWidget {
             color: Colors.black,
             borderRadius: AppRadius.all(AppRadius.md),
             border: Border.all(
-              color: model.isLive ? AppColors.live : AppColors.divider,
-              width: model.isLive ? 2 : 1,
+              color: onAir ? AppColors.live : (holding ? AppColors.accent : AppColors.divider),
+              width: onAir || holding ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
@@ -536,9 +567,43 @@ class _Preview extends StatelessWidget {
                       style: TextStyle(color: AppColors.textDisabled, fontSize: 15),
                     ),
                   ),
-                if (model.isLive) const _LiveBadge(),
+                if (onAir) const _LiveBadge(),
+                if (holding) const _HoldingBadge(),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Says out loud that the frame under it is not what the congregation sees.
+///
+/// Without it the big preview looks exactly as it does when it is live, and an
+/// operator who forgot the screen is held would keep clicking and wonder why
+/// nothing changes out front.
+class _HoldingBadge extends StatelessWidget {
+  const _HoldingBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: AppSpace.md,
+      right: AppSpace.md,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: AppRadius.all(AppRadius.xs),
+        ),
+        child: const Text(
+          'SIN ENVIAR',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
           ),
         ),
       ),
@@ -645,6 +710,16 @@ class _Controls extends StatelessWidget {
               '${model.currentSlideIndex + 1} / ${model.currentItem!.slides.length}',
               style: AppText.rowSubtitle,
             ),
+          // Under the frame it belongs to, as well as in the live bar: this is
+          // where the operator is looking when they decide to send.
+          if (model.isHolding) ...[
+            const SizedBox(width: AppSpace.xl),
+            FilledButton.icon(
+              onPressed: cubit.take,
+              icon: const Icon(Icons.send_rounded, size: 15),
+              label: const Text('Enviar'),
+            ),
+          ],
         ],
       ),
     );

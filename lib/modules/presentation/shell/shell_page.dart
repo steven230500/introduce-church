@@ -88,6 +88,12 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       // they do not know what else to press, so it must not be able to cut
       // the projector.
       control.clearBlank();
+    } else if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      // Does nothing while the screen follows the cursor, so it is safe to
+      // press out of habit.
+      control.take();
+    } else if (key == LogicalKeyboardKey.keyK) {
+      control.toggleFollowCursor();
     } else if (key == LogicalKeyboardKey.keyB) {
       control.toggleBlank();
     } else if (key == LogicalKeyboardKey.keyL) {

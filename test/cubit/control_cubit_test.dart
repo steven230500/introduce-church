@@ -200,6 +200,120 @@ void main() {
     });
   });
 
+  group('holding the screen', () {
+    test('by default the projector goes wherever the operator goes', () async {
+      await openFirstCollection();
+
+      cubit.selectItem(1);
+
+      expect(model().liveItemIndex, 1);
+      expect(model().isHolding, isFalse);
+      expect(repo.lastSync, (1, 0));
+    });
+
+    test('held, the projector stays put while the operator browses', () async {
+      // The reason this exists: finding the next song during the sermon used
+      // to put the next song on the wall.
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+
+      cubit.selectItem(1);
+      cubit.selectSlide(1);
+
+      expect(model().currentItemIndex, 1);
+      expect(model().currentSlideIndex, 1);
+      expect(model().liveItemIndex, 0);
+      expect(model().liveSlideIndex, 0);
+      expect(model().isHolding, isTrue);
+    });
+
+    test('nothing goes out to the projector while it is held', () async {
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+      repo.syncs = 0;
+
+      cubit.selectItem(1);
+      cubit.nextSlide();
+
+      expect(repo.syncs, 0);
+    });
+
+    test('sending catches the projector up', () async {
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+      cubit.selectItem(1);
+
+      cubit.take();
+
+      expect(model().liveItemIndex, 1);
+      expect(model().isHolding, isFalse);
+      expect(repo.lastSync, (1, 0));
+    });
+
+    test('sending twice does nothing the second time', () async {
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+      cubit.selectSlide(2);
+      cubit.take();
+      repo.syncs = 0;
+
+      cubit.take();
+
+      expect(repo.syncs, 0);
+    });
+
+    test('following again sends what is being looked at', () async {
+      // Leaving the screen behind after the operator says "follow me" is the
+      // surprise the whole mode exists to avoid.
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+      cubit.selectItem(1);
+
+      cubit.setFollowCursor(true);
+
+      expect(model().liveItemIndex, 1);
+      expect(repo.lastSync, (1, 0));
+    });
+
+    test('what goes out is the live position, never the cursor', () async {
+      await openFirstCollection();
+      cubit.setFollowCursor(false);
+      cubit.selectSlide(2);
+      cubit.toggleBlank();
+
+      // Blanking publishes state, and that publish must not leak the cursor.
+      expect(repo.lastSync, (0, 0));
+    });
+
+    test('the item on screen keeps its own auto-advance clock', () async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          items: [
+            songItemRow(
+              id: 'i1',
+              collectionId: 'c1',
+              order: 0,
+              verses: ['a', 'b'],
+              autoAdvanceSecs: 1,
+            ),
+            songItemRow(id: 'i2', collectionId: 'c1', order: 1, verses: ['c']),
+          ],
+        ),
+      ];
+      await openFirstCollection();
+      cubit.toggleLive();
+      cubit.setFollowCursor(false);
+      cubit.selectItem(1);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+      // The projector moved on; the operator's cursor did not move with it.
+      expect(model().liveSlideIndex, 1);
+      expect(model().currentItemIndex, 1);
+    });
+  });
+
   group('undo a removal', () {
     test('puts the item back where it was, not at the end', () async {
       await openFirstCollection();

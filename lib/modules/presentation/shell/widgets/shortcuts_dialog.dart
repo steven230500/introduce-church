@@ -28,6 +28,10 @@ class _ShortcutsDialog extends StatelessWidget {
       ('B', 'Pantalla negra'),
       ('Esc', 'Quitar la pantalla negra'),
     ],
+    'Buscar sin cortar': [
+      ('K', 'Retener la pantalla, o volver a seguirte'),
+      ('Enter', 'Enviar a la pantalla lo que estás viendo'),
+    ],
     'Vista': [
       ('G', 'Alternar cuadrícula y slide grande'),
       ('F', 'Mostrar u ocultar la biblioteca'),

@@ -133,6 +133,62 @@ void main() {
     });
   });
 
+  group('holding the screen', () {
+    testWidgets('the output panel keeps showing what is on the projector', (tester) async {
+      await pumpPresenter(tester);
+      control.setFollowCursor(false);
+      control.selectItem(1); // "Anuncios", which has one slide
+      await tester.pumpAndSettle();
+
+      // The live item still has two. Following the cursor would read "1 de 1".
+      expect(find.text('1 de 2'), findsOneWidget);
+    });
+
+    testWidgets('the set list marks the row that is on the projector', (tester) async {
+      await pumpPresenter(tester);
+      control.setFollowCursor(false);
+      control.selectItem(1);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('En la pantalla ahora'), findsOneWidget);
+    });
+
+    testWidgets('the big preview says it is not on air, and sends', (tester) async {
+      await pumpPresenter(tester);
+      control.toggleGridView(); // the large single slide
+      control.setFollowCursor(false);
+      control.selectItem(1);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SIN ENVIAR'), findsOneWidget);
+
+      await tester.tap(find.text('Enviar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SIN ENVIAR'), findsNothing);
+      expect(control.state, isA<ControlLoadedState>());
+      expect((control.state as ControlLoadedState).model.liveItemIndex, 1);
+    });
+
+    testWidgets('the grid says it too, having no frame to badge', (tester) async {
+      // Exactly one marker per mode: the large slide badges its frame, the
+      // grid puts it in the header. Two at once is noise.
+      await pumpPresenter(tester); // grid is the default view
+      control.setFollowCursor(false);
+      control.selectItem(1);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SIN ENVIAR'), findsOneWidget);
+    });
+
+    testWidgets('nothing is marked twice while the screen follows', (tester) async {
+      await pumpPresenter(tester);
+
+      expect(find.byTooltip('En la pantalla ahora'), findsNothing);
+      expect(find.text('SIN ENVIAR'), findsNothing);
+    });
+  });
+
   group('the item menu', () {
     testWidgets('offers a rename for what an import named after a file', (tester) async {
       await pumpPresenter(tester);

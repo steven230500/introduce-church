@@ -91,6 +91,7 @@ class _SetListItems extends StatelessWidget {
               item: items[index],
               index: index,
               isActive: model.currentItemIndex == index,
+              isOnAir: model.liveItemIndex == index,
             ),
           ),
         ),
@@ -108,12 +109,19 @@ class _SetListTile extends StatelessWidget {
     required this.item,
     required this.index,
     required this.isActive,
+    required this.isOnAir,
   });
 
   final ControlModel model;
   final CollectionItem item;
   final int index;
+
+  /// The row the operator has selected.
   final bool isActive;
+
+  /// The row the congregation is looking at, which is the same one until the
+  /// operator holds the screen to go browsing.
+  final bool isOnAir;
 
   @override
   Widget build(BuildContext context) {
@@ -175,6 +183,9 @@ class _SetListTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // Only when the two have come apart. While they agree the
+                      // blue row already says everything.
+                      if (isOnAir && !isActive) const _OnAirDot(),
                     ],
                   ),
                   Padding(
@@ -238,6 +249,24 @@ class _SetListTile extends StatelessWidget {
     CollectionItemType.videoSlide => Icons.videocam_outlined,
     CollectionItemType.announcement => Icons.campaign_outlined,
   };
+}
+
+/// Marks the row that is on the projector while the operator is elsewhere.
+class _OnAirDot extends StatelessWidget {
+  const _OnAirDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'En la pantalla ahora',
+      child: Container(
+        margin: const EdgeInsets.only(left: AppSpace.xs),
+        width: 7,
+        height: 7,
+        decoration: const BoxDecoration(color: AppColors.live, shape: BoxShape.circle),
+      ),
+    );
+  }
 }
 
 class _OrderBadge extends StatelessWidget {

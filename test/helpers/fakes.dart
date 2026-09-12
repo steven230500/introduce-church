@@ -58,6 +58,11 @@ class FakeControlRepository extends ControlRepository {
 
   int reads = 0;
   int syncs = 0;
+
+  /// The position of the last state published, so a test can check that what
+  /// went out to the projector is the live one and not the operator's cursor.
+  (int item, int slide)? lastSync;
+
   final List<String> calls = [];
 
   @override
@@ -84,6 +89,7 @@ class FakeControlRepository extends ControlRepository {
     String? overlayText,
   }) async {
     syncs++;
+    lastSync = (itemIndex, slideIndex);
   }
 
   // Writes mutate `rows` so the next read returns different data, the way a

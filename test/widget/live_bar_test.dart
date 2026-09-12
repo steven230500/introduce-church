@@ -119,13 +119,16 @@ void main() {
     expect(find.byIcon(Icons.timer_outlined), findsOneWidget);
   });
 
+  // The readout is one run of rich text, so it is searched by fragment.
+  Finder readout(String fragment) => find.textContaining(fragment, findRichText: true);
+
   testWidgets('names the collection and the slide on the projector', (tester) async {
     await pumpBar(tester);
     await openCollection(tester);
 
-    expect(find.text('Culto domingo'), findsOneWidget);
-    expect(find.text('Sublime Gracia'), findsOneWidget);
-    expect(find.text('1/2'), findsOneWidget);
+    expect(readout('Culto domingo'), findsOneWidget);
+    expect(readout('Sublime Gracia'), findsOneWidget);
+    expect(readout('1/2'), findsOneWidget);
   });
 
   testWidgets('the readout follows the operator to the next slide', (tester) async {
@@ -135,7 +138,47 @@ void main() {
     control.nextSlide();
     await tester.pumpAndSettle();
 
-    expect(find.text('2/2'), findsOneWidget);
+    expect(readout('2/2'), findsOneWidget);
+  });
+
+  testWidgets('the hold toggle says which way round it is', (tester) async {
+    await pumpBar(tester);
+    await openCollection(tester);
+
+    expect(find.text('Sigue'), findsOneWidget);
+
+    await tester.tap(find.text('Sigue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Retenido'), findsOneWidget);
+    expect((control.state as ControlLoadedState).model.followCursor, isFalse);
+  });
+
+  testWidgets('the send button appears only when there is something to send', (tester) async {
+    // A send button that is always there is one an operator learns to ignore.
+    await pumpBar(tester);
+    await openCollection(tester);
+
+    expect(find.text('Enviar'), findsNothing);
+
+    control.setFollowCursor(false);
+    control.nextSlide();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enviar'), findsOneWidget);
+  });
+
+  testWidgets('the readout keeps naming what is on the projector', (tester) async {
+    await pumpBar(tester);
+    await openCollection(tester);
+
+    control.setFollowCursor(false);
+    control.nextSlide();
+    await tester.pumpAndSettle();
+
+    // The cursor moved to the second slide; the congregation is still on the
+    // first, and this line answers for the congregation.
+    expect(readout('1/2'), findsOneWidget);
   });
 
   testWidgets('the live button cuts the feed on and off', (tester) async {

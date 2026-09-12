@@ -136,8 +136,32 @@ class LiveBar extends StatelessWidget {
 
                   const AppVerticalDivider(),
 
+                  // ── Whether the screen follows the operator ───────────────
+                  AppIconButton(
+                    icon: model?.followCursor == false
+                        ? Icons.link_off_rounded
+                        : Icons.link_rounded,
+                    label: labelState
+                        ? (model?.followCursor == false ? 'Retenido' : 'Sigue')
+                        : null,
+                    tooltip: model?.followCursor == false
+                        ? 'La pantalla está retenida. Vuelve a seguir lo que eliges  ·  K'
+                        : 'La pantalla sigue lo que eliges. Reténla para buscar sin cortar  ·  K',
+                    active: model?.followCursor == false,
+                    activeColor: AppColors.warning,
+                    onTap: enabled ? cubit.toggleFollowCursor : null,
+                  ),
+
+                  const AppVerticalDivider(),
+
                   const _DockToggle(),
                   const SizedBox(width: AppSpace.md),
+                  // Only there when it means something. A send button that is
+                  // always present is one an operator learns to ignore.
+                  if (model?.isHolding == true) ...[
+                    _TakeButton(onTap: cubit.take),
+                    const SizedBox(width: AppSpace.sm),
+                  ],
                   _LiveButton(
                     isLive: model?.isLive ?? false,
                     onTap: enabled ? cubit.toggleLive : null,
@@ -186,7 +210,9 @@ class _AppMark extends StatelessWidget {
 /// Names the collection and the slide currently on the projector.
 ///
 /// Without this the operator has no way to tell what is being shown while
-/// looking at a library, which is how people lost their place.
+/// looking at a library, which is how people lost their place. It reports the
+/// live position, never the cursor: this line is the answer to "what are they
+/// seeing right now".
 class _NowShowing extends StatelessWidget {
   const _NowShowing({required this.model});
 
@@ -202,53 +228,47 @@ class _NowShowing extends StatelessWidget {
       );
     }
 
-    final item = model!.currentItem;
+    final item = model!.liveItem;
     final slideCount = item?.slides.length ?? 0;
-    final position = slideCount == 0 ? '' : '${model!.currentSlideIndex + 1}/$slideCount';
+    final position = slideCount == 0 ? '' : '${model!.liveSlideIndex + 1}/$slideCount';
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.folder_outlined, size: 13, color: AppColors.textMuted),
-        const SizedBox(width: AppSpace.sm - 2),
-        Flexible(
-          child: Text(
-            collection.name,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (item != null) ...[
-          const _Dot(),
-          Flexible(
-            child: Text(
-              item.displayTitle,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
+    // One run of text rather than a row of pieces. As separate children the
+    // icon, the separator and the position were not flexible, so the moment
+    // the controls on the right grew the whole line overflowed instead of
+    // shortening.
+    return Text.rich(
+      TextSpan(
+        children: [
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: EdgeInsets.only(right: AppSpace.sm - 2),
+              child: Icon(Icons.folder_outlined, size: 13, color: AppColors.textMuted),
             ),
           ),
-          if (position.isNotEmpty) ...[
-            const SizedBox(width: AppSpace.sm),
-            Text(position, style: const TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+          TextSpan(text: collection.name),
+          if (item != null) ...[
+            const TextSpan(
+              text: '  •  ',
+              style: TextStyle(color: AppColors.textDisabled),
+            ),
+            TextSpan(
+              text: item.displayTitle,
+              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+            ),
+            if (position.isNotEmpty)
+              TextSpan(
+                text: '   $position',
+                style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
+              ),
           ],
         ],
-      ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
     );
   }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(horizontal: AppSpace.sm),
-    child: Text('•', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
-  );
 }
 
 // ── Dock toggle ───────────────────────────────────────────────────────────────
@@ -272,6 +292,43 @@ class _DockToggle extends StatelessWidget {
           onTap: context.read<ShellCubit>().toggleDock,
         );
       },
+    );
+  }
+}
+
+// ── Take button ───────────────────────────────────────────────────────────────
+
+/// Sends what the operator is looking at to the projector.
+class _TakeButton extends StatelessWidget {
+  const _TakeButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Enviar a la pantalla lo que estás viendo  ·  Enter',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.accent,
+            borderRadius: AppRadius.all(AppRadius.sm + 1),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.send_rounded, size: 13, color: Colors.white),
+              SizedBox(width: AppSpace.sm - 2),
+              Text(
+                'Enviar',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

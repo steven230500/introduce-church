@@ -28,6 +28,9 @@ class ControlModel extends Equatable {
     this.activeCollection,
     this.currentItemIndex = 0,
     this.currentSlideIndex = 0,
+    this.liveItemIndex = 0,
+    this.liveSlideIndex = 0,
+    this.followCursor = true,
     this.isLive = false,
     this.blankScreen = false,
     this.gridView = true,
@@ -40,8 +43,20 @@ class ControlModel extends Equatable {
 
   final List<Collection> collections;
   final Collection? activeCollection;
+
+  /// Where the operator is looking.
   final int currentItemIndex;
   final int currentSlideIndex;
+
+  /// What the congregation is looking at.
+  ///
+  /// The two are the same while [followCursor] is on, which is how the app has
+  /// always behaved. They come apart when the operator wants to find the next
+  /// song during the sermon without the projector following them there.
+  final int liveItemIndex;
+  final int liveSlideIndex;
+
+  final bool followCursor;
   final bool isLive;
   final bool blankScreen;
   final bool gridView;
@@ -73,6 +88,37 @@ class ControlModel extends Equatable {
       : null;
 
   Song? get currentSong => currentItem?.song;
+
+  /// The item on the projector, which is not always the one being browsed.
+  CollectionItem? get liveItem {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    if (items.isEmpty) return null;
+    return items[liveItemIndex.clamp(0, items.length - 1)];
+  }
+
+  List<String> get liveSlides => liveItem?.slides ?? [];
+
+  String? get liveSlideContent =>
+      liveSlides.isNotEmpty ? liveSlides[liveSlideIndex.clamp(0, liveSlides.length - 1)] : null;
+
+  String get liveSlideReference {
+    final refs = liveItem?.slideReferences ?? [];
+    if (refs.isEmpty) return liveItem?.displayTitle ?? '';
+    final ref = refs[liveSlideIndex.clamp(0, refs.length - 1)];
+    return ref.isNotEmpty ? ref : (liveItem?.displayTitle ?? '');
+  }
+
+  SlideTemplate get liveTemplate => templateFor(liveItem);
+
+  /// Whether a given position is the one on the projector.
+  bool isLiveAt(int itemIndex, int slideIndex) =>
+      itemIndex == liveItemIndex && slideIndex == liveSlideIndex;
+
+  /// True when the operator is looking at something the congregation is not.
+  ///
+  /// This is the only state in which the send button means anything, and the
+  /// only one in which the set list has to mark two different rows.
+  bool get isHolding => currentItemIndex != liveItemIndex || currentSlideIndex != liveSlideIndex;
 
   List<String> get currentSlides => currentItem?.slides ?? [];
 
@@ -111,6 +157,16 @@ class ControlModel extends Equatable {
     return currentSlideIndex > 0 || currentItemIndex > 0;
   }
 
+  /// Whether the projector has somewhere to go, which is what the auto-advance
+  /// timer asks and is not the same question as [hasNextSlide].
+  bool get hasNextLiveSlide {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    if (items.isEmpty) return false;
+    final lastItem = liveItemIndex >= items.length - 1;
+    final lastSlide = liveSlideIndex >= liveSlides.length - 1;
+    return !lastItem || !lastSlide;
+  }
+
   bool get hasNextSlide {
     if (activeCollection == null || activeCollection!.items.isEmpty) return false;
     final lastItem = currentItemIndex == activeCollection!.items.length - 1;
@@ -124,6 +180,9 @@ class ControlModel extends Equatable {
     bool clearCollection = false,
     int? currentItemIndex,
     int? currentSlideIndex,
+    int? liveItemIndex,
+    int? liveSlideIndex,
+    bool? followCursor,
     bool? isLive,
     bool? blankScreen,
     bool? gridView,
@@ -140,6 +199,9 @@ class ControlModel extends Equatable {
       activeCollection: clearCollection ? null : activeCollection ?? this.activeCollection,
       currentItemIndex: currentItemIndex ?? this.currentItemIndex,
       currentSlideIndex: currentSlideIndex ?? this.currentSlideIndex,
+      liveItemIndex: liveItemIndex ?? this.liveItemIndex,
+      liveSlideIndex: liveSlideIndex ?? this.liveSlideIndex,
+      followCursor: followCursor ?? this.followCursor,
       isLive: isLive ?? this.isLive,
       blankScreen: blankScreen ?? this.blankScreen,
       gridView: gridView ?? this.gridView,
@@ -157,6 +219,9 @@ class ControlModel extends Equatable {
     activeCollection,
     currentItemIndex,
     currentSlideIndex,
+    liveItemIndex,
+    liveSlideIndex,
+    followCursor,
     isLive,
     blankScreen,
     gridView,
@@ -200,6 +265,12 @@ class ControlCubit extends Cubit<ControlState> {
     final previousSlideIndex = state is ControlLoadedState
         ? (state as ControlLoadedState).model.currentSlideIndex
         : 0;
+    final previousLiveItem = state is ControlLoadedState
+        ? (state as ControlLoadedState).model.liveItemIndex
+        : 0;
+    final previousLiveSlide = state is ControlLoadedState
+        ? (state as ControlLoadedState).model.liveSlideIndex
+        : 0;
     final previous = state is ControlLoadedState ? (state as ControlLoadedState).model : null;
     if (showSpinner) emit(const ControlLoadingState());
     try {
@@ -221,6 +292,9 @@ class ControlCubit extends Cubit<ControlState> {
             // broadcast flag exactly where the operator left them.
             currentItemIndex: itemCount == 0 ? 0 : previousItemIndex.clamp(0, itemCount - 1),
             currentSlideIndex: previousSlideIndex,
+            liveItemIndex: itemCount == 0 ? 0 : previousLiveItem.clamp(0, itemCount - 1),
+            liveSlideIndex: previousLiveSlide,
+            followCursor: previous?.followCursor ?? true,
             isLive: previous?.isLive ?? false,
             blankScreen: previous?.blankScreen ?? false,
             gridView: previous?.gridView ?? true,
@@ -257,6 +331,7 @@ class ControlCubit extends Cubit<ControlState> {
                 collections: collections,
                 activeCollection: active,
                 userTemplates: previous?.userTemplates ?? const [],
+                followCursor: previous?.followCursor ?? true,
                 isLive: previous?.isLive ?? false,
                 blankScreen: previous?.blankScreen ?? false,
                 gridView: previous?.gridView ?? true,
@@ -277,9 +352,16 @@ class ControlCubit extends Cubit<ControlState> {
     final current = (state as ControlLoadedState).model;
     emit(
       ControlLoadedState(
-        current.copyWith(activeCollection: collection, currentItemIndex: 0, currentSlideIndex: 0),
+        current.copyWith(
+          activeCollection: collection,
+          currentItemIndex: 0,
+          currentSlideIndex: 0,
+          liveItemIndex: 0,
+          liveSlideIndex: 0,
+        ),
       ),
     );
+    _syncState();
   }
 
   void selectItem(int itemIndex) {
@@ -289,15 +371,102 @@ class ControlCubit extends Cubit<ControlState> {
     // anyway would leave the cursor pointing past the end of the set list.
     final items = current.activeCollection?.items ?? const <CollectionItem>[];
     if (itemIndex < 0 || itemIndex >= items.length) return;
-    emit(ControlLoadedState(current.copyWith(currentItemIndex: itemIndex, currentSlideIndex: 0)));
-    _syncState();
-    _scheduleAutoAdvance();
+    _moveCursor(current, itemIndex, 0);
   }
 
   void selectSlide(int slideIndex) {
     if (state is! ControlLoadedState) return;
     final current = (state as ControlLoadedState).model;
-    emit(ControlLoadedState(current.copyWith(currentSlideIndex: slideIndex)));
+    _moveCursor(current, current.currentItemIndex, slideIndex);
+  }
+
+  /// Moves what the operator is looking at, and the projector with it while
+  /// the two are linked.
+  void _moveCursor(ControlModel model, int itemIndex, int slideIndex) {
+    final follows = model.followCursor;
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          currentItemIndex: itemIndex,
+          currentSlideIndex: slideIndex,
+          liveItemIndex: follows ? itemIndex : null,
+          liveSlideIndex: follows ? slideIndex : null,
+        ),
+      ),
+    );
+    if (follows) _syncState();
+    _scheduleAutoAdvance();
+  }
+
+  /// Puts what the operator is looking at on the projector.
+  ///
+  /// Does nothing when the two already agree, so pressing it twice cannot cut
+  /// the screen to somewhere unexpected.
+  void take() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (!model.isHolding) return;
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          liveItemIndex: model.currentItemIndex,
+          liveSlideIndex: model.currentSlideIndex,
+        ),
+      ),
+    );
+    _syncState();
+    _scheduleAutoAdvance();
+  }
+
+  /// Links or unlinks the projector from the operator's cursor.
+  ///
+  /// Linking again sends whatever is being looked at, because leaving the
+  /// screen behind after the operator has said "follow me" is the surprise
+  /// this whole mode exists to avoid.
+  void setFollowCursor(bool follow) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (model.followCursor == follow) return;
+
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          followCursor: follow,
+          liveItemIndex: follow ? model.currentItemIndex : null,
+          liveSlideIndex: follow ? model.currentSlideIndex : null,
+        ),
+      ),
+    );
+    if (follow) _syncState();
+    _scheduleAutoAdvance();
+  }
+
+  void toggleFollowCursor() {
+    if (state is! ControlLoadedState) return;
+    setFollowCursor(!(state as ControlLoadedState).model.followCursor);
+  }
+
+  /// Moves the projector on by one, leaving the cursor where it is.
+  ///
+  /// Only the auto-advance timer uses this: an item that advances itself has
+  /// to keep doing so while the operator looks somewhere else.
+  void _advanceLive() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (model.followCursor) {
+      nextSlide();
+      return;
+    }
+    if (!model.hasNextLiveSlide) return;
+
+    final onLastSlide = model.liveSlideIndex >= model.liveSlides.length - 1;
+    emit(
+      ControlLoadedState(
+        onLastSlide
+            ? model.copyWith(liveItemIndex: model.liveItemIndex + 1, liveSlideIndex: 0)
+            : model.copyWith(liveSlideIndex: model.liveSlideIndex + 1),
+      ),
+    );
     _syncState();
     _scheduleAutoAdvance();
   }
@@ -324,13 +493,7 @@ class ControlCubit extends Cubit<ControlState> {
     } else {
       final prevItem = model.currentItemIndex - 1;
       final prevSlides = model.activeCollection!.items[prevItem].slides;
-      emit(
-        ControlLoadedState(
-          model.copyWith(currentItemIndex: prevItem, currentSlideIndex: prevSlides.length - 1),
-        ),
-      );
-      _syncState();
-      _scheduleAutoAdvance();
+      _moveCursor(model, prevItem, prevSlides.length - 1);
     }
   }
 
@@ -782,9 +945,11 @@ class ControlCubit extends Cubit<ControlState> {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     if (!model.isLive) return;
-    final secs = model.currentItem?.autoAdvanceSecs;
-    if (secs == null || secs <= 0 || !model.hasNextSlide) return;
-    _autoAdvanceTimer = Timer(Duration(seconds: secs), nextSlide);
+    // The timer belongs to the item on the projector, not to the one being
+    // browsed: a video keeps its own clock while the operator looks ahead.
+    final secs = model.liveItem?.autoAdvanceSecs;
+    if (secs == null || secs <= 0 || !model.hasNextLiveSlide) return;
+    _autoAdvanceTimer = Timer(Duration(seconds: secs), _advanceLive);
   }
 
   Future<void> setItemAutoAdvance(String itemId, int? secs) async {
@@ -805,7 +970,11 @@ class ControlCubit extends Cubit<ControlState> {
     _scheduleAutoAdvance();
   }
 
-  /// Publishes the operator's position to the projector and stage windows.
+  /// Publishes what is on the projector to the projector and stage windows.
+  ///
+  /// It sends the live position, not the cursor. While the two are linked they
+  /// are the same number; while they are not, this is the difference between
+  /// the congregation seeing the next song and not.
   ///
   /// The socket is the path that matters during a service: it reaches the other
   /// windows in milliseconds and the server persists on the way through. The
@@ -817,8 +986,8 @@ class ControlCubit extends Cubit<ControlState> {
     if (_socket.isConnected) {
       _socket.send({
         'collection_id': model.activeCollection?.id,
-        'current_item_index': model.currentItemIndex,
-        'current_slide_index': model.currentSlideIndex,
+        'current_item_index': model.liveItemIndex,
+        'current_slide_index': model.liveSlideIndex,
         'is_live': model.isLive,
         'blank_screen': model.blankScreen,
         'countdown_active': model.countdownActive,
@@ -831,8 +1000,8 @@ class ControlCubit extends Cubit<ControlState> {
 
     _repository.upsertPresentationState(
       collectionId: model.activeCollection?.id,
-      itemIndex: model.currentItemIndex,
-      slideIndex: model.currentSlideIndex,
+      itemIndex: model.liveItemIndex,
+      slideIndex: model.liveSlideIndex,
       isLive: model.isLive,
       blankScreen: model.blankScreen,
       countdownActive: model.countdownActive,
