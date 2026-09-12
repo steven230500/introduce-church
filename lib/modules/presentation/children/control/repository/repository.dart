@@ -171,6 +171,30 @@ class ControlRepository {
     await _api.delete<void>('/collections/items/$itemId');
   }
 
+  /// Puts a deleted item back, carrying everything that was set on it.
+  ///
+  /// The API only ever appends, so the restored row lands at the end of the
+  /// running order and the caller has to move it back to where it was.
+  Future<void> restoreItem(CollectionItem item) => _addItems(item.collectionId, [
+    {
+      'item_type': item.type.value,
+      'song_id': ?item.song?.id,
+      'template_id': ?item.templateId,
+      'content_json': ?item.contentJson,
+      'notes': ?item.notes,
+      'auto_advance_secs': ?item.autoAdvanceSecs,
+    },
+  ]);
+
+  /// Renames an item whose title lives in its own content.
+  ///
+  /// Only the title is sent: the server merges it into content_json, so a
+  /// rename cannot overwrite the slide paths or the sermon points that sit
+  /// beside it.
+  Future<void> updateItemTitle(String itemId, String title) async {
+    await _api.patch<void>('/collections/items/$itemId', data: {'title': title});
+  }
+
   Future<void> updateItemNotes(String itemId, String? notes) async {
     await _api.patch<void>('/collections/items/$itemId', data: {'notes': notes});
   }

@@ -200,6 +200,126 @@ void main() {
     });
   });
 
+  group('undo a removal', () {
+    test('puts the item back where it was, not at the end', () async {
+      await openFirstCollection();
+      final removed = model().activeCollection!.items.first;
+
+      await cubit.removeItem(removed.id);
+      expect(model().activeCollection!.items.map((i) => i.displayTitle), ['Segunda']);
+
+      await cubit.restoreItem(removed, 0);
+
+      expect(model().activeCollection!.items.map((i) => i.displayTitle), ['Primera', 'Segunda']);
+    });
+
+    test('carries the note and the auto-advance back with it', () async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          items: [
+            itemRow(
+              id: 'i1',
+              collectionId: 'c1',
+              type: 'free_slide',
+              order: 0,
+              contentJson: {'title': 'Aviso', 'text': 'Hola'},
+              notes: 'Bajar el volumen',
+              autoAdvanceSecs: 15,
+            ),
+          ],
+        ),
+      ];
+      await openFirstCollection();
+      final removed = model().activeCollection!.items.single;
+
+      await cubit.removeItem(removed.id);
+      await cubit.restoreItem(removed, 0);
+
+      final back = model().activeCollection!.items.single;
+      expect(back.notes, 'Bajar el volumen');
+      expect(back.autoAdvanceSecs, 15);
+      expect(back.displayTitle, 'Aviso');
+    });
+
+    test('leaves a one-item list alone rather than reordering nothing', () async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          items: [songItemRow(id: 'i1', collectionId: 'c1', order: 0, title: 'Sola')],
+        ),
+      ];
+      await openFirstCollection();
+      final removed = model().activeCollection!.items.single;
+
+      await cubit.removeItem(removed.id);
+      await cubit.restoreItem(removed, 0);
+
+      expect(model().activeCollection!.items.map((i) => i.displayTitle), ['Sola']);
+      expect(repo.calls.where((c) => c.startsWith('reorder')), isEmpty);
+    });
+  });
+
+  group('renaming', () {
+    test('changes the title without touching the rest of the content', () async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          items: [
+            itemRow(
+              id: 'i1',
+              collectionId: 'c1',
+              type: 'image_slide',
+              order: 0,
+              contentJson: {
+                'title': 'ChatGPT Image 9 jul 2026.png',
+                'paths': ['/a.png', '/b.png'],
+              },
+            ),
+          ],
+        ),
+      ];
+      await openFirstCollection();
+
+      await cubit.setItemTitle('i1', 'Bienvenida');
+
+      final item = model().activeCollection!.items.single;
+      expect(item.displayTitle, 'Bienvenida');
+      expect(item.slides, ['/a.png', '/b.png']);
+    });
+  });
+
+  group('jumping around the set list', () {
+    test('a number key past the end of the plan does nothing', () async {
+      await openFirstCollection();
+
+      cubit.selectItem(9);
+
+      expect(model().currentItemIndex, 0);
+    });
+
+    test('End goes to the last slide of the item on screen', () async {
+      await openFirstCollection();
+
+      cubit.lastSlide();
+
+      expect(model().currentSlideIndex, 2);
+    });
+
+    test('Escape uncovers the screen and never covers it', () async {
+      await openFirstCollection();
+
+      cubit.clearBlank();
+      expect(model().blankScreen, isFalse);
+
+      cubit.toggleBlank();
+      expect(model().blankScreen, isTrue);
+
+      cubit.clearBlank();
+      expect(model().blankScreen, isFalse);
+    });
+  });
+
   group('slide navigation', () {
     test('advances within an item', () async {
       await openFirstCollection();

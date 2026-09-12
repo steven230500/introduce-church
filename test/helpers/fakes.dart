@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:introduce_church/core/api/api_client.dart';
 import 'package:introduce_church/core/api/presentation_socket.dart';
 import 'package:introduce_church/core/models/collection.dart';
+import 'package:introduce_church/core/models/collection_item_type.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
+import 'package:introduce_church/core/models/song.dart';
 import 'package:introduce_church/core/repositories/template_repository.dart';
 import 'package:introduce_church/core/services/app_prefs_service.dart';
 import 'package:introduce_church/modules/presentation/children/control/repository/repository.dart';
@@ -116,8 +118,73 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
+  Future<void> restoreItem(CollectionItem item) async {
+    calls.add('restore:${item.displayTitle}');
+    final items = _items(item.collectionId);
+    items.add({
+      'id': 'restored-${item.id}',
+      'collection_id': item.collectionId,
+      'item_type': item.type.value,
+      'item_order': items.length,
+      'template_id': item.templateId,
+      'content_json': item.contentJson,
+      'notes': item.notes,
+      'auto_advance_secs': item.autoAdvanceSecs,
+      // The server rehydrates the song from song_id on the way back out, so
+      // the fake has to hand the row its song too or a restored song item
+      // comes back with no title.
+      'songs': ?_songRow(item.song),
+    });
+  }
+
+  static Map<String, dynamic>? _songRow(Song? song) => song == null
+      ? null
+      : {
+          'id': song.id,
+          'title': song.title,
+          'author': song.author,
+          'language': song.language,
+          'tags': song.tags,
+          'verses': [
+            for (final verse in song.verses)
+              {
+                'id': verse.id,
+                'song_id': verse.songId,
+                'type': verse.type.name,
+                'verse_order': verse.order,
+                'content': verse.content,
+              },
+          ],
+        };
+
+  @override
+  Future<void> updateItemTitle(String itemId, String title) async {
+    calls.add('title:$itemId:$title');
+    for (final row in rows) {
+      for (final item in (row['collection_items'] as List).cast<Map<String, dynamic>>()) {
+        if (item['id'] != itemId) continue;
+        final content = Map<String, dynamic>.from(
+          (item['content_json'] as Map?)?.cast<String, dynamic>() ?? {},
+        );
+        content['title'] = title;
+        item['content_json'] = content;
+      }
+    }
+  }
+
+  // Applies the new order the way the server does, so a test can read the set
+  // list back and see where an item actually landed.
+  @override
   Future<void> reorderItems(String collectionId, List<String> orderedIds) async {
     calls.add('reorder:${orderedIds.join(",")}');
+    final items = _items(collectionId)
+      ..sort(
+        (a, b) =>
+            orderedIds.indexOf(a['id'] as String).compareTo(orderedIds.indexOf(b['id'] as String)),
+      );
+    for (var i = 0; i < items.length; i++) {
+      items[i]['item_order'] = i;
+    }
   }
 
   @override

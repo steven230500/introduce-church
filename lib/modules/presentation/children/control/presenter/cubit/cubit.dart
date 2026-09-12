@@ -285,6 +285,10 @@ class ControlCubit extends Cubit<ControlState> {
   void selectItem(int itemIndex) {
     if (state is! ControlLoadedState) return;
     final current = (state as ControlLoadedState).model;
+    // The number keys can name an item that is not there. Storing the index
+    // anyway would leave the cursor pointing past the end of the set list.
+    final items = current.activeCollection?.items ?? const <CollectionItem>[];
+    if (itemIndex < 0 || itemIndex >= items.length) return;
     emit(ControlLoadedState(current.copyWith(currentItemIndex: itemIndex, currentSlideIndex: 0)));
     _syncState();
     _scheduleAutoAdvance();
@@ -337,6 +341,26 @@ class ControlCubit extends Cubit<ControlState> {
     _syncState();
     _scheduleAutoAdvance();
     _updateAudio();
+  }
+
+  /// Jumps to the last slide of the item on screen.
+  void lastSlide() {
+    if (state is! ControlLoadedState) return;
+    final slides = (state as ControlLoadedState).model.currentSlides;
+    if (slides.isEmpty) return;
+    selectSlide(slides.length - 1);
+  }
+
+  /// Takes the projector out of black, and does nothing if it already is.
+  ///
+  /// Escape is the key someone hits when they do not know what else to press,
+  /// so it must only ever uncover the screen, never cover it.
+  void clearBlank() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (!model.blankScreen) return;
+    emit(ControlLoadedState(model.copyWith(blankScreen: false)));
+    _syncState();
   }
 
   void toggleBlank() {
@@ -517,6 +541,33 @@ class ControlCubit extends Cubit<ControlState> {
 
   Future<void> removeItem(String itemId) async {
     await _repository.removeItemFromCollection(itemId);
+    await refresh();
+  }
+
+  /// Puts [item] back at [index].
+  ///
+  /// Restoring appends, so the row arrives last and the whole running order is
+  /// then rewritten to drop it back in place. Done in that order a failure
+  /// leaves the item present but misplaced, which an operator can fix by
+  /// dragging; the other way round it would be gone for good.
+  Future<void> restoreItem(CollectionItem item, int index) async {
+    await _repository.restoreItem(item);
+    await refresh();
+    if (state is! ControlLoadedState) return;
+
+    final model = (state as ControlLoadedState).model;
+    final collection = model.collections.where((c) => c.id == item.collectionId).firstOrNull;
+    if (collection == null) return;
+
+    final ids = collection.items.map((i) => i.id).toList();
+    if (ids.length < 2 || index < 0 || index >= ids.length - 1) return;
+    ids.insert(index, ids.removeLast());
+    await _repository.reorderItems(collection.id, ids);
+    await refresh();
+  }
+
+  Future<void> setItemTitle(String itemId, String title) async {
+    await _repository.updateItemTitle(itemId, title);
     await refresh();
   }
 

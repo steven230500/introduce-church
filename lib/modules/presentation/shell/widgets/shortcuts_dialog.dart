@@ -20,8 +20,14 @@ class _ShortcutsDialog extends StatelessWidget {
     'Avanzar slides': [
       ('→   ·   ↓   ·   Espacio', 'Siguiente slide'),
       ('←   ·   ↑', 'Slide anterior'),
+      ('Inicio   ·   Fin', 'Primer o último slide del elemento'),
+      ('1 … 9', 'Saltar a ese elemento del set list'),
     ],
-    'Proyección': [('L', 'Entrar o salir de vivo'), ('B', 'Pantalla negra')],
+    'Proyección': [
+      ('L', 'Entrar o salir de vivo'),
+      ('B', 'Pantalla negra'),
+      ('Esc', 'Quitar la pantalla negra'),
+    ],
     'Vista': [
       ('G', 'Alternar cuadrícula y slide grande'),
       ('F', 'Mostrar u ocultar la biblioteca'),

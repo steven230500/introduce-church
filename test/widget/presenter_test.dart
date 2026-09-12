@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +130,69 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('the item menu', () {
+    testWidgets('offers a rename for what an import named after a file', (tester) async {
+      await pumpPresenter(tester);
+
+      await tester.tap(find.text('Anuncios'), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Renombrar'), findsOneWidget);
+    });
+
+    testWidgets('does not offer to rename a song from here', (tester) async {
+      // Its name is the song's. Changing it here would either lie about the
+      // library or have to be undone in two places.
+      await pumpPresenter(tester);
+
+      await tester.tap(find.text('Sublime Gracia').first, buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Renombrar'), findsNothing);
+      expect(find.text('Quitar del set list'), findsOneWidget);
+    });
+
+    testWidgets('removing an item offers the way back', (tester) async {
+      // The menu entry that removes sits two rows from the one that changes a
+      // design, and removing used to be immediate and final.
+      await pumpPresenter(tester);
+
+      await tester.tap(find.text('Anuncios'), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Quitar del set list'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Anuncios'), findsNothing);
+      expect(find.text('Deshacer'), findsOneWidget);
+
+      await tester.tap(find.text('Deshacer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Anuncios'), findsWidgets);
+    });
+  });
+
+  group('repeated items', () {
+    testWidgets('say which time round they are', (tester) async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          items: [
+            songItemRow(id: 'i1', collectionId: 'c1', order: 0, title: 'NADA ES IMPOSIBLE'),
+            songItemRow(id: 'i2', collectionId: 'c1', order: 1, title: 'Otra'),
+            songItemRow(id: 'i3', collectionId: 'c1', order: 2, title: 'NADA ES IMPOSIBLE'),
+          ],
+        ),
+      ];
+      await pumpPresenter(tester);
+
+      expect(find.textContaining('1ª de 2'), findsOneWidget);
+      expect(find.textContaining('2ª de 2'), findsOneWidget);
+      // The title that appears once is left alone.
+      expect(find.text('1 slide'), findsOneWidget);
     });
   });
 

@@ -180,7 +180,7 @@ class _SetListTile extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 16),
                     child: Text(
-                      _subtitle(item),
+                      _subtitle(model, item),
                       style: AppText.rowSubtitle,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -201,11 +201,32 @@ class _SetListTile extends StatelessWidget {
   /// The slide count used to be a bare number wedged between the title and the
   /// kebab, where it read as part of the title and ate the width that made
   /// titles fit in the first place.
-  static String _subtitle(CollectionItem item) {
+  static String _subtitle(ControlModel model, CollectionItem item) {
     final count = item.slides.length;
-    final slides = '$count slide${count == 1 ? '' : 's'}';
-    final detail = item.displaySubtitle;
-    return detail.isEmpty ? slides : '$detail  ·  $slides';
+    final parts = [
+      ?_repeat(model, item),
+      if (item.displaySubtitle.isNotEmpty) item.displaySubtitle,
+      '$count slide${count == 1 ? '' : 's'}',
+    ];
+    return parts.join('  ·  ');
+  }
+
+  /// Which time round this is, when the plan repeats a title.
+  ///
+  /// A song that comes back as a reprise is normal, and three rows all reading
+  /// "NADA ES IMPOSIBLE" tell the operator nothing about which one they are
+  /// looking at. Numbering the repeats beats pretending they are distinct.
+  static String? _repeat(ControlModel model, CollectionItem item) {
+    final items = model.activeCollection?.items ?? const <CollectionItem>[];
+    final total = items.where((i) => i.displayTitle == item.displayTitle).length;
+    if (total < 2) return null;
+
+    var seen = 0;
+    for (final other in items) {
+      if (other.displayTitle == item.displayTitle) seen++;
+      if (other.id == item.id) break;
+    }
+    return '$seenª de $total';
   }
 
   static IconData _typeIcon(CollectionItemType type) => switch (type) {
@@ -333,7 +354,25 @@ class _ItemMenuButton extends StatelessWidget {
   }
 }
 
+/// Whether the item's name is its own, rather than derived from what it holds.
+///
+/// A song is named by the song and a reading by its reference, so renaming
+/// those would either lie or have to be undone somewhere else. Everything an
+/// operator imports arrives named after a file.
+bool _canRename(CollectionItemType type) => switch (type) {
+  CollectionItemType.song || CollectionItemType.bibleVerse => false,
+  _ => true,
+};
+
 List<PopupMenuEntry<String>> _itemMenuEntries(CollectionItem item) => [
+  if (_canRename(item.type)) ...[
+    const PopupMenuItem(
+      value: 'rename',
+      height: 38,
+      child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: 'Renombrar'),
+    ),
+    const PopupMenuDivider(),
+  ],
   PopupMenuItem(
     value: 'template',
     height: 38,
@@ -411,6 +450,8 @@ Future<void> _runItemAction(
   if (collectionId == null) return;
 
   switch (value) {
+    case 'rename':
+      await _showRenameDialog(context, item, cubit);
     case 'template':
       final picked = await showTemplatePicker(
         context,
@@ -425,8 +466,74 @@ Future<void> _runItemAction(
     case 'auto_advance':
       await _showAutoAdvanceDialog(context, item, cubit);
     case 'remove':
-      await cubit.removeItem(item.id);
+      await _removeWithUndo(context, cubit, model, item);
   }
+}
+
+// ── Remove ────────────────────────────────────────────────────────────────────
+
+/// Takes the item out and offers the way back.
+///
+/// Removing was immediate and final, on a panel where the menu that does it is
+/// two pixels from the one that changes a design.
+Future<void> _removeWithUndo(
+  BuildContext context,
+  ControlCubit cubit,
+  ControlModel model,
+  CollectionItem item,
+) async {
+  final items = model.activeCollection?.items ?? const <CollectionItem>[];
+  final index = items.indexWhere((i) => i.id == item.id);
+  final messenger = ScaffoldMessenger.of(context);
+
+  await cubit.removeItem(item.id);
+
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text('"${item.displayTitle}" fuera del set list'),
+      duration: const Duration(seconds: 8),
+      behavior: SnackBarBehavior.floating,
+      width: 420,
+      action: SnackBarAction(label: 'Deshacer', onPressed: () => cubit.restoreItem(item, index)),
+    ),
+  );
+}
+
+// ── Rename dialog ─────────────────────────────────────────────────────────────
+
+Future<void> _showRenameDialog(
+  BuildContext context,
+  CollectionItem item,
+  ControlCubit cubit,
+) async {
+  final ctrl = TextEditingController(text: item.displayTitle);
+  final name = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AppDialog(
+      title: 'Renombrar',
+      icon: Icons.drive_file_rename_outline,
+      width: 380,
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        const SizedBox(width: AppSpace.sm),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+          child: const Text('Guardar'),
+        ),
+      ],
+      child: AppTextField(
+        controller: ctrl,
+        hintText: 'Nombre del elemento',
+        autofocus: true,
+        onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+      ),
+    ),
+  );
+  ctrl.dispose();
+  // An empty name would leave the row with nothing to click on.
+  if (name == null || name.isEmpty || name == item.displayTitle) return;
+  await cubit.setItemTitle(item.id, name);
 }
 
 // ── Auto-advance dialog ───────────────────────────────────────────────────────

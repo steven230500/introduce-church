@@ -196,7 +196,17 @@ class AppMenuRow extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: danger ? AppColors.danger : AppColors.textTertiary),
         const SizedBox(width: AppSpace.sm),
-        Text(label, style: TextStyle(color: color, fontSize: 13)),
+        // Flexible: a popup menu is capped at 256px of content, and a label
+        // that outgrows it should give way rather than throw a layout error
+        // over the menu it is in.
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: color, fontSize: 13),
+          ),
+        ),
         if (trailing != null) ...[
           const Spacer(),
           const SizedBox(width: AppSpace.md),

@@ -79,6 +79,15 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
         key == LogicalKeyboardKey.arrowUp ||
         key == LogicalKeyboardKey.pageUp) {
       control.prevSlide();
+    } else if (key == LogicalKeyboardKey.home) {
+      control.selectSlide(0);
+    } else if (key == LogicalKeyboardKey.end) {
+      control.lastSlide();
+    } else if (key == LogicalKeyboardKey.escape) {
+      // Only ever uncovers the screen. Escape is what someone presses when
+      // they do not know what else to press, so it must not be able to cut
+      // the projector.
+      control.clearBlank();
     } else if (key == LogicalKeyboardKey.keyB) {
       control.toggleBlank();
     } else if (key == LogicalKeyboardKey.keyL) {
@@ -89,11 +98,33 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       shell.toggleDock();
     } else if (key == LogicalKeyboardKey.slash && HardwareKeyboard.instance.isShiftPressed) {
       showShortcutsDialog(context);
+    } else if (_itemNumber(key) case final number?) {
+      // Jumping to the fourth item took a scroll and a click, mid-service,
+      // while the congregation watched the wrong slide.
+      control.selectItem(number - 1);
     } else {
       return KeyEventResult.ignored;
     }
     return KeyEventResult.handled;
   }
+
+  /// The set list position a number key names, or null for any other key.
+  static int? _itemNumber(LogicalKeyboardKey key) {
+    final index = _digits.indexOf(key);
+    return index == -1 ? null : index + 1;
+  }
+
+  static const _digits = [
+    LogicalKeyboardKey.digit1,
+    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
+    LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
+    LogicalKeyboardKey.digit9,
+  ];
 
   @override
   Widget build(BuildContext context) {
