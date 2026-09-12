@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import '../../core/api/api_client.dart';
 import '../../core/models/organization.dart';
-import 'org_setup_cubit.dart';
 import '../../core/theme/app_colors.dart';
+import '../auth/utils/navigator.dart';
+import 'org_setup_cubit.dart';
 
 class OrgSetupPage extends StatelessWidget {
   const OrgSetupPage({super.key});
@@ -18,10 +20,48 @@ class OrgSetupPage extends StatelessWidget {
       value: cubit,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(
-          child: SizedBox(width: 480, child: _Body(cubit: cubit)),
+        body: Stack(
+          children: [
+            Center(
+              child: SizedBox(width: 480, child: _Body(cubit: cubit)),
+            ),
+            const Positioned(top: 16, right: 16, child: _SignOutButton()),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// Escape hatch out of this screen.
+///
+/// Approving a join request needs an administrator's account, so whoever is
+/// waiting here has to be able to switch to one.
+class _SignOutButton extends StatelessWidget {
+  const _SignOutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final email = Modular.get<ApiClient>().currentUser?.email;
+
+    return Row(
+      children: [
+        if (email != null)
+          Text(
+            email,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        const SizedBox(width: 8),
+        TextButton.icon(
+          icon: const Icon(Icons.logout_rounded, size: 15),
+          label: const Text('Cambiar de cuenta'),
+          style: TextButton.styleFrom(foregroundColor: AppColors.textTertiary),
+          onPressed: () async {
+            await Modular.get<ApiClient>().signOut();
+            AuthNavigator.goToLogin();
+          },
+        ),
+      ],
     );
   }
 }
@@ -379,7 +419,14 @@ class _PendingView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: AppColors.textTertiary, height: 1.5),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
+              const Text(
+                'Un administrador de la organización tiene que aceptarla desde '
+                'Organización, en la barra lateral.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
+              ),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
