@@ -37,7 +37,7 @@ class PresentationSocket {
     if (_closed) return;
     _retry?.cancel();
 
-    final token = _api.session?.accessToken;
+    final token = await _freshToken();
     if (token == null) {
       appLogger.w('PresentationSocket.connect | no session yet');
       _scheduleRetry();
@@ -66,6 +66,25 @@ class PresentationSocket {
       appLogger.w('PresentationSocket | connect failed: $e');
       _scheduleRetry();
     }
+  }
+
+  /// A token the handshake will survive.
+  ///
+  /// The socket carries its token in the URL, so the server checks it once at
+  /// connect and never again. A window left open through a service reconnects
+  /// with whatever it last stored, and fifteen minutes in that is a token the
+  /// server refuses: every two seconds, forever, with the projector frozen on
+  /// whatever slide it happened to be on.
+  ///
+  /// Offline the renewal cannot run and the stored token is tried anyway. The
+  /// handshake fails, but the operator's own machine is still feeding the
+  /// projector over the local window link, which needs no token at all.
+  Future<String?> _freshToken() async {
+    final session = _api.session;
+    if (session == null) return null;
+    if (!session.isExpiring) return session.accessToken;
+    final refreshed = await _api.refreshSession();
+    return refreshed?.accessToken ?? _api.session?.accessToken;
   }
 
   /// Publishes the operator's position to every other window.

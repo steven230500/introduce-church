@@ -87,6 +87,27 @@ void main() {
       expect((offline.state as ControlLoadedState).model.collections, hasLength(1));
       await offline.close();
     });
+
+    test('a church with no internet still gets its own design', () async {
+      // Falling back to the built-in design the moment the router is off
+      // changes what the congregation sees for reasons nobody in the room can
+      // explain. The cache is read by a second cubit because the real case is
+      // the app being started in a building that has never had a signal.
+      final prefs = FakePrefsService();
+      templates.templates = [SlideTemplate.blueNight];
+
+      final primed = ControlCubit(repo, templates, prefs, FakePresentationSocket());
+      await primed.load();
+      await primed.close();
+
+      final offline = ControlCubit(repo, templates, prefs, FakePresentationSocket());
+      repo.failWith = Exception('Failed host lookup: api.introduce.test');
+      await offline.load();
+
+      final model = (offline.state as ControlLoadedState).model;
+      expect(model.userTemplates.map((t) => t.id), [SlideTemplate.blueNight.id]);
+      await offline.close();
+    });
   });
 
   group('refresh', () {

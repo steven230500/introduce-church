@@ -1,12 +1,25 @@
 import 'dart:async';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/presentation_socket.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/collection_item_type.dart';
 import '../../../core/models/slide_template.dart';
+import '../../../core/windows/window_link.dart';
 
-sealed class DisplayState {}
+/// What the projector is drawing.
+///
+/// These carry value equality because the same position now arrives twice: once
+/// over the local window link and, when there is internet, again over the
+/// socket. Without it the projector rebuilds on the duplicate, which for a
+/// video means tearing down a playing decoder and starting it again.
+sealed class DisplayState extends Equatable {
+  const DisplayState();
+
+  @override
+  List<Object?> get props => [];
+}
 
 class DisplayIdleState extends DisplayState {}
 
@@ -18,38 +31,50 @@ class DisplaySlideState extends DisplayState {
   final SlideTemplate template;
   final bool overlayVisible;
   final String? overlayText;
-  DisplaySlideState({
+  const DisplaySlideState({
     required this.content,
     required this.reference,
     required this.template,
     this.overlayVisible = false,
     this.overlayText,
   });
+
+  @override
+  List<Object?> get props => [content, reference, template, overlayVisible, overlayText];
 }
 
 class DisplayImageState extends DisplayState {
   final String imagePath;
   final bool overlayVisible;
   final String? overlayText;
-  DisplayImageState({required this.imagePath, this.overlayVisible = false, this.overlayText});
+  const DisplayImageState({required this.imagePath, this.overlayVisible = false, this.overlayText});
+
+  @override
+  List<Object?> get props => [imagePath, overlayVisible, overlayText];
 }
 
 class DisplayVideoState extends DisplayState {
   final String videoPath;
   final bool overlayVisible;
   final String? overlayText;
-  DisplayVideoState({required this.videoPath, this.overlayVisible = false, this.overlayText});
+  const DisplayVideoState({required this.videoPath, this.overlayVisible = false, this.overlayText});
+
+  @override
+  List<Object?> get props => [videoPath, overlayVisible, overlayText];
 }
 
 class DisplayCountdownState extends DisplayState {
   final DateTime countdownEnd;
   final bool overlayVisible;
   final String? overlayText;
-  DisplayCountdownState({
+  const DisplayCountdownState({
     required this.countdownEnd,
     this.overlayVisible = false,
     this.overlayText,
   });
+
+  @override
+  List<Object?> get props => [countdownEnd, overlayVisible, overlayText];
 }
 
 class DisplayAnnouncementState extends DisplayState {
@@ -57,12 +82,15 @@ class DisplayAnnouncementState extends DisplayState {
   final DateTime? timerTarget;
   final bool overlayVisible;
   final String? overlayText;
-  DisplayAnnouncementState({
+  const DisplayAnnouncementState({
     required this.message,
     this.timerTarget,
     this.overlayVisible = false,
     this.overlayText,
   });
+
+  @override
+  List<Object?> get props => [message, timerTarget, overlayVisible, overlayText];
 }
 
 class DisplayCubit extends Cubit<DisplayState> {
@@ -81,7 +109,24 @@ class DisplayCubit extends Cubit<DisplayState> {
 
   Future<void> init() async {
     _sub = _socket.states.listen(_onStateChange, onError: (_) => emit(DisplayIdleState()));
+    // The link that works in a building with no internet, and the one that
+    // arrives with the plan attached so nothing here has to be fetched.
+    await WindowLink.listen((state) => unawaited(applyLocalState(state)));
     await _socket.connect();
+  }
+
+  /// Applies a message from the control window.
+  ///
+  /// The plan and the designs travel with the position, so everything this
+  /// needs to draw is in the message and none of it is fetched.
+  Future<void> applyLocalState(Map<String, dynamic> state) async {
+    final payload = readPresentationPayload(state);
+    final collection = payload.collection;
+    if (collection != null) _collections[collection.id] = collection;
+    for (final template in payload.templates) {
+      _templateCache[template.id] = template;
+    }
+    await _onStateChange(state);
   }
 
   Future<void> _onStateChange(Map<String, dynamic> row) async {

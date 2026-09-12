@@ -35,6 +35,7 @@ class FakePresentationSocket extends PresentationSocket {
 /// path_provider, which has no implementation under `flutter test`.
 class FakePrefsService extends AppPrefsService {
   List<Map<String, dynamic>>? saved;
+  Map<String, dynamic>? session;
 
   @override
   Future<void> saveCollections(List<Map<String, dynamic>> raw) async {
@@ -43,7 +44,42 @@ class FakePrefsService extends AppPrefsService {
 
   @override
   Future<List<Map<String, dynamic>>?> loadCollections() async => saved;
+
+  List<Map<String, dynamic>>? savedTemplates;
+
+  @override
+  Future<void> saveTemplates(List<Map<String, dynamic>> raw) async {
+    savedTemplates = raw;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>?> loadTemplates() async => savedTemplates;
+
+  @override
+  Future<Map<String, dynamic>?> loadSession() async => session;
+
+  @override
+  Future<void> saveSession(Map<String, dynamic> value) async {
+    session = value;
+  }
+
+  @override
+  Future<void> clearSession() async {
+    session = null;
+  }
 }
+
+/// A stored session, expiring in [inSeconds].
+///
+/// Negative means it already has, which is the state a machine is in fifteen
+/// minutes into a service.
+Map<String, dynamic> storedSession({int inSeconds = 900}) => {
+  'access_token': 'access',
+  'refresh_token': 'refresh',
+  'user': {'id': 'u1', 'email': 'operador@iglesia.test', 'display_name': 'Operador'},
+  'expires_at': DateTime.now().add(Duration(seconds: inSeconds)).toIso8601String(),
+  'org_id': 'org-1',
+};
 
 /// Control repository that serves canned rows and records what was asked of it,
 /// so cubit behaviour can be asserted without a server.
@@ -220,6 +256,14 @@ class FakeTemplateRepository extends TemplateRepository {
   @override
   Future<List<SlideTemplate>> getTemplates() async => templates;
 
+  // The cubit reads the raw rows so it can cache them for a service with no
+  // internet. Without this override the fake falls through to a real request.
+  @override
+  Future<List<Map<String, dynamic>>> getTemplatesRaw() async => [
+    for (final template in templates)
+      {'id': template.id, 'name': template.name, 'config': template.toJson()},
+  ];
+
   @override
   Future<void> setCollectionTemplate(String collectionId, String? templateId) async {
     calls.add('collectionTemplate:$collectionId:$templateId');
@@ -228,5 +272,21 @@ class FakeTemplateRepository extends TemplateRepository {
   @override
   Future<void> setItemTemplate(String itemId, String? templateId) async {
     calls.add('itemTemplate:$itemId:$templateId');
+  }
+}
+
+/// An API client that fails the way a machine with no internet fails.
+///
+/// A projector window must draw from what the control window handed it, so any
+/// call that reaches for the network here is a bug this makes visible.
+class OfflineApiClient extends ApiClient {
+  OfflineApiClient() : super(Dio(), FakePrefsService());
+
+  int calls = 0;
+
+  @override
+  Future<T?> get<T>(String path, {Map<String, dynamic>? query}) async {
+    calls++;
+    throw const ApiException('sin conexión');
   }
 }

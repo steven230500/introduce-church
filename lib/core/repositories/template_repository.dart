@@ -5,17 +5,24 @@ class TemplateRepository {
   const TemplateRepository(this._api);
   final ApiClient _api;
 
-  Future<List<SlideTemplate>> getTemplates() async {
+  Future<List<SlideTemplate>> getTemplates() async => parseTemplates(await getTemplatesRaw());
+
+  /// The rows exactly as the server sent them, so they can be cached for the
+  /// Sundays when the building has no internet.
+  Future<List<Map<String, dynamic>>> getTemplatesRaw() async {
     final rows = await _api.get<List<dynamic>>('/templates');
-    return (rows ?? []).map((r) {
-      final row = r as Map<String, dynamic>;
-      return SlideTemplate.fromJson(
-        id: row['id'] as String,
-        name: row['name'] as String,
-        json: Map<String, dynamic>.from(row['config'] as Map),
-      );
-    }).toList();
+    return (rows ?? []).cast<Map<String, dynamic>>();
   }
+
+  static List<SlideTemplate> parseTemplates(List<Map<String, dynamic>> rows) => rows
+      .map(
+        (row) => SlideTemplate.fromJson(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          json: Map<String, dynamic>.from(row['config'] as Map),
+        ),
+      )
+      .toList();
 
   /// Creates or replaces a design.
   ///

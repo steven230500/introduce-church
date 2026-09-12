@@ -10,6 +10,8 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../../../../../core/local_db/bible_repository.dart';
 import '../../../../../../core/services/app_prefs_service.dart';
+import '../../../../../../core/utils/app_logger.dart';
+import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pptx_import_service.dart';
@@ -243,6 +245,13 @@ class ControlCubit extends Cubit<ControlState> {
   final PresentationSocket _socket;
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
+
+  /// The collection rows exactly as the server sent them.
+  ///
+  /// Kept so the projector and stage windows can be handed the plan itself
+  /// rather than an id they would have to resolve over a network that, in most
+  /// of these rooms, is not there.
+  List<Map<String, dynamic>> _rawCollections = const [];
   Player? _audioPlayer;
 
   /// Full load with a loading state. Use only for the first load and for
@@ -275,12 +284,15 @@ class ControlCubit extends Cubit<ControlState> {
     if (showSpinner) emit(const ControlLoadingState());
     try {
       final rawCollections = await _repository.getCollectionsRaw();
-      final userTemplates = await _templateRepository.getTemplates();
+      final rawTemplates = await _templateRepository.getTemplatesRaw();
+      final userTemplates = TemplateRepository.parseTemplates(rawTemplates);
       final collections = rawCollections.map(Collection.fromJson).toList();
+      _rawCollections = rawCollections;
       final active = previousCollectionId != null
           ? collections.where((c) => c.id == previousCollectionId).firstOrNull
           : null;
       await _prefs.saveCollections(rawCollections);
+      await _prefs.saveTemplates(rawTemplates);
       final itemCount = active?.items.length ?? 0;
       emit(
         ControlLoadedState(
@@ -322,6 +334,8 @@ class ControlCubit extends Cubit<ControlState> {
         final cached = await _prefs.loadCollections();
         if (cached != null && cached.isNotEmpty) {
           final collections = cached.map(Collection.fromJson).toList();
+          _rawCollections = cached;
+          final cachedTemplates = await _prefs.loadTemplates() ?? const [];
           final active = previousCollectionId != null
               ? collections.where((c) => c.id == previousCollectionId).firstOrNull
               : null;
@@ -330,7 +344,9 @@ class ControlCubit extends Cubit<ControlState> {
               ControlModel(
                 collections: collections,
                 activeCollection: active,
-                userTemplates: previous?.userTemplates ?? const [],
+                userTemplates: previous?.userTemplates.isNotEmpty == true
+                    ? previous!.userTemplates
+                    : TemplateRepository.parseTemplates(cachedTemplates),
                 followCursor: previous?.followCursor ?? true,
                 isLive: previous?.isLive ?? false,
                 blankScreen: previous?.blankScreen ?? false,
@@ -983,31 +999,61 @@ class ControlCubit extends Cubit<ControlState> {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
 
+    final position = {
+      'collection_id': model.activeCollection?.id,
+      'current_item_index': model.liveItemIndex,
+      'current_slide_index': model.liveSlideIndex,
+      'is_live': model.isLive,
+      'blank_screen': model.blankScreen,
+      'countdown_active': model.countdownActive,
+      'countdown_end': model.countdownEnd?.toUtc().toIso8601String(),
+      'overlay_visible': model.overlayVisible,
+      'overlay_text': model.overlayText,
+    };
+
+    // The other windows first, and over the local link, which is the only path
+    // that works in a building with no internet. It carries the plan and the
+    // designs with the position so nothing has to be fetched at the far end.
+    unawaited(
+      WindowLink.broadcast({
+        ...position,
+        'collection': ?_rawCollection(model.activeCollection?.id),
+        'templates': [
+          for (final template in model.userTemplates)
+            {'id': template.id, 'name': template.name, 'config': template.toJson()},
+        ],
+      }),
+    );
+
     if (_socket.isConnected) {
-      _socket.send({
-        'collection_id': model.activeCollection?.id,
-        'current_item_index': model.liveItemIndex,
-        'current_slide_index': model.liveSlideIndex,
-        'is_live': model.isLive,
-        'blank_screen': model.blankScreen,
-        'countdown_active': model.countdownActive,
-        'countdown_end': model.countdownEnd?.toUtc().toIso8601String(),
-        'overlay_visible': model.overlayVisible,
-        'overlay_text': model.overlayText,
-      });
+      _socket.send(position);
       return;
     }
 
-    _repository.upsertPresentationState(
-      collectionId: model.activeCollection?.id,
-      itemIndex: model.liveItemIndex,
-      slideIndex: model.liveSlideIndex,
-      isLive: model.isLive,
-      blankScreen: model.blankScreen,
-      countdownActive: model.countdownActive,
-      countdownEnd: model.countdownEnd,
-      overlayVisible: model.overlayVisible,
-      overlayText: model.overlayText,
+    // No socket: write it through so the server remembers where the service
+    // is. Offline this always fails, and a slide change is not the moment to
+    // tell anyone about it.
+    unawaited(
+      _repository
+          .upsertPresentationState(
+            collectionId: model.activeCollection?.id,
+            itemIndex: model.liveItemIndex,
+            slideIndex: model.liveSlideIndex,
+            isLive: model.isLive,
+            blankScreen: model.blankScreen,
+            countdownActive: model.countdownActive,
+            countdownEnd: model.countdownEnd,
+            overlayVisible: model.overlayVisible,
+            overlayText: model.overlayText,
+          )
+          .catchError((Object e) {
+            appLogger.w('ControlCubit._syncState | state not written: $e');
+          }),
     );
+  }
+
+  Map<String, dynamic>? _rawCollection(String? id) {
+    if (id == null) return null;
+    return _rawCollections.where((row) => row['id'] == id).firstOrNull;
   }
 }

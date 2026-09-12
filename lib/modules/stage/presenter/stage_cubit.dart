@@ -1,12 +1,14 @@
 import 'dart:async';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/presentation_socket.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/collection_item_type.dart';
 import '../../../core/models/slide_template.dart';
+import '../../../core/windows/window_link.dart';
 
-class StageSlide {
+class StageSlide extends Equatable {
   const StageSlide({
     required this.content,
     required this.reference,
@@ -28,9 +30,26 @@ class StageSlide {
   final String? imagePath;
   final String? notes;
   final String? chords;
+
+  @override
+  List<Object?> get props => [
+    content,
+    reference,
+    template,
+    itemTitle,
+    slideIndex,
+    slideCount,
+    imagePath,
+    notes,
+    chords,
+  ];
 }
 
-class StageState {
+/// What the stage monitor is showing.
+///
+/// Value equality, because the same position now arrives twice: once over the
+/// local window link and, when there is internet, again over the socket.
+class StageState extends Equatable {
   const StageState({
     this.current,
     this.next,
@@ -50,6 +69,18 @@ class StageState {
   final DateTime? countdownEnd;
   final bool overlayVisible;
   final String? overlayText;
+
+  @override
+  List<Object?> get props => [
+    current,
+    next,
+    isLive,
+    isBlank,
+    countdownActive,
+    countdownEnd,
+    overlayVisible,
+    overlayText,
+  ];
 }
 
 class StageCubit extends Cubit<StageState> {
@@ -63,7 +94,24 @@ class StageCubit extends Cubit<StageState> {
 
   Future<void> init() async {
     _sub = _socket.states.listen(_onStateChange, onError: (_) {});
+    // The link that works in a building with no internet, and the one that
+    // arrives with the plan attached so nothing here has to be fetched.
+    await WindowLink.listen((state) => unawaited(applyLocalState(state)));
     await _socket.connect();
+  }
+
+  /// Applies a message from the control window.
+  ///
+  /// The plan and the designs travel with the position, so everything this
+  /// needs to draw is in the message and none of it is fetched.
+  Future<void> applyLocalState(Map<String, dynamic> state) async {
+    final payload = readPresentationPayload(state);
+    final collection = payload.collection;
+    if (collection != null) _collections[collection.id] = collection;
+    for (final template in payload.templates) {
+      _templateCache[template.id] = template;
+    }
+    await _onStateChange(state);
   }
 
   Future<void> _onStateChange(Map<String, dynamic> row) async {

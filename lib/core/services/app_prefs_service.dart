@@ -57,6 +57,23 @@ class AppPrefsService {
     return list?.cast<Map<String, dynamic>>();
   }
 
+  /// The designs, kept for the services with no internet.
+  ///
+  /// Without these a church that made its own design falls back to the built-in
+  /// one the moment the router is off, which changes what the congregation
+  /// sees for reasons nobody in the room can explain.
+  Future<void> saveTemplates(List<Map<String, dynamic>> raw) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['templates'] = raw;
+    await _write(d);
+  }
+
+  Future<List<Map<String, dynamic>>?> loadTemplates() async {
+    final d = await _read();
+    final list = d['templates'] as List?;
+    return list?.cast<Map<String, dynamic>>();
+  }
+
   // ── Session ────────────────────────────────────────────────────────────────
   //
   // Tokens live in the same file as the rest of the preferences. On a desktop

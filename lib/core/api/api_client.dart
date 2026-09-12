@@ -141,7 +141,17 @@ class ApiClient {
       await _adopt(session);
       return session;
     } on DioException catch (e) {
-      appLogger.w('ApiClient._doRefresh | failed: ${e.response?.statusCode}');
+      final status = e.response?.statusCode;
+      // Only the server saying no ends a session. A refresh that never reached
+      // it means the building has no internet, which is the normal state of
+      // most rooms this runs in. Ending the session there strands the operator
+      // at a login screen they cannot get past, with the service about to
+      // start and every plan already cached on the machine.
+      if (status == null) {
+        appLogger.w('ApiClient._doRefresh | server unreachable, keeping the session');
+        return null;
+      }
+      appLogger.w('ApiClient._doRefresh | rejected: $status');
       await _forgetSession();
       _signedOut.add(null);
       return null;
@@ -152,14 +162,24 @@ class ApiClient {
 
   Future<void> _onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (options.headers.remove('X-Skip-Auth') != null) {
+      // Remembered past the header, because the error interceptor has to know
+      // this one too: a 401 on the renewal itself would otherwise ask for a
+      // renewal, get handed the one already in flight, and wait on itself. The
+      // app froze there rather than returning the operator to the login screen.
+      options.extra['skipAuth'] = true;
       return handler.next(options);
     }
 
     var session = _session;
     // Refresh before the request rather than after a 401: it saves a round trip
     // and keeps a slide change from stalling mid-service.
+    //
+    // When the refresh could not reach the server the old token is still the
+    // best one there is: a blip that clears before it expires on the server
+    // side still goes through, and offline the request was going to fail
+    // whatever token it carried.
     if (session != null && session.isExpiring) {
-      session = await _refresh();
+      session = await _refresh() ?? _session;
     }
     if (session != null) {
       options.headers['Authorization'] = 'Bearer ${session.accessToken}';
@@ -170,8 +190,9 @@ class ApiClient {
   Future<void> _onError(DioException err, ErrorInterceptorHandler handler) async {
     final isAuthFailure = err.response?.statusCode == 401;
     final alreadyRetried = err.requestOptions.extra['retried'] == true;
+    final isRenewal = err.requestOptions.extra['skipAuth'] == true;
 
-    if (!isAuthFailure || alreadyRetried || _session == null) {
+    if (!isAuthFailure || alreadyRetried || isRenewal || _session == null) {
       return handler.next(err);
     }
 
