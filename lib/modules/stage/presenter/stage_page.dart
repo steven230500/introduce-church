@@ -183,7 +183,7 @@ class _SlidePreviewBox extends StatelessWidget {
         errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black, child: SizedBox.expand()),
       );
     }
-    return SlideView(content: s.content, reference: s.reference, template: s.template, scale: 0.18);
+    return SlideView(content: s.content, reference: s.reference, template: s.template);
   }
 }
 

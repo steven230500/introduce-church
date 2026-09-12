@@ -199,7 +199,6 @@ class _TemplateTile extends StatelessWidget {
                         content: 'Texto de ejemplo',
                         reference: 'Juan 3:16',
                         template: template,
-                        scale: 0.28,
                       ),
                     ),
                   ),
@@ -835,7 +834,6 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                   content: _sampleCtrl.text,
                                   reference: _sampleRefCtrl.text,
                                   template: t,
-                                  scale: 0.6,
                                 ),
                               ),
                             ),
@@ -1763,7 +1761,6 @@ class _LayerCanvas extends StatelessWidget {
                   content: '',
                   reference: '',
                   template: template.copyWith(layers: []),
-                  scale: canvasSize.width / 1920,
                 ),
               ),
               // Layers

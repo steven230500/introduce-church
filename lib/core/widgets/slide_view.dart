@@ -5,24 +5,31 @@ import '../models/slide_layer.dart';
 import '../models/slide_template.dart';
 import '../../core/theme/app_colors.dart';
 
-/// Renders a slide. Used by display window and control panel preview.
-/// [scale] < 1.0 for thumbnails (preview in control panel).
-/// If [imagePath] is set, renders the image file instead of text content.
+/// Renders a slide, at whatever size it is given.
+///
+/// Designs are authored against a [designWidth]-wide slide, so every size in a
+/// template is scaled by how wide this widget actually ended up. The scale used
+/// to be passed in by hand at each call site, which meant a preview only told
+/// the truth at one particular window size: at any other, text that fits on the
+/// projector was silently cut off in the preview, or the other way round.
+///
+/// If [imagePath] is set, renders that image instead of text.
 class SlideView extends StatelessWidget {
   const SlideView({
     required this.content,
     required this.reference,
     required this.template,
     this.imagePath,
-    this.scale = 1.0,
     super.key,
   });
+
+  /// The width every template is designed against.
+  static const designWidth = 1920.0;
 
   final String content;
   final String reference;
   final SlideTemplate template;
   final String? imagePath;
-  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -40,18 +47,32 @@ class SlideView extends StatelessWidget {
         ),
       );
     }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _Background(template: template),
-        if (template.layers.isNotEmpty)
-          _LayerStack(layers: template.layers, content: content, reference: reference, scale: scale)
-        else ...[
-          _BodyText(content: content, template: template, scale: scale),
-          if (template.showReference && reference.isNotEmpty)
-            _Reference(reference: reference, template: template, scale: scale),
-        ],
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // An unbounded width means nothing to scale against; fall back to the
+        // design size so the slide renders rather than throwing.
+        final width = constraints.hasBoundedWidth ? constraints.maxWidth : designWidth;
+        final scale = width / designWidth;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _Background(template: template),
+            if (template.layers.isNotEmpty)
+              _LayerStack(
+                layers: template.layers,
+                content: content,
+                reference: reference,
+                scale: scale,
+              )
+            else ...[
+              _BodyText(content: content, template: template, scale: scale),
+              if (template.showReference && reference.isNotEmpty)
+                _Reference(reference: reference, template: template, scale: scale),
+            ],
+          ],
+        );
+      },
     );
   }
 }

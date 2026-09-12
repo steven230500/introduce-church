@@ -224,7 +224,6 @@ class _TemplateTileState extends State<_TemplateTile> {
                           content: widget.sampleContent,
                           reference: widget.sampleRef,
                           template: widget.template,
-                          scale: 0.07,
                         ),
                         if (widget.selected)
                           Positioned(

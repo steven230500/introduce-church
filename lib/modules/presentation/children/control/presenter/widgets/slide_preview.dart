@@ -162,10 +162,6 @@ class _SlideGrid extends StatelessWidget {
         // Aim for ~240px tiles, but never fewer than two or more than five
         // columns, so the grid stays readable as the dock opens and closes.
         final columns = ((constraints.maxWidth - pad * 2) / 240).round().clamp(2, 5);
-        final cellWidth = (constraints.maxWidth - pad * 2 - spacing * (columns - 1)) / columns;
-        // The large preview renders at scale 0.5 in a roughly 330px slot.
-        final scale = (cellWidth / 330) * 0.5;
-
         return GridView.builder(
           padding: const EdgeInsets.all(pad),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -203,7 +199,6 @@ class _SlideGrid extends StatelessWidget {
                         reference: '',
                         template: model.activeTemplate,
                         imagePath: isImageSlide ? slides[index] : null,
-                        scale: scale,
                       ),
                       if (label.isNotEmpty)
                         Positioned(
@@ -328,7 +323,6 @@ class _OutputThumbnail extends StatelessWidget {
                     reference: model.currentSlideReference,
                     template: model.activeTemplate,
                     imagePath: isImage ? model.currentSlideContent : null,
-                    scale: 200 / 1920,
                   )
                 else
                   const ColoredBox(color: Colors.black),
@@ -465,7 +459,6 @@ class _Preview extends StatelessWidget {
                     reference: model.currentSlideReference,
                     template: model.activeTemplate,
                     imagePath: isImage ? model.currentSlideContent : null,
-                    scale: 0.5,
                   )
                 else
                   const ColoredBox(color: Colors.black),
