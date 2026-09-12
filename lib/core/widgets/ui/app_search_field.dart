@@ -68,7 +68,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
       decoration: InputDecoration(
         isDense: true,
         hintText: widget.hintText,
-        hintStyle: TextStyle(color: AppColors.textMuted, fontSize: widget.dense ? 12 : 14),
+        hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: widget.dense ? 12 : 14),
         prefixIcon: Icon(Icons.search, color: AppColors.textMuted, size: widget.dense ? 16 : 18),
         prefixIconConstraints: BoxConstraints(
           minWidth: widget.dense ? 32 : 40,

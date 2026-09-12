@@ -41,7 +41,8 @@ class EmptyState extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textMuted,
+                // A heading, even when the news is that there is nothing here.
+                color: AppColors.textSecondary,
                 fontSize: compact ? 13 : 16,
                 fontWeight: FontWeight.w500,
               ),

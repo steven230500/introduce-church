@@ -40,7 +40,7 @@ abstract final class AppColors {
   static const textSecondary = Color(0xFFAEAEB2);
 
   /// Icons and labels at rest.
-  static const textTertiary = Color(0xFF8E8E93);
+  static const textTertiary = Color(0xFF949499);
 
   /// Captions, metadata, hints.
   static const textMuted = Color(0xFF636366);

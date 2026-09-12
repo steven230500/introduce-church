@@ -27,14 +27,18 @@ abstract final class AppText {
   );
 
   /// Secondary row text: author, reference, count.
-  static const rowSubtitle = TextStyle(color: AppColors.textMuted, fontSize: 11);
+  ///
+  /// Tertiary, not muted: at 11px this is the line that says which version a
+  /// reading is in and how many slides an item runs for, and muted grey does
+  /// not clear the contrast floor on any panel it sits on.
+  static const rowSubtitle = TextStyle(color: AppColors.textTertiary, fontSize: 11);
 
   /// Body copy inside dialogs and empty states.
   static const body = TextStyle(color: AppColors.textSecondary, fontSize: 13);
 
   /// Uppercase group label above a list.
   static const sectionLabel = TextStyle(
-    color: AppColors.textMuted,
+    color: AppColors.textTertiary,
     fontSize: 10,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.6,

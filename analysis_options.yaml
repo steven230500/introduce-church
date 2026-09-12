@@ -9,6 +9,13 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+# The codebase was written to a 100-column line and was drifting: some files
+# had been run through the formatter at its 80-column default, so every edit
+# reflowed a neighbour. Naming the width here makes `dart format` agree with
+# what is already on disk.
+formatter:
+  page_width: 100
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

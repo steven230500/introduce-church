@@ -69,6 +69,38 @@ void main() {
         expect(_contrast(AppColors.textPrimary, surface), greaterThanOrEqualTo(4.5));
       }
     });
+
+    test('every role that carries readable copy clears AA on every surface', () {
+      // The subtitle line and the section label were muted grey, which is
+      // 2.8:1 on a panel — under the floor, on the line that says which Bible
+      // version a reading is in and how many slides an item runs for.
+      final roles = {
+        'pageTitle': AppText.pageTitle,
+        'panelTitle': AppText.panelTitle,
+        'rowTitle': AppText.rowTitle,
+        'rowSubtitle': AppText.rowSubtitle,
+        'body': AppText.body,
+        'sectionLabel': AppText.sectionLabel,
+        'badge': AppText.badge,
+      };
+
+      for (final entry in roles.entries) {
+        for (final surface in [
+          AppColors.chrome,
+          AppColors.background,
+          AppColors.canvas,
+          AppColors.surface,
+          AppColors.surfaceRaised,
+          AppColors.surfaceControl,
+        ]) {
+          expect(
+            _contrast(entry.value.color!, surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '${entry.key} must be readable on every panel it sits on',
+          );
+        }
+      }
+    });
   });
 
   group('accents', () {
