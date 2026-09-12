@@ -63,14 +63,23 @@ class LiveBar extends StatelessWidget {
                         children: [
                           // Room for the macOS traffic-light buttons.
                           const SizedBox(width: 88),
-                          const _AppMark(),
+                          // Flexible, so the name gives way before the bar
+                          // overflows. The controls on the right grow with the
+                          // features; the word "Introduce" is the one thing
+                          // here nobody needs to read twice.
+                          const Flexible(child: _AppMark()),
                           const SizedBox(width: AppSpace.lg),
-                          Expanded(child: _NowShowing(model: model)),
+                          Expanded(flex: 4, child: _NowShowing(model: model)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpace.md),
+
+                  if (model?.offline == true) ...[
+                    const _OfflineChip(),
+                    const SizedBox(width: AppSpace.md),
+                  ],
 
                   // ── What the congregation sees ────────────────────────────
                   AppButtonGroup(
@@ -195,10 +204,23 @@ class _AppMark extends StatelessWidget {
           ),
           child: const Icon(Icons.church_rounded, size: 13, color: Colors.white),
         ),
-        const SizedBox(width: AppSpace.sm),
-        const Text(
-          'Introduce',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+        // The gap belongs to the name, so it goes when the name does. Left
+        // outside, the glyph plus a fixed gap was still wider than the room
+        // this is given at the tightest width.
+        const Flexible(
+          child: Padding(
+            padding: EdgeInsets.only(left: AppSpace.sm),
+            child: Text(
+              'Introduce',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -292,6 +314,46 @@ class _DockToggle extends StatelessWidget {
           onTap: context.read<ShellCubit>().toggleDock,
         );
       },
+    );
+  }
+}
+
+// ── Offline ───────────────────────────────────────────────────────────────────
+
+/// Says the machine cannot reach the server.
+///
+/// Not an error: the plan, the designs and the Bible are all on this disk and
+/// the service runs from them. What it warns about is the other half, because
+/// an operator who removes an item and sees nothing happen has no other way to
+/// find out why.
+class _OfflineChip extends StatelessWidget {
+  const _OfflineChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message:
+          'El servicio corre igual: el plan está guardado en esta máquina.\n'
+          'Lo que edites ahora no se guarda hasta que vuelva la conexión.',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.16),
+          borderRadius: AppRadius.all(AppRadius.sm),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 13, color: AppColors.warning),
+            SizedBox(width: AppSpace.sm - 2),
+            Text(
+              'Sin conexión',
+              style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

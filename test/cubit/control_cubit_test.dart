@@ -84,8 +84,18 @@ void main() {
       await offline.load();
 
       expect(offline.state, isA<ControlLoadedState>());
-      expect((offline.state as ControlLoadedState).model.collections, hasLength(1));
+      final model = (offline.state as ControlLoadedState).model;
+      expect(model.collections, hasLength(1));
+      // The service runs from the disk, but nothing edited now is being saved
+      // anywhere else, and the operator has no other way to find that out.
+      expect(model.offline, isTrue);
       await offline.close();
+    });
+
+    test('a read that reaches the server clears the warning', () async {
+      await cubit.load();
+
+      expect((cubit.state as ControlLoadedState).model.offline, isFalse);
     });
 
     test('a church with no internet still gets its own design', () async {

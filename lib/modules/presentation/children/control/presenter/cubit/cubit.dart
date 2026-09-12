@@ -41,6 +41,7 @@ class ControlModel extends Equatable {
     this.countdownEnd,
     this.overlayVisible = false,
     this.overlayText,
+    this.offline = false,
   });
 
   final List<Collection> collections;
@@ -67,6 +68,14 @@ class ControlModel extends Equatable {
   final DateTime? countdownEnd;
   final bool overlayVisible;
   final String? overlayText;
+
+  /// True when the last read came from the cache because the server could not
+  /// be reached.
+  ///
+  /// Everything needed to run the service is on the disk, so the presenter
+  /// keeps working. What does not work is writing, and an operator who removes
+  /// an item and sees nothing happen deserves to know why.
+  final bool offline;
 
   SlideTemplate? findTemplate(String id) =>
       SlideTemplate.findPreset(id) ?? userTemplates.where((t) => t.id == id).firstOrNull;
@@ -195,6 +204,7 @@ class ControlModel extends Equatable {
     bool? overlayVisible,
     String? overlayText,
     bool clearOverlayText = false,
+    bool? offline,
   }) {
     return ControlModel(
       collections: collections ?? this.collections,
@@ -212,6 +222,7 @@ class ControlModel extends Equatable {
       countdownEnd: clearCountdownEnd ? null : countdownEnd ?? this.countdownEnd,
       overlayVisible: overlayVisible ?? this.overlayVisible,
       overlayText: clearOverlayText ? null : overlayText ?? this.overlayText,
+      offline: offline ?? this.offline,
     );
   }
 
@@ -232,6 +243,7 @@ class ControlModel extends Equatable {
     countdownEnd,
     overlayVisible,
     overlayText,
+    offline,
   ];
 }
 
@@ -307,6 +319,7 @@ class ControlCubit extends Cubit<ControlState> {
             liveItemIndex: itemCount == 0 ? 0 : previousLiveItem.clamp(0, itemCount - 1),
             liveSlideIndex: previousLiveSlide,
             followCursor: previous?.followCursor ?? true,
+            offline: false,
             isLive: previous?.isLive ?? false,
             blankScreen: previous?.blankScreen ?? false,
             gridView: previous?.gridView ?? true,
@@ -348,6 +361,9 @@ class ControlCubit extends Cubit<ControlState> {
                     ? previous!.userTemplates
                     : TemplateRepository.parseTemplates(cachedTemplates),
                 followCursor: previous?.followCursor ?? true,
+                // Everything needed to run the service is on the disk. Writing
+                // is what stops working, and the operator has to be told.
+                offline: true,
                 isLive: previous?.isLive ?? false,
                 blankScreen: previous?.blankScreen ?? false,
                 gridView: previous?.gridView ?? true,

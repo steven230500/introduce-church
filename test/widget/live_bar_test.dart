@@ -11,6 +11,7 @@ import '../helpers/fakes.dart';
 
 void main() {
   late FakeControlRepository repo;
+  late FakePrefsService prefs;
   late ControlCubit control;
   late ShellCubit shell;
 
@@ -32,12 +33,8 @@ void main() {
         ),
       ],
     );
-    control = ControlCubit(
-      repo,
-      FakeTemplateRepository(),
-      FakePrefsService(),
-      FakePresentationSocket(),
-    );
+    prefs = FakePrefsService();
+    control = ControlCubit(repo, FakeTemplateRepository(), prefs, FakePresentationSocket());
     shell = ShellCubit();
   });
 
@@ -139,6 +136,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(readout('2/2'), findsOneWidget);
+  });
+
+  testWidgets('says when the machine cannot reach the server', (tester) async {
+    // Not an error: the plan and the designs are on this disk and the service
+    // runs from them. What it warns about is that edits are going nowhere.
+    await pumpBar(tester);
+    await openCollection(tester);
+    expect(find.text('Sin conexión'), findsNothing);
+
+    repo.failWith = Exception('Failed host lookup: api.introduce.test');
+    await control.load();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin conexión'), findsOneWidget);
+    expect(prefs.saved, isNotNull, reason: 'the plan it falls back on');
   });
 
   testWidgets('the hold toggle says which way round it is', (tester) async {
