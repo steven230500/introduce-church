@@ -102,10 +102,34 @@ void main() {
     expect(model().overlayText, isNot('Quedan 5 minutos'));
   });
 
-  testWidgets('a church with no saved notices is told how to start one', (tester) async {
+  testWidgets('a church with none is shown what one looks like', (tester) async {
+    // The hint carries the examples, so an empty dialog is not a paragraph
+    // explaining itself.
     org.notices = const [];
     await pumpDialog(tester);
 
-    expect(find.textContaining('Todavía no hay avisos guardados'), findsOneWidget);
+    expect(find.textContaining('Ofrenda'), findsOneWidget);
+  });
+
+  testWidgets('the thing you press and the thing you type are not the same shape', (tester) async {
+    // They were two identical boxes, which during a service is one mistake
+    // away from projecting a half-typed sentence.
+    await pumpDialog(tester);
+
+    // A saved notice is a bounded card you press, never a field you type in.
+    expect(
+      find.descendant(of: find.byType(TextField), matching: find.text('Los niños pasan al salón')),
+      findsNothing,
+    );
+
+    final card = tester.getSize(
+      find
+          .ancestor(
+            of: find.text('Los niños pasan al salón'),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+    expect(card.width, lessThanOrEqualTo(220));
   });
 }

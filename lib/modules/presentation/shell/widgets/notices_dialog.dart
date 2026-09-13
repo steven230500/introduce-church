@@ -8,13 +8,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../core/widgets/ui/hover_builder.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 
 /// Everything an operator says in the middle of a service.
 ///
 /// Two audiences, one place: a notice over the slide, which everyone reads,
-/// and a line for the platform, which nobody in the pews sees. They were
-/// separate ideas before, and only the first one existed.
+/// and a line for the platform, which nobody in the pews sees. The two are
+/// told apart by colour, because the cost of confusing them is telling four
+/// hundred people that the preacher is running long.
 Future<void> showNoticesDialog(BuildContext context, {OrganizationRepository? repository}) {
   return showDialog<void>(
     context: context,
@@ -38,7 +40,7 @@ class NoticesDialog extends StatefulWidget {
 
 class _NoticesDialogState extends State<NoticesDialog> {
   late final _repository = widget.repository ?? Modular.get<OrganizationRepository>();
-  final _screen = TextEditingController();
+  final _compose = TextEditingController();
   final _stage = TextEditingController();
 
   List<SavedNotice> _saved = const [];
@@ -47,11 +49,8 @@ class _NoticesDialogState extends State<NoticesDialog> {
   @override
   void initState() {
     super.initState();
-    final model = context.read<ControlCubit>().state;
-    if (model is ControlLoadedState) {
-      _screen.text = model.model.overlayText ?? '';
-      _stage.text = model.model.stageMessage ?? '';
-    }
+    final state = context.read<ControlCubit>().state;
+    if (state is ControlLoadedState) _stage.text = state.model.stageMessage ?? '';
     _load();
   }
 
@@ -66,35 +65,36 @@ class _NoticesDialogState extends State<NoticesDialog> {
 
   @override
   void dispose() {
-    _screen.dispose();
+    _compose.dispose();
     _stage.dispose();
     super.dispose();
   }
 
+  Future<void> _store(List<SavedNotice> next) async {
+    setState(() => _saved = next);
+    final stored = await _repository.setNotices(next);
+    if (mounted) setState(() => _saved = stored);
+  }
+
   Future<void> _remember() async {
-    final text = _screen.text.trim();
+    final text = _compose.text.trim();
     if (text.isEmpty || _saved.any((n) => n.text == text)) return;
-    final next = [..._saved, SavedNotice(text: text)];
-    setState(() => _saved = next);
-    final stored = await _repository.setNotices(next);
-    if (mounted) setState(() => _saved = stored);
+    _compose.clear();
+    await _store([..._saved, SavedNotice(text: text)]);
   }
 
-  Future<void> _forget(SavedNotice notice) async {
-    final next = [..._saved]..remove(notice);
-    setState(() => _saved = next);
-    final stored = await _repository.setNotices(next);
-    if (mounted) setState(() => _saved = stored);
-  }
+  Future<void> _forget(SavedNotice notice) => _store([..._saved]..remove(notice));
 
-  Future<void> _setHide(SavedNotice notice, int seconds) async {
-    final next = [
-      for (final n in _saved)
-        if (n == notice) SavedNotice(text: n.text, autoHideSecs: seconds) else n,
-    ];
-    setState(() => _saved = next);
-    final stored = await _repository.setNotices(next);
-    if (mounted) setState(() => _saved = stored);
+  Future<void> _setHide(SavedNotice notice, int seconds) => _store([
+    for (final n in _saved)
+      if (n == notice) SavedNotice(text: n.text, autoHideSecs: seconds) else n,
+  ]);
+
+  void _show(ControlCubit cubit, String text, {int seconds = 0}) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    cubit.showOverlay(trimmed, autoHideSecs: seconds);
+    Navigator.pop(context);
   }
 
   @override
@@ -103,170 +103,146 @@ class _NoticesDialogState extends State<NoticesDialog> {
     final model = context.select<ControlCubit, ControlModel?>(
       (c) => c.state is ControlLoadedState ? (c.state as ControlLoadedState).model : null,
     );
-    final showing = model?.overlayVisible ?? false;
 
     return AppDialog(
       title: 'Avisos',
       icon: Icons.campaign_outlined,
-      width: 480,
+      width: 520,
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // What is out there right now, first, because it is the only thing
+          // here that is already costing the congregation something.
+          if (model?.overlayVisible ?? false)
+            _NowShowing(
+              text: model?.overlayText ?? '',
+              onHide: () {
+                cubit.hideOverlay();
+                Navigator.pop(context);
+              },
+            ),
           const _Heading(
             icon: Icons.tv_rounded,
-            title: 'EN LA PANTALLA',
-            subtitle: 'Sobre el slide. Lo lee toda la congregación.',
+            title: 'Sobre el slide',
+            hint: 'lo lee la congregación',
+            tone: AppColors.accent,
           ),
-          const SizedBox(height: AppSpace.sm),
+          const SizedBox(height: AppSpace.md),
           if (_loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpace.sm),
-              child: Text('Cargando los avisos guardados...', style: AppText.rowSubtitle),
-            )
-          else if (_saved.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(bottom: AppSpace.sm),
-              child: Text(
-                'Todavía no hay avisos guardados. Escribe uno y presiona el marcador '
-                'para tenerlo listo la próxima.',
-                style: AppText.rowSubtitle,
-              ),
-            )
-          else
-            for (final notice in _saved)
-              _SavedRow(
-                notice: notice,
-                onShow: () {
-                  cubit.showOverlay(notice.text, autoHideSecs: notice.autoHideSecs);
-                  Navigator.pop(context);
-                },
-                onForget: () => _forget(notice),
-                onSetHide: (s) => _setHide(notice, s),
-              ),
-          const SizedBox(height: AppSpace.sm),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _screen,
-                  hintText: 'Escribe un aviso...',
-                  onSubmitted: (v) => _showTyped(cubit, v),
-                ),
-              ),
-              const SizedBox(width: AppSpace.sm),
-              Tooltip(
-                message: 'Guardar para la próxima',
-                child: IconButton(
-                  icon: const Icon(Icons.bookmark_add_outlined, size: 18),
-                  onPressed: _remember,
-                ),
-              ),
-              FilledButton(
-                onPressed: () => _showTyped(cubit, _screen.text),
-                child: const Text('Mostrar'),
-              ),
-            ],
-          ),
-          if (showing) ...[
-            const SizedBox(height: AppSpace.sm),
-            Row(
+            const Text('Cargando...', style: AppText.rowSubtitle)
+          else if (_saved.isNotEmpty) ...[
+            Wrap(
+              spacing: AppSpace.sm,
+              runSpacing: AppSpace.sm,
               children: [
-                const Icon(Icons.circle, size: 8, color: AppColors.live),
-                const SizedBox(width: AppSpace.sm - 2),
-                Expanded(
-                  child: Text(
-                    'En pantalla ahora: ${model?.overlayText ?? ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.rowSubtitle,
+                for (final notice in _saved)
+                  _NoticeCard(
+                    notice: notice,
+                    onShow: () => _show(cubit, notice.text, seconds: notice.autoHideSecs),
+                    onForget: () => _forget(notice),
+                    onSetHide: (s) => _setHide(notice, s),
                   ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    cubit.hideOverlay();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Quitar'),
-                ),
               ],
             ),
+            const SizedBox(height: AppSpace.md),
           ],
-          const SizedBox(height: AppSpace.lg),
-          const Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: AppSpace.lg),
+          _Composer(
+            controller: _compose,
+            hint: _saved.isEmpty ? 'Ofrenda, bienvenida, los niños al salón...' : 'Otro aviso...',
+            onShow: () => _show(cubit, _compose.text),
+            onRemember: _remember,
+          ),
+          const SizedBox(height: AppSpace.xl),
           const _Heading(
             icon: Icons.co_present_outlined,
-            title: 'SOLO AL ESCENARIO',
-            subtitle: 'Lo ve el equipo en el monitor. La congregación no.',
+            title: 'Solo al escenario',
+            hint: 'lo ve el equipo, la congregación no',
+            tone: AppColors.warning,
           ),
-          const SizedBox(height: AppSpace.sm),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _stage,
-                  hintText: 'Quedan 5 minutos',
-                  onSubmitted: (v) => _sendToStage(cubit, v),
-                ),
-              ),
-              const SizedBox(width: AppSpace.sm),
-              if ((model?.stageMessage ?? '').isNotEmpty)
-                TextButton(
-                  onPressed: () {
-                    cubit.setStageMessage(null);
-                    _stage.clear();
-                    setState(() {});
-                  },
-                  child: const Text('Quitar'),
-                ),
-              FilledButton(
-                onPressed: () => _sendToStage(cubit, _stage.text),
-                child: const Text('Enviar'),
-              ),
-            ],
+          const SizedBox(height: AppSpace.md),
+          _StageLine(
+            controller: _stage,
+            active: (model?.stageMessage ?? '').isNotEmpty,
+            onSend: () {
+              cubit.setStageMessage(_stage.text);
+              Navigator.pop(context);
+            },
+            onClear: () {
+              cubit.setStageMessage(null);
+              _stage.clear();
+              setState(() {});
+            },
           ),
         ],
       ),
     );
   }
+}
 
-  void _showTyped(ControlCubit cubit, String value) {
-    final text = value.trim();
-    if (text.isEmpty) return;
-    cubit.showOverlay(text);
-    Navigator.pop(context);
-  }
+/// The notice the congregation is reading right now.
+class _NowShowing extends StatelessWidget {
+  const _NowShowing({required this.text, required this.onHide});
 
-  void _sendToStage(ControlCubit cubit, String value) {
-    cubit.setStageMessage(value);
-    Navigator.pop(context);
+  final String text;
+  final VoidCallback onHide;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpace.lg),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+      decoration: BoxDecoration(
+        color: AppColors.live.withValues(alpha: 0.14),
+        borderRadius: AppRadius.all(AppRadius.md),
+        border: Border.all(color: AppColors.live.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.circle, size: 8, color: AppColors.live),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.rowTitle,
+            ),
+          ),
+          TextButton(onPressed: onHide, child: const Text('Quitar')),
+        ],
+      ),
+    );
   }
 }
 
+/// A section title and, beside it, the one thing worth knowing about it.
 class _Heading extends StatelessWidget {
-  const _Heading({required this.icon, required this.title, required this.subtitle});
+  const _Heading({required this.icon, required this.title, required this.hint, required this.tone});
 
   final IconData icon;
   final String title;
-  final String subtitle;
+  final String hint;
+  final Color tone;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 14, color: AppColors.textTertiary),
+        Icon(icon, size: 14, color: tone),
+        const SizedBox(width: AppSpace.sm),
+        Text(
+          title,
+          style: TextStyle(color: tone, fontSize: 12, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: AppText.sectionLabel),
-              Text(subtitle, style: AppText.rowSubtitle),
-            ],
+          child: Text(
+            hint,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.rowSubtitle,
           ),
         ),
       ],
@@ -274,9 +250,13 @@ class _Heading extends StatelessWidget {
   }
 }
 
-/// One saved notice: press it to show it, or change how long it stays.
-class _SavedRow extends StatelessWidget {
-  const _SavedRow({
+/// A saved notice, sized to be hit without looking.
+///
+/// Deliberately not a row that resembles a text field: the thing you press and
+/// the thing you type into were the same shape, and during a service that is
+/// one mistake away from projecting a half-typed sentence.
+class _NoticeCard extends StatelessWidget {
+  const _NoticeCard({
     required this.notice,
     required this.onShow,
     required this.onForget,
@@ -292,79 +272,180 @@ class _SavedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.sm - 3),
+    return HoverBuilder(
+      cursor: SystemMouseCursors.click,
+      builder: (context, hovering) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            onTap: onShow,
+            child: AnimatedContainer(
+              duration: AppMotion.fast,
+              constraints: const BoxConstraints(maxWidth: 220),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 10, AppSpace.md, 10),
+              decoration: BoxDecoration(
+                color: hovering ? AppColors.accentFill : AppColors.surfaceControl,
+                borderRadius: AppRadius.all(AppRadius.md),
+                border: Border.all(color: hovering ? AppColors.accent : AppColors.border),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notice.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.rowTitle,
+                  ),
+                  const SizedBox(height: 3),
+                  _Duration(notice: notice, onSelected: onSetHide),
+                ],
+              ),
+            ),
+          ),
+          // On hover only, and inside the card. A row of cards each wearing a
+          // delete button is a row nobody wants to press, and one hanging over
+          // the edge cannot be pressed at all: Flutter does not hit-test the
+          // part of a child that falls outside its parent.
+          if (hovering)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: onForget,
+                child: Tooltip(
+                  message: 'Quitar de los guardados',
+                  child: Container(
+                    width: 17,
+                    height: 17,
+                    decoration: const BoxDecoration(
+                      color: AppColors.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 11, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How long a notice stays up, shown on the card it belongs to.
+class _Duration extends StatelessWidget {
+  const _Duration({required this.notice, required this.onSelected});
+
+  final SavedNotice notice;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<int>(
+      tooltip: 'Cuánto se queda en pantalla',
+      color: AppColors.surfaceControl,
+      itemBuilder: (_) => [
+        for (final seconds in _NoticeCard._durations)
+          PopupMenuItem(
+            value: seconds,
+            height: 34,
+            child: Text(
+              seconds == 0 ? 'Hasta que lo quite' : '$seconds segundos',
+              style: AppText.body,
+            ),
+          ),
+      ],
+      onSelected: onSelected,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            notice.hides ? Icons.timer_outlined : Icons.push_pin_outlined,
+            size: 11,
+            color: AppColors.textTertiary,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            notice.hides ? '${notice.autoHideSecs} s' : 'hasta quitarlo',
+            style: AppText.rowSubtitle,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where a new notice is written. Shaped like a composer, not like a card.
+class _Composer extends StatelessWidget {
+  const _Composer({
+    required this.controller,
+    required this.hint,
+    required this.onShow,
+    required this.onRemember,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final VoidCallback onShow;
+  final VoidCallback onRemember;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: AppTextField(controller: controller, hintText: hint, onSubmitted: (_) => onShow()),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        TextButton.icon(
+          onPressed: onRemember,
+          icon: const Icon(Icons.bookmark_add_outlined, size: 15),
+          label: const Text('Guardar'),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        FilledButton(onPressed: onShow, child: const Text('Mostrar')),
+      ],
+    );
+  }
+}
+
+/// The line for the platform, in the colour the monitor shows it in.
+class _StageLine extends StatelessWidget {
+  const _StageLine({
+    required this.controller,
+    required this.active,
+    required this.onSend,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final bool active;
+  final VoidCallback onSend;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm + 2),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: active ? 0.12 : 0.05),
+        borderRadius: AppRadius.all(AppRadius.md),
+        border: Border.all(color: AppColors.warning.withValues(alpha: active ? 0.45 : 0.2)),
+      ),
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: onShow,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.md,
-                    vertical: AppSpace.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceControl,
-                    borderRadius: AppRadius.all(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.play_arrow_rounded, size: 15, color: AppColors.accent),
-                      const SizedBox(width: AppSpace.sm - 2),
-                      Expanded(
-                        child: Text(
-                          notice.text,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.rowTitle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            child: AppTextField(
+              controller: controller,
+              hintText: 'Quedan 5 minutos',
+              onSubmitted: (_) => onSend(),
             ),
           ),
-          const SizedBox(width: AppSpace.sm - 3),
-          Tooltip(
-            message: 'Cuánto se queda en pantalla',
-            child: PopupMenuButton<int>(
-              tooltip: '',
-              color: AppColors.surfaceControl,
-              itemBuilder: (_) => [
-                for (final seconds in _durations)
-                  PopupMenuItem(
-                    value: seconds,
-                    height: 34,
-                    child: Text(
-                      seconds == 0 ? 'Hasta quitarlo' : '$seconds segundos',
-                      style: AppText.body,
-                    ),
-                  ),
-              ],
-              onSelected: onSetHide,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: AppRadius.all(AppRadius.sm),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(
-                  notice.hides ? '${notice.autoHideSecs}s' : '∞',
-                  style: AppText.rowSubtitle,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Quitar de los avisos guardados',
-            icon: const Icon(Icons.close, size: 15, color: AppColors.textDisabled),
-            onPressed: onForget,
-          ),
+          const SizedBox(width: AppSpace.sm),
+          if (active) TextButton(onPressed: onClear, child: const Text('Quitar')),
+          FilledButton(onPressed: onSend, child: const Text('Enviar')),
         ],
       ),
     );

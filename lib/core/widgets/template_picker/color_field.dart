@@ -323,12 +323,14 @@ class _SavedSwatch extends StatelessWidget {
                     )
                   : null,
             ),
-            // Only on hover: a row of swatches each wearing a delete button is
-            // a row nobody wants to click on.
+            // Only on hover, and overlapping the swatch rather than hanging off
+            // it: Flutter does not hit-test the part of a child that falls
+            // outside its parent, so an overhang is a button that cannot be
+            // pressed where it looks like it can.
             if (hovering)
               Positioned(
-                top: -5,
-                right: -5,
+                top: 0,
+                right: 0,
                 child: GestureDetector(
                   onTap: onForget,
                   child: Tooltip(
