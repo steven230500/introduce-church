@@ -1,16 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'core/services/locale_controller.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_dimens.dart';
+import 'l10n/l10n.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final locale = Modular.get<LocaleController>();
+
+    // The whole app rebuilds when the language changes, which is the point:
+    // every string below this comes from the chosen one.
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: locale,
+      builder: (context, chosen, _) => _app(chosen),
+    );
+  }
+
+  Widget _app(Locale? chosen) {
     return MaterialApp.router(
       title: 'Introduce Church',
       debugShowCheckedModeBanner: false,
+      // Null means follow the computer. Flutter then picks the closest of the
+      // supported locales, falling back to the first, which is Spanish.
+      locale: chosen,
+      supportedLocales: LocaleController.supported,
+      localizationsDelegates: const [
+        L10n.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: const ColorScheme.dark(

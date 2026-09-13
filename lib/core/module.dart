@@ -11,12 +11,14 @@ import 'repositories/media_repository.dart';
 import 'repositories/organization_repository.dart';
 import 'repositories/template_repository.dart';
 import 'services/app_prefs_service.dart';
+import 'services/locale_controller.dart';
 import 'services/bible_download_service.dart';
 
 class CoreModule extends Module {
   @override
   void exportedBinds(Injector i) {
     i.addLazySingleton<AppPrefsService>(AppPrefsService.new);
+    i.addSingleton<LocaleController>(() => LocaleController(Modular.get<AppPrefsService>()));
     i.addLazySingleton<Dio>(buildDio);
 
     // One client for the whole app: it owns the session, so a second instance

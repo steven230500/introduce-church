@@ -1,0 +1,53 @@
+{
+  "@@locale": "en",
+
+  "languageName": "English",
+
+  "menuAccount": "Account",
+  "menuChangePassword": "Change password",
+  "menuSignOut": "Sign out",
+  "menuLanguage": "Language",
+  "languageFollowSystem": "Same as the computer",
+
+  "barNoCollection": "No service open",
+  "barCountdown": "Countdown",
+  "barNotices": "Announcements",
+  "barBlank": "Black",
+  "barProjector": "Projector",
+  "barStage": "Stage",
+  "barFollow": "Follow",
+  "barHeld": "Held",
+  "barSend": "Send",
+  "barLive": "Live",
+  "barLiveOnAir": "ON AIR",
+
+  "tipCountdownShow": "Put a countdown on the screen",
+  "tipCountdownStop": "Stop the countdown",
+  "tipNotices": "Announcements for the screen, messages for the stage",
+  "tipBlank": "Black out the screen  ·  B",
+  "tipProjector": "Open the projection window for the room",
+  "tipProjectorPick": "Right-click to choose the screen",
+  "tipStage": "Open the monitor with notes for the team",
+  "tipFollowOn": "The screen follows what you select. Hold it to look around without cutting  ·  K",
+  "tipFollowOff": "The screen is held. Go back to following what you select  ·  K",
+  "tipSend": "Send what you are looking at to the screen  ·  Enter",
+  "tipLiveOn": "Send the signal to the projector",
+  "tipLiveOff": "Cut the signal to the projector",
+  "tipLibraryShow": "Show the library  ·  F",
+  "tipLibraryHide": "Hide the library  ·  F",
+
+  "countdownTitle": "Countdown",
+  "countdownPresets": "Presets",
+  "countdownCustom": "Custom (minutes)",
+  "countdownStart": "Start",
+
+  "offline": "Offline",
+  "offlineWithChanges": "{count, plural, one{Offline · 1 change} other{Offline · {count} changes}}",
+  "@offlineWithChanges": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "offlineTip": "The service runs anyway: the plan is saved on this machine.",
+  "offlineTipWithChanges": "The service runs anyway: the plan is saved on this machine.\nChanges are kept here and sent by themselves when the connection is back.",
+
+  "cancel": "Cancel"
+}

@@ -1,0 +1,60 @@
+{
+  "@@locale": "es",
+
+  "languageName": "Español",
+  "@languageName": {
+    "description": "This language's own name, shown in the language picker. Never translated: a person looking for their language reads it written the way they write it."
+  },
+
+  "menuAccount": "Cuenta",
+  "menuChangePassword": "Cambiar contraseña",
+  "menuSignOut": "Cerrar sesión",
+  "menuLanguage": "Idioma",
+  "languageFollowSystem": "El del sistema",
+  "@languageFollowSystem": {
+    "description": "Option in the language picker: use whatever language the computer is set to."
+  },
+
+  "barNoCollection": "Sin colección activa",
+  "barCountdown": "Cuenta",
+  "barNotices": "Avisos",
+  "barBlank": "Negro",
+  "barProjector": "Proyector",
+  "barStage": "Escenario",
+  "barFollow": "Sigue",
+  "barHeld": "Retenido",
+  "barSend": "Enviar",
+  "barLive": "En vivo",
+  "barLiveOnAir": "EN VIVO",
+
+  "tipCountdownShow": "Mostrar una cuenta regresiva en pantalla",
+  "tipCountdownStop": "Detener la cuenta regresiva",
+  "tipNotices": "Avisos para la pantalla y mensajes para el escenario",
+  "tipBlank": "Poner la pantalla en negro  ·  B",
+  "tipProjector": "Abrir la ventana de proyección para el público",
+  "tipProjectorPick": "Clic derecho para elegir la pantalla",
+  "tipStage": "Abrir el monitor con notas para el equipo",
+  "tipFollowOn": "La pantalla sigue lo que eliges. Reténla para buscar sin cortar  ·  K",
+  "tipFollowOff": "La pantalla está retenida. Vuelve a seguir lo que eliges  ·  K",
+  "tipSend": "Enviar a la pantalla lo que estás viendo  ·  Enter",
+  "tipLiveOn": "Enviar la señal al proyector",
+  "tipLiveOff": "Cortar la señal al proyector",
+  "tipLibraryShow": "Mostrar la biblioteca  ·  F",
+  "tipLibraryHide": "Ocultar la biblioteca  ·  F",
+
+  "countdownTitle": "Cuenta regresiva",
+  "countdownPresets": "Presets",
+  "countdownCustom": "Personalizado (minutos)",
+  "countdownStart": "Iniciar",
+
+  "offline": "Sin conexión",
+  "offlineWithChanges": "{count, plural, one{Sin conexión · 1 cambio} other{Sin conexión · {count} cambios}}",
+  "@offlineWithChanges": {
+    "description": "The offline mark, with how many edits are waiting to be sent.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "offlineTip": "El servicio corre igual: el plan está guardado en esta máquina.",
+  "offlineTipWithChanges": "El servicio corre igual: el plan está guardado en esta máquina.\nLos cambios quedan guardados aquí y se envían solos cuando vuelva la conexión.",
+
+  "cancel": "Cancelar"
+}

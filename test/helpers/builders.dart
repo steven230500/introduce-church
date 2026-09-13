@@ -2,6 +2,11 @@
 /// data they care about instead of repeating full JSON payloads.
 library;
 
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:introduce_church/core/services/locale_controller.dart';
+import 'package:introduce_church/l10n/l10n.dart';
+
 Map<String, dynamic> collectionRow({
   required String id,
   String name = 'Servicio',
@@ -77,3 +82,21 @@ Map<String, dynamic> itemRow({
   'notes': notes,
   'auto_advance_secs': autoAdvanceSecs,
 };
+
+/// A [MaterialApp] with the app's localizations, for widget tests.
+///
+/// Without the delegates, `L10n.of(context)` returns null and every widget
+/// that reads a string throws. Defaults to Spanish because that is what the
+/// app was written in and what the assertions in these tests are written
+/// against; pass [locale] to check a translation.
+Widget localizedApp(Widget child, {Locale locale = const Locale('es')}) => MaterialApp(
+  locale: locale,
+  supportedLocales: LocaleController.supported,
+  localizationsDelegates: const [
+    L10n.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: Scaffold(body: child),
+);

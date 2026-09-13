@@ -12,6 +12,8 @@ import 'collections_library_page.dart';
 import 'library/library_dock.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/services/app_prefs_service.dart';
+import '../../../core/services/locale_controller.dart';
+import '../../../l10n/l10n.dart';
 import '../../../core/widgets/ui/panel_resizer.dart';
 import '../../auth/utils/navigator.dart';
 import 'org_admin_dialog.dart';
@@ -275,9 +277,11 @@ class _AccountButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Modular.get<ApiClient>().currentUser;
+    final t = L10n.of(context);
+    final locale = Modular.get<LocaleController>();
 
     return PopupMenuButton<String>(
-      tooltip: user?.email ?? 'Cuenta',
+      tooltip: user?.email ?? t.menuAccount,
       color: AppColors.surfaceControl,
       position: PopupMenuPosition.over,
       itemBuilder: (_) => [
@@ -303,15 +307,55 @@ class _AccountButton extends StatelessWidget {
             ),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
+        PopupMenuItem<String>(
+          height: 38,
+          // A submenu rather than a dialog: choosing a language is one press,
+          // and a person hunting for it does not know what the app calls the
+          // screen it would otherwise live on.
+          child: PopupMenuButton<String>(
+            tooltip: '',
+            color: AppColors.surfaceControl,
+            position: PopupMenuPosition.under,
+            offset: const Offset(0, -4),
+            onSelected: (code) {
+              locale.choose(code == 'system' ? null : Locale(code));
+              Navigator.pop(context);
+            },
+            itemBuilder: (_) => [
+              CheckedPopupMenuItem<String>(
+                value: 'system',
+                checked: locale.value == null,
+                height: 38,
+                child: Text(
+                  t.languageFollowSystem,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                ),
+              ),
+              for (final option in LocaleController.supported)
+                CheckedPopupMenuItem<String>(
+                  value: option.languageCode,
+                  checked: locale.value?.languageCode == option.languageCode,
+                  height: 38,
+                  // Each language's own name, written the way its readers
+                  // write it, so somebody scanning for theirs finds it.
+                  child: Text(
+                    lookupL10n(option).languageName,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                  ),
+                ),
+            ],
+            child: AppMenuRow(icon: Icons.translate_rounded, label: t.menuLanguage),
+          ),
+        ),
+        PopupMenuItem<String>(
           value: 'password',
           height: 38,
-          child: AppMenuRow(icon: Icons.key_outlined, label: 'Cambiar contraseña'),
+          child: AppMenuRow(icon: Icons.key_outlined, label: t.menuChangePassword),
         ),
-        const PopupMenuItem(
+        PopupMenuItem<String>(
           value: 'signout',
           height: 38,
-          child: AppMenuRow(icon: Icons.logout_rounded, label: 'Cerrar sesión', danger: true),
+          child: AppMenuRow(icon: Icons.logout_rounded, label: t.menuSignOut, danger: true),
         ),
       ],
       onSelected: (value) async {

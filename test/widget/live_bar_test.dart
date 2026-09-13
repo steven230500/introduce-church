@@ -59,7 +59,7 @@ void main() {
           BlocProvider.value(value: control),
           BlocProvider.value(value: shell),
         ],
-        child: const MaterialApp(home: Scaffold(body: LiveBar())),
+        child: localizedApp(const LiveBar()),
       ),
     );
     await tester.pumpAndSettle();

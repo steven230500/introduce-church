@@ -99,6 +99,25 @@ class AppPrefsService {
   ///
   /// A church wires the same room the same way every week, and the app used to
   /// take the second display it was handed and hope.
+  /// The language the operator chose, or null to follow the computer.
+  ///
+  /// A church in a bilingual city runs the machine in one language and the
+  /// service in another, so this is a setting and not a reading of the OS.
+  Future<String?> getLocale() async {
+    final d = await _read();
+    return d['locale'] as String?;
+  }
+
+  Future<void> setLocale(String? code) async {
+    final d = Map<String, dynamic>.from(await _read());
+    if (code == null) {
+      d.remove('locale');
+    } else {
+      d['locale'] = code;
+    }
+    await _write(d);
+  }
+
   Future<String?> getProjectorDisplay() async {
     final d = await _read();
     return d['projector_display'] as String?;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/l10n.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -22,6 +23,7 @@ class LiveBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return BlocBuilder<ControlCubit, ControlState>(
       builder: (context, state) {
         final model = state is ControlLoadedState ? state.model : null;
@@ -88,10 +90,10 @@ class LiveBar extends StatelessWidget {
                     children: [
                       AppIconButton(
                         icon: Icons.timer_outlined,
-                        label: labelState ? 'Cuenta' : null,
+                        label: labelState ? t.barCountdown : null,
                         tooltip: model?.countdownActive == true
-                            ? 'Detener la cuenta regresiva'
-                            : 'Mostrar una cuenta regresiva en pantalla',
+                            ? t.tipCountdownStop
+                            : t.tipCountdownShow,
                         active: model?.countdownActive ?? false,
                         activeColor: AppColors.warning,
                         onTap: !enabled
@@ -106,8 +108,8 @@ class LiveBar extends StatelessWidget {
                       ),
                       AppIconButton(
                         icon: Icons.campaign_outlined,
-                        label: labelState ? 'Avisos' : null,
-                        tooltip: 'Avisos para la pantalla y mensajes para el escenario',
+                        label: labelState ? t.barNotices : null,
+                        tooltip: t.tipNotices,
                         active:
                             (model?.overlayVisible ?? false) ||
                             (model?.stageMessage ?? '').isNotEmpty,
@@ -116,8 +118,8 @@ class LiveBar extends StatelessWidget {
                       ),
                       AppIconButton(
                         icon: Icons.visibility_off_outlined,
-                        label: labelState ? 'Negro' : null,
-                        tooltip: 'Poner la pantalla en negro  ·  B',
+                        label: labelState ? t.barBlank : null,
+                        tooltip: t.tipBlank,
                         active: model?.blankScreen ?? false,
                         activeColor: AppColors.textMuted,
                         onTap: enabled ? cubit.toggleBlank : null,
@@ -133,8 +135,8 @@ class LiveBar extends StatelessWidget {
                       _ProjectorButton(labelled: labelOutputs, enabled: enabled),
                       AppIconButton(
                         icon: Icons.co_present_outlined,
-                        label: labelOutputs ? 'Escenario' : null,
-                        tooltip: 'Abrir el monitor con notas para el equipo',
+                        label: labelOutputs ? t.barStage : null,
+                        tooltip: t.tipStage,
                         onTap: enabled ? cubit.openStageMonitor : null,
                       ),
                     ],
@@ -148,11 +150,9 @@ class LiveBar extends StatelessWidget {
                         ? Icons.link_off_rounded
                         : Icons.link_rounded,
                     label: labelState
-                        ? (model?.followCursor == false ? 'Retenido' : 'Sigue')
+                        ? (model?.followCursor == false ? t.barHeld : t.barFollow)
                         : null,
-                    tooltip: model?.followCursor == false
-                        ? 'La pantalla está retenida. Vuelve a seguir lo que eliges  ·  K'
-                        : 'La pantalla sigue lo que eliges. Reténla para buscar sin cortar  ·  K',
+                    tooltip: model?.followCursor == false ? t.tipFollowOff : t.tipFollowOn,
                     active: model?.followCursor == false,
                     activeColor: AppColors.warning,
                     onTap: enabled ? cubit.toggleFollowCursor : null,
@@ -239,11 +239,12 @@ class _NowShowing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final collection = model?.activeCollection;
     if (collection == null) {
-      return const Text(
-        'Sin colección activa',
-        style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+      return Text(
+        t.barNoCollection,
+        style: const TextStyle(color: AppColors.textDisabled, fontSize: 12),
       );
     }
 
@@ -297,13 +298,14 @@ class _DockToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return BlocBuilder<ShellCubit, ShellState>(
       buildWhen: (a, b) => a.dockOpen != b.dockOpen || a.section != b.section,
       builder: (context, shell) {
         final inPresenter = shell.section == ShellSection.presenter;
         return AppIconButton(
           icon: shell.dockOpen ? Icons.vertical_split_rounded : Icons.view_sidebar_rounded,
-          tooltip: shell.dockOpen ? 'Ocultar la biblioteca  ·  F' : 'Mostrar la biblioteca  ·  F',
+          tooltip: shell.dockOpen ? t.tipLibraryHide : t.tipLibraryShow,
           active: shell.dockOpen && inPresenter,
           // Subtle: this moves a panel, it does not change what is projected.
           // A solid fill here competed with the live button for attention.
@@ -347,14 +349,13 @@ class _ProjectorButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return GestureDetector(
       onSecondaryTap: enabled ? () => _open(context, alwaysAsk: true) : null,
       child: AppIconButton(
         icon: Icons.present_to_all_outlined,
-        label: labelled ? 'Proyector' : null,
-        tooltip:
-            'Abrir la ventana de proyección para el público\n'
-            'Clic derecho para elegir la pantalla',
+        label: labelled ? t.barProjector : null,
+        tooltip: '${t.tipProjector}\n${t.tipProjectorPick}',
         onTap: enabled ? () => _open(context, alwaysAsk: false) : null,
       ),
     );
@@ -377,18 +378,14 @@ class _OfflineChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = waiting == 0
-        ? 'Sin conexión'
-        : waiting == 1
-        ? 'Sin conexión · 1 cambio'
-        : 'Sin conexión · $waiting cambios';
+    final t = L10n.of(context);
+    // The plural is the .arb's job, not a ternary here: languages do not all
+    // have two forms, and the ones that do not are exactly the ones a hand
+    // written ternary gets wrong.
+    final label = waiting == 0 ? t.offline : t.offlineWithChanges(waiting);
 
     return Tooltip(
-      message: waiting == 0
-          ? 'El servicio corre igual: el plan está guardado en esta máquina.'
-          : 'El servicio corre igual: el plan está guardado en esta máquina.\n'
-                'Los cambios quedan guardados aquí y se envían solos cuando '
-                'vuelva la conexión.',
+      message: waiting == 0 ? t.offlineTip : t.offlineTipWithChanges,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
         decoration: BoxDecoration(
@@ -426,8 +423,9 @@ class _TakeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return Tooltip(
-      message: 'Enviar a la pantalla lo que estás viendo  ·  Enter',
+      message: t.tipSend,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -436,14 +434,18 @@ class _TakeButton extends StatelessWidget {
             color: AppColors.accent,
             borderRadius: AppRadius.all(AppRadius.sm + 1),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.send_rounded, size: 13, color: Colors.white),
-              SizedBox(width: AppSpace.sm - 2),
+              const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+              const SizedBox(width: AppSpace.sm - 2),
               Text(
-                'Enviar',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                t.barSend,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -463,8 +465,9 @@ class _LiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return Tooltip(
-      message: isLive ? 'Cortar la señal al proyector' : 'Enviar la señal al proyector',
+      message: isLive ? t.tipLiveOff : t.tipLiveOn,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -489,7 +492,7 @@ class _LiveButton extends StatelessWidget {
               ),
               const SizedBox(width: 7),
               Text(
-                isLive ? 'EN VIVO' : 'En vivo',
+                isLive ? t.barLiveOnAir : t.barLive,
                 style: TextStyle(
                   color: isLive ? Colors.white : AppColors.textTertiary,
                   fontSize: 12,
@@ -544,16 +547,17 @@ class _CountdownDialogState extends State<_CountdownDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return AppDialog(
-      title: 'Cuenta regresiva',
+      title: t.countdownTitle,
       icon: Icons.timer_outlined,
       width: 340,
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(t.cancel))],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Presets', style: TextStyle(color: kTextMuted, fontSize: 11)),
+          Text(t.countdownPresets, style: const TextStyle(color: kTextMuted, fontSize: 11)),
           const SizedBox(height: AppSpace.sm),
           Wrap(
             spacing: AppSpace.sm,
@@ -569,7 +573,7 @@ class _CountdownDialogState extends State<_CountdownDialog> {
                 .toList(),
           ),
           const SizedBox(height: AppSpace.lg),
-          const Text('Personalizado (minutos)', style: TextStyle(color: kTextMuted, fontSize: 11)),
+          Text(t.countdownCustom, style: const TextStyle(color: kTextMuted, fontSize: 11)),
           const SizedBox(height: AppSpace.sm - 2),
           Row(
             children: [
@@ -589,7 +593,7 @@ class _CountdownDialogState extends State<_CountdownDialog> {
                   final m = int.tryParse(_ctrl.text);
                   if (m != null && m > 0) _submit(m);
                 },
-                child: const Text('Iniciar'),
+                child: Text(t.countdownStart),
               ),
             ],
           ),
