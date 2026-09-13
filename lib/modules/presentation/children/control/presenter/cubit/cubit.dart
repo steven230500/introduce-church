@@ -755,10 +755,18 @@ class ControlCubit extends Cubit<ControlState> {
   Future<void> restoreItem(CollectionItem item, int index) async {
     await _repository.restoreItem(item);
     await refresh();
-    if (state is! ControlLoadedState) return;
+    await _moveNewestItemTo(item.collectionId, index);
+  }
 
-    final model = (state as ControlLoadedState).model;
-    final collection = model.collections.where((c) => c.id == item.collectionId).firstOrNull;
+  /// Moves the row that was just added into position.
+  ///
+  /// The API only ever appends, so anything that has to land somewhere else
+  /// gets there by rewriting the running order afterwards.
+  Future<void> _moveNewestItemTo(String collectionId, int index) async {
+    if (state is! ControlLoadedState) return;
+    final collection = (state as ControlLoadedState).model.collections
+        .where((c) => c.id == collectionId)
+        .firstOrNull;
     if (collection == null) return;
 
     final ids = collection.items.map((i) => i.id).toList();
@@ -766,6 +774,29 @@ class ControlCubit extends Cubit<ControlState> {
     ids.insert(index, ids.removeLast());
     await _repository.reorderItems(collection.id, ids);
     await refresh();
+  }
+
+  /// Adds a reading straight after the item on screen, and goes to it.
+  ///
+  /// Left at the end of the plan it would be out of order, and the press after
+  /// it would land past the end of the service. This is the path a preacher
+  /// naming a verse mid-sermon takes, so it has to come out where the service
+  /// actually is.
+  Future<void> addBibleVerseAfterCurrent(BibleVerseRef ref) async {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final collection = model.activeCollection;
+    if (collection == null) return;
+
+    final target = collection.items.isEmpty ? 0 : model.currentItemIndex + 1;
+    await _repository.addBibleVerseToCollection(
+      collectionId: collection.id,
+      ref: ref,
+      order: collection.items.length,
+    );
+    await refresh();
+    await _moveNewestItemTo(collection.id, target);
+    selectItem(target);
   }
 
   Future<void> setItemTitle(String itemId, String title) async {

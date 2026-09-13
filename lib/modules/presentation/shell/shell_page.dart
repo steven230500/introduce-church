@@ -18,6 +18,7 @@ import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
 import 'widgets/change_password_dialog.dart';
 import 'widgets/live_bar.dart';
+import 'widgets/quick_verse_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
 
 /// Application frame.
@@ -96,6 +97,8 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       // Does nothing while the screen follows the cursor, so it is safe to
       // press out of habit.
       control.take();
+    } else if (key == LogicalKeyboardKey.keyV) {
+      showQuickVerseDialog(context);
     } else if (key == LogicalKeyboardKey.keyK) {
       control.toggleFollowCursor();
     } else if (key == LogicalKeyboardKey.keyB) {

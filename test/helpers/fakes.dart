@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:introduce_church/core/api/api_client.dart';
 import 'package:introduce_church/core/api/presentation_socket.dart';
+import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/collection.dart';
 import 'package:introduce_church/core/models/collection_item_type.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
@@ -164,7 +165,9 @@ class FakeControlRepository extends ControlRepository {
 
   List<Map<String, dynamic>> _items(String collectionId) {
     final row = rows.firstWhere((r) => r['id'] == collectionId);
-    final items = (row['collection_items'] as List).cast<Map<String, dynamic>>();
+    // A copy, not a cast: a builder's default is a const list, and casting one
+    // hands back a view that cannot be added to.
+    final items = List<Map<String, dynamic>>.from(row['collection_items'] as List);
     row['collection_items'] = items;
     return items;
   }
@@ -208,6 +211,25 @@ class FakeControlRepository extends ControlRepository {
               },
           ],
         };
+
+  @override
+  Future<void> addBibleVerseToCollection({
+    required String collectionId,
+    required BibleVerseRef ref,
+    required int order,
+  }) async {
+    calls.add('addVerse:${ref.reference}');
+    final items = _items(collectionId);
+    items.add(
+      itemRow(
+        id: 'verse-${items.length}',
+        collectionId: collectionId,
+        type: 'bible_verse',
+        order: items.length,
+        contentJson: ref.toJson(),
+      ),
+    );
+  }
 
   @override
   Future<void> updateItemTitle(String itemId, String title) async {

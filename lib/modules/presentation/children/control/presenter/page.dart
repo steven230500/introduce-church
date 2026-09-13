@@ -28,6 +28,7 @@ import '../../../../../core/widgets/ui/page_header.dart';
 import '../../../../../core/widgets/ui/panel_resizer.dart';
 import '../../../shell/shell_cubit.dart';
 import '../../../shell/widgets/collection_dialog.dart';
+import '../../../shell/widgets/quick_verse_dialog.dart';
 import 'cubit/cubit.dart';
 
 part 'widgets/body.dart';

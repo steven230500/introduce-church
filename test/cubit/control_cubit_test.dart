@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 
@@ -342,6 +343,53 @@ void main() {
       // The projector moved on; the operator's cursor did not move with it.
       expect(model().liveSlideIndex, 1);
       expect(model().currentItemIndex, 1);
+    });
+  });
+
+  group('a verse looked up mid-sermon', () {
+    BibleVerseRef verse() => const BibleVerseRef(
+      versionCode: 'rvr1960',
+      versionName: 'Reina Valera 1960',
+      bookIndex: 42,
+      bookName: 'Juan',
+      bookAbbrev: 'jo',
+      chapter: 3,
+      verseStart: 16,
+      verseEnd: 16,
+      texts: ['Porque de tal manera amó Dios al mundo...'],
+    );
+
+    test('lands right after what is on screen, not at the end', () async {
+      // Left at the end it would be out of order in the plan, and the press
+      // after it would land past the end of the service.
+      await openFirstCollection();
+
+      await cubit.addBibleVerseAfterCurrent(verse());
+
+      expect(model().activeCollection!.items.map((i) => i.displayTitle), [
+        'Primera',
+        'Juan 3:16',
+        'Segunda',
+      ]);
+    });
+
+    test('the operator is taken to it', () async {
+      await openFirstCollection();
+
+      await cubit.addBibleVerseAfterCurrent(verse());
+
+      expect(model().currentItemIndex, 1);
+      expect(model().currentItem!.displayTitle, 'Juan 3:16');
+    });
+
+    test('an empty plan takes it as the first item', () async {
+      repo.rows = [collectionRow(id: 'c1')];
+      await openFirstCollection();
+
+      await cubit.addBibleVerseAfterCurrent(verse());
+
+      expect(model().activeCollection!.items.single.displayTitle, 'Juan 3:16');
+      expect(model().currentItemIndex, 0);
     });
   });
 

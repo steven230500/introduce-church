@@ -510,15 +510,27 @@ void main() {
       expect(shell.state.dockOpen, isTrue);
     });
 
-    testWidgets('choosing a verse opens the Bible tab', (tester) async {
+    testWidgets('choosing to browse opens the Bible tab', (tester) async {
       await pumpPresenter(tester);
 
       await tester.tap(find.byIcon(Icons.add_circle_outline));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Versículo'));
+      await tester.tap(find.text('Buscar en la Biblia'));
       await tester.pumpAndSettle();
 
       expect(shell.state.tab, LibraryTab.bible);
+    });
+
+    testWidgets('the quick verse is offered first, with its key', (tester) async {
+      // Browsing to a passage is a book list, a chapter grid and a verse list
+      // while the room waits. The line of text goes above it.
+      await pumpPresenter(tester);
+
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Versículo rápido'), findsOneWidget);
+      expect(find.text('V'), findsOneWidget);
     });
   });
 }

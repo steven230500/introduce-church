@@ -26,9 +26,14 @@ class _AddItemMenu extends StatelessWidget {
           child: AppMenuRow(icon: Icons.music_note, label: 'Canción'),
         ),
         const PopupMenuItem(
+          value: 'quick_verse',
+          height: 38,
+          child: AppMenuRow(icon: Icons.bolt_rounded, label: 'Versículo rápido', trailing: 'V'),
+        ),
+        const PopupMenuItem(
           value: 'bible',
           height: 38,
-          child: AppMenuRow(icon: Icons.menu_book, label: 'Versículo'),
+          child: AppMenuRow(icon: Icons.menu_book, label: 'Buscar en la Biblia'),
         ),
         const PopupMenuItem(
           value: 'media',
@@ -133,6 +138,8 @@ class _AddItemMenu extends StatelessWidget {
       // items in a row without reopening anything.
       case 'song':
         shell.openLibrary(LibraryTab.songs);
+      case 'quick_verse':
+        await showQuickVerseDialog(context);
       case 'bible':
         shell.openLibrary(LibraryTab.bible);
       case 'media':
