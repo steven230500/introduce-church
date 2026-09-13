@@ -12,6 +12,7 @@ import '../slide_view.dart';
 import 'template_editor_cubit.dart';
 import 'template_picker_cubit.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
 
 /// Shows a grid of presets + custom templates. Returns selected template id.
 Future<String?> showTemplatePicker(
@@ -397,10 +398,19 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               ),
               const SizedBox(width: 10),
               Text(
-                widget.isNew ? 'Nuevo template' : 'Editar template',
+                widget.isNew ? 'Nuevo diseño' : 'Editar diseño',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
+              // Up here, where it can be found. The two buttons this replaces
+              // sat at the bottom of a scrolling panel, so the mode an editor
+              // is in was both invisible and hard to change.
+              _ModeToggle(
+                inLayers: isLayersMode,
+                onSimple: cubit.disableLayers,
+                onLayers: cubit.enableLayers,
+              ),
+              const SizedBox(width: AppSpace.sm),
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 visualDensity: VisualDensity.compact,
@@ -464,159 +474,159 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
             child: SizedBox(
               width: 1200,
               height: 700,
-              child: Row(
+              // The header runs the whole width here rather than living in the
+              // narrow left column, which could not hold a title and a mode
+              // switch at the same time.
+              child: Column(
                 children: [
-                  // Left: name + bg + layer list (220px)
-                  SizedBox(
-                    width: 220,
-                    child: Column(
+                  dialogHeader(),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: Row(
                       children: [
-                        dialogHeader(),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextField(
-                                  controller: _nameCtrl,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Nombre',
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
+                        // Left: name + bg + layer list
+                        SizedBox(
+                          width: 240,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      TextField(
+                                        controller: _nameCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Nombre',
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      bgControls(),
+                                      const SizedBox(height: 16),
+                                      _LayersListSection(
+                                        template: t,
+                                        selectedLayerId: state.selectedLayerId,
+                                        cubit: cubit,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                bgControls(),
-                                const SizedBox(height: 16),
-                                _LayersListSection(
-                                  template: t,
-                                  selectedLayerId: state.selectedLayerId,
-                                  cubit: cubit,
+                              ),
+                              const Divider(height: 1),
+                              dialogFooter(),
+                            ],
+                          ),
+                        ),
+
+                        const VerticalDivider(width: 1),
+
+                        // Center: drag-and-drop canvas (expanded)
+                        Expanded(
+                          child: Container(
+                            color: AppColors.background,
+                            child: Column(
+                              children: [
+                                sampleFields(),
+                                Expanded(
+                                  child: Center(
+                                    child: AspectRatio(
+                                      aspectRatio: 16 / 9,
+                                      child: Container(
+                                        margin: const EdgeInsets.all(16),
+                                        clipBehavior: Clip.hardEdge,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: AppColors.surfaceControl),
+                                        ),
+                                        child: _LayerCanvas(
+                                          template: t,
+                                          sampleContent: _sampleCtrl.text,
+                                          sampleReference: _sampleRefCtrl.text,
+                                          selectedLayerId: state.selectedLayerId,
+                                          cubit: cubit,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const Divider(height: 1),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.tune, size: 14),
-                              label: const Text('Modo simple', style: TextStyle(fontSize: 12)),
-                              onPressed: cubit.disableLayers,
-                              style: OutlinedButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                foregroundColor: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                        ),
-                        dialogFooter(),
-                      ],
-                    ),
-                  ),
 
-                  const VerticalDivider(width: 1),
+                        const VerticalDivider(width: 1),
 
-                  // Center: drag-and-drop canvas (expanded)
-                  Expanded(
-                    child: Container(
-                      color: AppColors.background,
-                      child: Column(
-                        children: [
-                          sampleFields(),
-                          Expanded(
-                            child: Center(
-                              child: AspectRatio(
-                                aspectRatio: 16 / 9,
-                                child: Container(
-                                  margin: const EdgeInsets.all(16),
-                                  clipBehavior: Clip.hardEdge,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.surfaceControl),
-                                  ),
-                                  child: _LayerCanvas(
-                                    template: t,
-                                    sampleContent: _sampleCtrl.text,
-                                    sampleReference: _sampleRefCtrl.text,
-                                    selectedLayerId: state.selectedLayerId,
-                                    cubit: cubit,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const VerticalDivider(width: 1),
-
-                  // Right: layer inspector (280px)
-                  SizedBox(
-                    width: 280,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
-                          child: Row(
+                        // Right: layer inspector (280px)
+                        SizedBox(
+                          width: 280,
+                          child: Column(
                             children: [
-                              const Text(
-                                'Propiedades',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                              ),
-                              const Spacer(),
-                              if (state.selectedLayer != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceControl,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    state.selectedLayer!.typeName,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.textTertiary,
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
+                                child: Row(
+                                  children: [
+                                    const Text(
+                                      'Propiedades',
+                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                     ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: state.selectedLayer == null
-                              ? const Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.touch_app_outlined,
-                                        color: AppColors.border,
-                                        size: 32,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Selecciona una capa',
-                                        style: TextStyle(
-                                          color: AppColors.textDisabled,
-                                          fontSize: 12,
+                                    const Spacer(),
+                                    if (state.selectedLayer != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfaceControl,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          state.selectedLayer!.typeName,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.textTertiary,
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                )
-                              : SingleChildScrollView(
-                                  padding: const EdgeInsets.all(14),
-                                  child: _LayerInspector(layer: state.selectedLayer!, cubit: cubit),
+                                  ],
                                 ),
+                              ),
+                              const Divider(height: 1),
+                              Expanded(
+                                child: state.selectedLayer == null
+                                    ? const Center(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.touch_app_outlined,
+                                              color: AppColors.border,
+                                              size: 32,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'Selecciona una capa',
+                                              style: TextStyle(
+                                                color: AppColors.textDisabled,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : SingleChildScrollView(
+                                        padding: const EdgeInsets.all(14),
+                                        child: _LayerInspector(
+                                          layer: state.selectedLayer!,
+                                          cubit: cubit,
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -768,15 +778,6 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                 ),
                               ],
                               const SizedBox(height: 20),
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.layers_outlined, size: 14),
-                                label: const Text('Usar capas', style: TextStyle(fontSize: 12)),
-                                onPressed: cubit.enableLayers,
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  foregroundColor: AppColors.accent,
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -849,6 +850,90 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Switches between arranging a design with sliders and arranging it by hand.
+///
+/// Deliberately says what each mode is rather than what pressing it does, so
+/// the editor always shows which of the two you are in.
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.inLayers, required this.onSimple, required this.onLayers});
+
+  final bool inLayers;
+  final VoidCallback onSimple;
+  final VoidCallback onLayers;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceControl,
+        borderRadius: AppRadius.all(AppRadius.sm + 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ModeButton(
+            icon: Icons.tune,
+            label: 'Simple',
+            active: !inLayers,
+            onTap: inLayers ? onSimple : null,
+          ),
+          _ModeButton(
+            icon: Icons.layers_outlined,
+            label: 'Capas',
+            active: inLayers,
+            onTap: inLayers ? null : onLayers,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs + 1),
+        decoration: BoxDecoration(
+          color: active ? AppColors.accent : Colors.transparent,
+          borderRadius: AppRadius.all(AppRadius.sm),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: active ? Colors.white : AppColors.textMuted),
+            const SizedBox(width: AppSpace.xs + 1),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
