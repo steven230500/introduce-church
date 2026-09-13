@@ -19,6 +19,7 @@ import '../../auth/utils/navigator.dart';
 import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
 import 'widgets/change_password_dialog.dart';
+import 'widgets/command_palette.dart';
 import 'widgets/live_bar.dart';
 import 'widgets/quick_verse_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
@@ -71,11 +72,22 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent || _isTyping) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+
+    // Before the typing guard on purpose: the search is the one thing an
+    // operator reaches for while the cursor is already sitting in a field.
+    if (key == LogicalKeyboardKey.keyK &&
+        (HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed)) {
+      showCommandPalette(context);
+      return KeyEventResult.handled;
+    }
+
+    if (_isTyping) return KeyEventResult.ignored;
 
     final control = context.read<ControlCubit>();
     final shell = context.read<ShellCubit>();
-    final key = event.logicalKey;
 
     if (key == LogicalKeyboardKey.arrowRight ||
         key == LogicalKeyboardKey.arrowDown ||

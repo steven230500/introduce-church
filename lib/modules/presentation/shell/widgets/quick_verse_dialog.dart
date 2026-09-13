@@ -16,29 +16,37 @@ import '../../children/control/presenter/cubit/cubit.dart';
 /// The preacher says where to go and the operator has a few seconds. Browsing
 /// there is a book list, a chapter grid and a verse list, all while the room
 /// waits. This is one line and Enter.
-Future<void> showQuickVerseDialog(BuildContext context, {BibleRepository? repository}) {
+Future<void> showQuickVerseDialog(
+  BuildContext context, {
+  BibleRepository? repository,
+  String? initial,
+}) {
   return showDialog<void>(
     context: context,
     builder: (_) => BlocProvider.value(
       value: context.read<ControlCubit>(),
-      child: QuickVerseDialog(repository: repository),
+      child: QuickVerseDialog(repository: repository, initial: initial),
     ),
   );
 }
 
 @visibleForTesting
 class QuickVerseDialog extends StatefulWidget {
-  const QuickVerseDialog({super.key, this.repository});
+  const QuickVerseDialog({super.key, this.repository, this.initial});
 
   /// Injected by tests. In the app it comes from the injector.
   final BibleRepository? repository;
+
+  /// A reference the operator already typed somewhere else, so they do not
+  /// type it twice.
+  final String? initial;
 
   @override
   State<QuickVerseDialog> createState() => _QuickVerseDialogState();
 }
 
 class _QuickVerseDialogState extends State<QuickVerseDialog> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.initial ?? '');
   late final _repository = widget.repository ?? Modular.get<BibleRepository>();
 
   ReferenceResult _parsed = (reference: null, problem: ReferenceProblem.empty, typed: null);
@@ -49,6 +57,9 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
   void initState() {
     super.initState();
     _controller.addListener(_reparse);
+    // A reference handed in from the palette is already a reference; show its
+    // verdict without waiting for a keystroke.
+    if (widget.initial?.isNotEmpty == true) _reparse();
   }
 
   @override

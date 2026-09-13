@@ -207,5 +207,39 @@
         "type": "String"
       }
     }
+  },
+  "searchEverything": "Search everything",
+  "searchHint": "Find a song, a passage, a design or an action...",
+  "searchNothing": "Nothing matches “{query}”",
+  "@searchNothing": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchOpenServiceFirst": "Open a service before adding to it",
+  "groupActions": "Actions",
+  "groupBible": "Bible",
+  "groupSongs": "Songs",
+  "groupMedia": "Media",
+  "groupDesigns": "Designs",
+  "searchAddPassage": "Add {reference}",
+  "@searchAddPassage": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "searchApplyDesign": "Use in this service",
+  "searchHintKeys": "↑↓ to move · Enter to use · Esc to close",
+  "addedToService": "{name} added",
+  "@addedToService": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

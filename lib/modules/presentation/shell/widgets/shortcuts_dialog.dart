@@ -28,7 +28,10 @@ class _ShortcutsDialog extends StatelessWidget {
       ('B', 'Pantalla negra'),
       ('Esc', 'Quitar la pantalla negra'),
     ],
-    'Contenido': [('V', 'Versículo rápido: escribe "jn 3:16" y Enter')],
+    'Contenido': [
+      ('⌘K', 'Buscar en todo: canciones, pasajes, diseños, acciones'),
+      ('V', 'Versículo rápido: escribe "jn 3:16" y Enter'),
+    ],
     'Buscar sin cortar': [
       ('K', 'Retener la pantalla, o volver a seguirte'),
       ('Enter', 'Enviar a la pantalla lo que estás viendo'),
