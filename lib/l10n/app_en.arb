@@ -1,14 +1,11 @@
 {
   "@@locale": "en",
-
   "languageName": "English",
-
   "menuAccount": "Account",
   "menuChangePassword": "Change password",
   "menuSignOut": "Sign out",
   "menuLanguage": "Language",
   "languageFollowSystem": "Same as the computer",
-
   "barNoCollection": "No service open",
   "barCountdown": "Countdown",
   "barNotices": "Announcements",
@@ -20,7 +17,6 @@
   "barSend": "Send",
   "barLive": "Live",
   "barLiveOnAir": "ON AIR",
-
   "tipCountdownShow": "Put a countdown on the screen",
   "tipCountdownStop": "Stop the countdown",
   "tipNotices": "Announcements for the screen, messages for the stage",
@@ -35,19 +31,127 @@
   "tipLiveOff": "Cut the signal to the projector",
   "tipLibraryShow": "Show the library  ·  F",
   "tipLibraryHide": "Hide the library  ·  F",
-
   "countdownTitle": "Countdown",
   "countdownPresets": "Presets",
   "countdownCustom": "Custom (minutes)",
   "countdownStart": "Start",
-
   "offline": "Offline",
   "offlineWithChanges": "{count, plural, one{Offline · 1 change} other{Offline · {count} changes}}",
   "@offlineWithChanges": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "offlineTip": "The service runs anyway: the plan is saved on this machine.",
   "offlineTipWithChanges": "The service runs anyway: the plan is saved on this machine.\nChanges are kept here and sent by themselves when the connection is back.",
-
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "tabSongs": "Songs",
+  "tabBible": "Bible",
+  "tabMedia": "Media",
+  "tabDesigns": "Designs",
+  "dockAddTo": "Add to: {name}",
+  "@dockAddTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockAddToSetList": "Add to the running order",
+  "dockChoose": "Choose",
+  "dockPickCollectionFirst": "Open a service before adding to it",
+  "setList": "Running order",
+  "sectionItems": "ITEMS",
+  "noCollectionOpen": "No service open",
+  "openFromCollections": "Open one from Services, or from the picker above.",
+  "emptyCollection": "Nothing in this service yet",
+  "addSongsVersesMedia": "Add songs, passages or media.",
+  "createCollection": "Create a service",
+  "createToStart": "Create a service to start building it.",
+  "newCollection": "New service",
+  "collectionOptions": "Service options",
+  "nameAndDate": "Name and date",
+  "changeCollection": "Switch service",
+  "slideDesign": "Slide design",
+  "duplicateForAnotherSunday": "Duplicate for another Sunday",
+  "exportSetList": "Export the running order",
+  "backgroundAudio": "Background audio",
+  "changeBackgroundAudio": "Change the background audio",
+  "removeBackgroundAudio": "Remove the background audio",
+  "deleteCollection": "Delete the service",
+  "deleteCollectionQuestion": "Delete \"{name}\"?",
+  "@deleteCollectionQuestion": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteCollectionBody": "Everything in it goes too.",
+  "delete": "Delete",
+  "remove": "Remove",
+  "save": "Save",
+  "undo": "Undo",
+  "clear": "Clear",
+  "dragToReorder": "Drag to reorder",
+  "itemOptions": "Item options",
+  "removeFromSetList": "Remove from the running order",
+  "rename": "Rename",
+  "itemName": "Item name",
+  "addNote": "Add a note",
+  "editNote": "Edit the note",
+  "noteFor": "Note — {title}",
+  "@noteFor": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "internalNote": "Note for the desk...",
+  "autoAdvance": "Auto-advance",
+  "advanceAfter": "Move on by itself after:",
+  "customSeconds": "Custom seconds",
+  "changeDesign": "Change the design",
+  "ownDesign": "Its own design",
+  "design": "Design",
+  "useCollectionDesign": "Use the service's design",
+  "output": "Output",
+  "gridView": "Grid",
+  "bigSlideView": "Big slide",
+  "onScreenNow": "On screen now",
+  "notSent": "NOT SENT",
+  "blackMark": "BLACK",
+  "blackScreen": "SCREEN IS BLACK",
+  "noItemSelected": "Nothing selected",
+  "selectAnItem": "Pick an item from the running order",
+  "noSlides": "No slides",
+  "slideNumber": "Slide {number}",
+  "@slideNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "previousShortcut": "Previous  ·  ←",
+  "nextShortcut": "Next  ·  →",
+  "itemCount": "{count, plural, one{1 item} other{{count} items}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itemRemoved": "\"{title}\" removed from the running order",
+  "@itemRemoved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

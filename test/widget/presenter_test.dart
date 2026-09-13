@@ -71,7 +71,7 @@ void main() {
           BlocProvider.value(value: control),
           BlocProvider.value(value: shell),
         ],
-        child: const MaterialApp(home: Scaffold(body: ControlPage())),
+        child: localizedApp(const ControlPage()),
       ),
     );
     await control.load();

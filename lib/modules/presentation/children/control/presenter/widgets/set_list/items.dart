@@ -8,17 +8,16 @@ class _SetListItems extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final collection = model.activeCollection;
 
     if (collection == null) {
       return EmptyState(
         compact: true,
         icon: Icons.folder_open_outlined,
-        title: 'Ninguna colección abierta',
-        message: model.collections.isEmpty
-            ? 'Crea una colección para empezar a armar el servicio.'
-            : 'Abre una desde Colecciones o desde el selector de arriba.',
-        actionLabel: model.collections.isEmpty ? 'Crear colección' : null,
+        title: t.noCollectionOpen,
+        message: model.collections.isEmpty ? t.createToStart : t.openFromCollections,
+        actionLabel: model.collections.isEmpty ? t.createCollection : null,
         onAction: model.collections.isEmpty
             ? () async {
                 final cubit = context.read<ControlCubit>();
@@ -41,8 +40,8 @@ class _SetListItems extends StatelessWidget {
           children: [
             const Icon(Icons.playlist_add_rounded, size: 32, color: AppColors.textDisabled),
             const SizedBox(height: AppSpace.md),
-            const Text(
-              'Colección vacía',
+            Text(
+              t.emptyCollection,
               style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 13,
@@ -50,11 +49,7 @@ class _SetListItems extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpace.xs),
-            const Text(
-              'Agrega canciones, versículos o media.',
-              textAlign: TextAlign.center,
-              style: AppText.rowSubtitle,
-            ),
+            Text(t.addSongsVersesMedia, textAlign: TextAlign.center, style: AppText.rowSubtitle),
             const SizedBox(height: AppSpace.lg),
             const _AddItemMenu(expanded: true),
           ],
@@ -68,7 +63,7 @@ class _SetListItems extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.xs, 0),
           child: Row(
             children: [
-              const Expanded(child: Text('ELEMENTOS', style: AppText.sectionLabel)),
+              Expanded(child: Text(t.sectionItems, style: AppText.sectionLabel)),
               const _AddItemMenu(),
             ],
           ),
@@ -125,6 +120,7 @@ class _SetListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return HoverBuilder(
       cursor: SystemMouseCursors.click,
       builder: (context, hovering) => GestureDetector(
@@ -154,7 +150,7 @@ class _SetListTile extends StatelessWidget {
               ReorderableDragStartListener(
                 index: index,
                 child: Tooltip(
-                  message: 'Arrastra para cambiar el orden',
+                  message: t.dragToReorder,
                   waitDuration: const Duration(milliseconds: 600),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.grab,
@@ -261,8 +257,9 @@ class _OnAirDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return Tooltip(
-      message: 'En la pantalla ahora',
+      message: t.onScreenNow,
       child: Container(
         margin: const EdgeInsets.only(left: AppSpace.xs),
         width: 7,
@@ -375,13 +372,14 @@ class _ItemMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, size: 15, color: AppColors.textDisabled),
       padding: EdgeInsets.zero,
       iconSize: 15,
-      tooltip: 'Opciones del elemento',
+      tooltip: t.itemOptions,
       color: AppColors.surfaceControl,
-      itemBuilder: (_) => _itemMenuEntries(item),
+      itemBuilder: (_) => _itemMenuEntries(L10n.of(context), item),
       onSelected: (value) => _runItemAction(context, model, item, value),
     );
   }
@@ -397,12 +395,12 @@ bool _canRename(CollectionItemType type) => switch (type) {
   _ => true,
 };
 
-List<PopupMenuEntry<String>> _itemMenuEntries(CollectionItem item) => [
+List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
   if (_canRename(item.type)) ...[
-    const PopupMenuItem(
+    PopupMenuItem(
       value: 'rename',
       height: 38,
-      child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: 'Renombrar'),
+      child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: t.rename),
     ),
     const PopupMenuDivider(),
   ],
@@ -411,17 +409,14 @@ List<PopupMenuEntry<String>> _itemMenuEntries(CollectionItem item) => [
     height: 38,
     child: AppMenuRow(
       icon: Icons.palette_outlined,
-      label: item.templateId == null ? 'Diseño propio' : 'Cambiar diseño',
+      label: item.templateId == null ? t.ownDesign : t.changeDesign,
     ),
   ),
   if (item.templateId != null)
-    const PopupMenuItem(
+    PopupMenuItem(
       value: 'clear_template',
       height: 38,
-      child: AppMenuRow(
-        icon: Icons.format_color_reset_outlined,
-        label: 'Usar diseño de la colección',
-      ),
+      child: AppMenuRow(icon: Icons.format_color_reset_outlined, label: t.useCollectionDesign),
     ),
   const PopupMenuDivider(),
   PopupMenuItem(
@@ -429,7 +424,7 @@ List<PopupMenuEntry<String>> _itemMenuEntries(CollectionItem item) => [
     height: 38,
     child: AppMenuRow(
       icon: Icons.sticky_note_2_outlined,
-      label: item.notes?.isNotEmpty == true ? 'Editar nota' : 'Agregar nota',
+      label: item.notes?.isNotEmpty == true ? t.editNote : t.addNote,
     ),
   ),
   PopupMenuItem(
@@ -437,19 +432,15 @@ List<PopupMenuEntry<String>> _itemMenuEntries(CollectionItem item) => [
     height: 38,
     child: AppMenuRow(
       icon: Icons.timer_outlined,
-      label: 'Auto-avance',
+      label: t.autoAdvance,
       trailing: item.autoAdvanceSecs != null ? '${item.autoAdvanceSecs}s' : 'apagado',
     ),
   ),
   const PopupMenuDivider(),
-  const PopupMenuItem(
+  PopupMenuItem(
     value: 'remove',
     height: 38,
-    child: AppMenuRow(
-      icon: Icons.remove_circle_outline,
-      label: 'Quitar del set list',
-      danger: true,
-    ),
+    child: AppMenuRow(icon: Icons.remove_circle_outline, label: t.removeFromSetList, danger: true),
   ),
 ];
 
@@ -465,7 +456,7 @@ Future<void> _showItemMenu(
     context: context,
     color: AppColors.surfaceControl,
     position: RelativeRect.fromRect(position & const Size(40, 40), Offset.zero & overlay.size),
-    items: _itemMenuEntries(item),
+    items: _itemMenuEntries(L10n.of(context), item),
   );
   if (value != null && context.mounted) {
     await _runItemAction(context, model, item, value);
@@ -515,6 +506,7 @@ Future<void> _removeWithUndo(
   ControlModel model,
   CollectionItem item,
 ) async {
+  final t = L10n.of(context);
   final items = model.activeCollection?.items ?? const <CollectionItem>[];
   final index = items.indexWhere((i) => i.id == item.id);
   final messenger = ScaffoldMessenger.of(context);
@@ -524,11 +516,11 @@ Future<void> _removeWithUndo(
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
-      content: Text('"${item.displayTitle}" fuera del set list'),
+      content: Text(t.itemRemoved(item.displayTitle)),
       duration: const Duration(seconds: 8),
       behavior: SnackBarBehavior.floating,
       width: 420,
-      action: SnackBarAction(label: 'Deshacer', onPressed: () => cubit.restoreItem(item, index)),
+      action: SnackBarAction(label: t.undo, onPressed: () => cubit.restoreItem(item, index)),
     ),
   );
 }
@@ -540,6 +532,7 @@ Future<void> _showRenameDialog(
   CollectionItem item,
   ControlCubit cubit,
 ) async {
+  final t = L10n.of(context);
   // Selected, not just filled: every name worth changing is a long one that
   // an import chose, and the operator should not have to clear it by hand.
   final ctrl = TextEditingController(text: item.displayTitle)
@@ -547,20 +540,17 @@ Future<void> _showRenameDialog(
   final name = await showDialog<String>(
     context: context,
     builder: (ctx) => AppDialog(
-      title: 'Renombrar',
+      title: t.rename,
       icon: Icons.drive_file_rename_outline,
       width: 380,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
         const SizedBox(width: AppSpace.sm),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-          child: const Text('Guardar'),
-        ),
+        FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
       ],
       child: AppTextField(
         controller: ctrl,
-        hintText: 'Nombre del elemento',
+        hintText: t.itemName,
         autofocus: true,
         onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
       ),
@@ -579,11 +569,12 @@ Future<void> _showAutoAdvanceDialog(
   CollectionItem item,
   ControlCubit cubit,
 ) async {
+  final t = L10n.of(context);
   final ctrl = TextEditingController(text: item.autoAdvanceSecs?.toString() ?? '');
   final result = await showDialog<int?>(
     context: context,
     builder: (ctx) => AppDialog(
-      title: 'Auto-avance',
+      title: t.autoAdvance,
       icon: Icons.timer_outlined,
       width: 360,
       actions: [
@@ -591,9 +582,9 @@ Future<void> _showAutoAdvanceDialog(
           TextButton(
             onPressed: () => Navigator.pop(ctx, -1),
             style: TextButton.styleFrom(foregroundColor: kDestructive),
-            child: const Text('Quitar'),
+            child: Text(t.remove),
           ),
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -601,10 +592,7 @@ Future<void> _showAutoAdvanceDialog(
         children: [
           Text(item.displayTitle, style: const TextStyle(color: kTextSecondary, fontSize: 12)),
           const SizedBox(height: 12),
-          const Text(
-            'Avanzar automáticamente después de:',
-            style: TextStyle(color: kTextSecondary, fontSize: 12),
-          ),
+          Text(t.advanceAfter, style: TextStyle(color: kTextSecondary, fontSize: 12)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -624,7 +612,7 @@ Future<void> _showAutoAdvanceDialog(
           Row(
             children: [
               Expanded(
-                child: AppTextField(controller: ctrl, hintText: 'Segundos personalizados'),
+                child: AppTextField(controller: ctrl, hintText: t.customSeconds),
               ),
               const SizedBox(width: 8),
               FilledButton(
@@ -648,11 +636,12 @@ Future<void> _showAutoAdvanceDialog(
 // ── Notes dialog ──────────────────────────────────────────────────────────────
 
 Future<void> _showNotesDialog(BuildContext context, CollectionItem item, ControlCubit cubit) async {
+  final t = L10n.of(context);
   final ctrl = TextEditingController(text: item.notes ?? '');
   final saved = await showDialog<String?>(
     context: context,
     builder: (ctx) => AppDialog(
-      title: 'Nota — ${item.displayTitle}',
+      title: t.noteFor(item.displayTitle),
       icon: Icons.sticky_note_2_outlined,
       width: 380,
       actions: [
@@ -660,21 +649,13 @@ Future<void> _showNotesDialog(BuildContext context, CollectionItem item, Control
           TextButton(
             onPressed: () => Navigator.pop(ctx, ''),
             style: TextButton.styleFrom(foregroundColor: kDestructive),
-            child: const Text('Borrar'),
+            child: Text(t.clear),
           ),
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
         const SizedBox(width: 8),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-          child: const Text('Guardar'),
-        ),
+        FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
       ],
-      child: AppTextField(
-        controller: ctrl,
-        hintText: 'Nota interna...',
-        maxLines: 5,
-        autofocus: true,
-      ),
+      child: AppTextField(controller: ctrl, hintText: t.internalNote, maxLines: 5, autofocus: true),
     ),
   );
   ctrl.dispose();

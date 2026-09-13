@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../l10n/l10n.dart';
+
 import '../../../core/services/app_prefs_service.dart';
 import '../../../core/theme/app_dimens.dart';
 
@@ -18,11 +20,13 @@ enum ShellSection { presenter, collections }
 enum LibraryTab { songs, bible, media, templates }
 
 extension LibraryTabX on LibraryTab {
-  String get label => switch (this) {
-    LibraryTab.songs => 'Canciones',
-    LibraryTab.bible => 'Biblia',
-    LibraryTab.media => 'Media',
-    LibraryTab.templates => 'Diseños',
+  /// Takes the strings rather than reading a context: an enum extension has
+  /// no context, and the tab strip that draws these does.
+  String label(L10n t) => switch (this) {
+    LibraryTab.songs => t.tabSongs,
+    LibraryTab.bible => t.tabBible,
+    LibraryTab.media => t.tabMedia,
+    LibraryTab.templates => t.tabDesigns,
   };
 }
 

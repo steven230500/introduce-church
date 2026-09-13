@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/l10n.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -67,6 +68,7 @@ class _DockTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shell = context.read<ShellCubit>();
+    final t = L10n.of(context);
     return Container(
       height: AppSizes.panelHeaderHeight,
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
@@ -76,7 +78,7 @@ class _DockTabs extends StatelessWidget {
             Expanded(
               child: _DockTab(
                 icon: _icons[tab]!,
-                label: tab.label,
+                label: tab.label(t),
                 active: tab == current,
                 onTap: () => shell.openLibrary(tab),
               ),
@@ -155,6 +157,7 @@ class _DockTarget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return BlocBuilder<ControlCubit, ControlState>(
       builder: (context, state) {
         final collection = state is ControlLoadedState ? state.model.activeCollection : null;
@@ -174,9 +177,7 @@ class _DockTarget extends StatelessWidget {
               const SizedBox(width: AppSpace.sm - 2),
               Expanded(
                 child: Text(
-                  hasTarget
-                      ? 'Agregar a: ${collection.name}'
-                      : 'Elige una colección para poder agregar',
+                  hasTarget ? t.dockAddTo(collection.name) : t.dockPickCollectionFirst,
                   style: TextStyle(
                     color: hasTarget ? AppColors.textSecondary : AppColors.textPrimary,
                     fontSize: 11,
@@ -187,8 +188,8 @@ class _DockTarget extends StatelessWidget {
               if (!hasTarget)
                 GestureDetector(
                   onTap: () => context.read<ShellCubit>().goTo(ShellSection.collections),
-                  child: const Text(
-                    'Elegir',
+                  child: Text(
+                    t.dockChoose,
                     style: TextStyle(
                       color: AppColors.accent,
                       fontSize: 11,
@@ -232,25 +233,24 @@ class DockPanel extends StatelessWidget {
 /// When there is no active collection it stays visible but disabled and says
 /// why, instead of looking enabled and doing nothing.
 class AddToSetListButton extends StatelessWidget {
-  const AddToSetListButton({
-    super.key,
-    required this.onAdd,
-    this.tooltip = 'Agregar al set list',
-    this.size = 30,
-  });
+  const AddToSetListButton({super.key, required this.onAdd, this.tooltip, this.size = 30});
 
   final VoidCallback onAdd;
-  final String tooltip;
+
+  /// Null means the plain "add this to the running order" wording, which
+  /// cannot be a default because it is only known once there is a context.
+  final String? tooltip;
   final double size;
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return BlocBuilder<ControlCubit, ControlState>(
       buildWhen: (a, b) => _target(a) != _target(b),
       builder: (context, state) {
         final enabled = _target(state) != null;
         return Tooltip(
-          message: enabled ? tooltip : 'Sin colección activa',
+          message: enabled ? (tooltip ?? t.dockAddToSetList) : t.barNoCollection,
           child: GestureDetector(
             onTap: enabled ? onAdd : null,
             child: Container(

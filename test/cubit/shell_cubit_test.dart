@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/l10n/l10n_en.dart';
+import 'package:introduce_church/l10n/l10n_es.dart';
 import 'package:introduce_church/modules/presentation/shell/shell_cubit.dart';
 
 import '../helpers/fakes.dart';
@@ -104,7 +106,13 @@ void main() {
     });
   });
 
-  test('every library tab has a Spanish label', () {
-    expect(LibraryTab.values.map((t) => t.label), ['Canciones', 'Biblia', 'Media', 'Diseños']);
+  test('every library tab is named, in whichever language is running', () {
+    // The labels come from the .arb now. What must hold is that each tab has
+    // one, in both languages, and that they are not the same word.
+    for (final strings in [L10nEs(), L10nEn()]) {
+      final labels = LibraryTab.values.map((tab) => tab.label(strings)).toList();
+      expect(labels.where((l) => l.isEmpty), isEmpty);
+      expect(labels.toSet(), hasLength(LibraryTab.values.length));
+    }
   });
 }

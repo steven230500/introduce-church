@@ -38,7 +38,7 @@ void main() {
           BlocProvider.value(value: control),
           BlocProvider.value(value: shell),
         ],
-        child: MaterialApp(home: Scaffold(body: child)),
+        child: localizedApp(child),
       ),
     );
     await tester.pumpAndSettle();

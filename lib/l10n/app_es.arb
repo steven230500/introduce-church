@@ -1,11 +1,9 @@
 {
   "@@locale": "es",
-
   "languageName": "Español",
   "@languageName": {
     "description": "This language's own name, shown in the language picker. Never translated: a person looking for their language reads it written the way they write it."
   },
-
   "menuAccount": "Cuenta",
   "menuChangePassword": "Cambiar contraseña",
   "menuSignOut": "Cerrar sesión",
@@ -14,7 +12,6 @@
   "@languageFollowSystem": {
     "description": "Option in the language picker: use whatever language the computer is set to."
   },
-
   "barNoCollection": "Sin colección activa",
   "barCountdown": "Cuenta",
   "barNotices": "Avisos",
@@ -26,7 +23,6 @@
   "barSend": "Enviar",
   "barLive": "En vivo",
   "barLiveOnAir": "EN VIVO",
-
   "tipCountdownShow": "Mostrar una cuenta regresiva en pantalla",
   "tipCountdownStop": "Detener la cuenta regresiva",
   "tipNotices": "Avisos para la pantalla y mensajes para el escenario",
@@ -41,20 +37,128 @@
   "tipLiveOff": "Cortar la señal al proyector",
   "tipLibraryShow": "Mostrar la biblioteca  ·  F",
   "tipLibraryHide": "Ocultar la biblioteca  ·  F",
-
   "countdownTitle": "Cuenta regresiva",
   "countdownPresets": "Presets",
   "countdownCustom": "Personalizado (minutos)",
   "countdownStart": "Iniciar",
-
   "offline": "Sin conexión",
   "offlineWithChanges": "{count, plural, one{Sin conexión · 1 cambio} other{Sin conexión · {count} cambios}}",
   "@offlineWithChanges": {
     "description": "The offline mark, with how many edits are waiting to be sent.",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "offlineTip": "El servicio corre igual: el plan está guardado en esta máquina.",
   "offlineTipWithChanges": "El servicio corre igual: el plan está guardado en esta máquina.\nLos cambios quedan guardados aquí y se envían solos cuando vuelva la conexión.",
-
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "tabSongs": "Canciones",
+  "tabBible": "Biblia",
+  "tabMedia": "Media",
+  "tabDesigns": "Diseños",
+  "dockAddTo": "Agregar a: {name}",
+  "@dockAddTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dockAddToSetList": "Agregar al set list",
+  "dockChoose": "Elegir",
+  "dockPickCollectionFirst": "Elige una colección para poder agregar",
+  "setList": "Set list",
+  "sectionItems": "ELEMENTOS",
+  "noCollectionOpen": "Ninguna colección abierta",
+  "openFromCollections": "Abre una desde Colecciones o desde el selector de arriba.",
+  "emptyCollection": "Colección vacía",
+  "addSongsVersesMedia": "Agrega canciones, versículos o media.",
+  "createCollection": "Crear colección",
+  "createToStart": "Crea una colección para empezar a armar el servicio.",
+  "newCollection": "Nueva colección",
+  "collectionOptions": "Opciones de la colección",
+  "nameAndDate": "Nombre y fecha",
+  "changeCollection": "Cambiar de colección",
+  "slideDesign": "Diseño de los slides",
+  "duplicateForAnotherSunday": "Duplicar para otro domingo",
+  "exportSetList": "Exportar set list",
+  "backgroundAudio": "Audio de fondo",
+  "changeBackgroundAudio": "Cambiar audio de fondo",
+  "removeBackgroundAudio": "Quitar audio de fondo",
+  "deleteCollection": "Eliminar colección",
+  "deleteCollectionQuestion": "¿Eliminar \"{name}\"?",
+  "@deleteCollectionQuestion": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteCollectionBody": "Se eliminan todos sus elementos.",
+  "delete": "Eliminar",
+  "remove": "Quitar",
+  "save": "Guardar",
+  "undo": "Deshacer",
+  "clear": "Borrar",
+  "dragToReorder": "Arrastra para cambiar el orden",
+  "itemOptions": "Opciones del elemento",
+  "removeFromSetList": "Quitar del set list",
+  "rename": "Renombrar",
+  "itemName": "Nombre del elemento",
+  "addNote": "Agregar nota",
+  "editNote": "Editar nota",
+  "noteFor": "Nota — {title}",
+  "@noteFor": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "internalNote": "Nota interna...",
+  "autoAdvance": "Auto-avance",
+  "advanceAfter": "Avanzar automáticamente después de:",
+  "customSeconds": "Segundos personalizados",
+  "changeDesign": "Cambiar diseño",
+  "ownDesign": "Diseño propio",
+  "design": "Diseño",
+  "useCollectionDesign": "Usar diseño de la colección",
+  "output": "Salida",
+  "gridView": "Cuadrícula",
+  "bigSlideView": "Slide grande",
+  "onScreenNow": "En la pantalla ahora",
+  "notSent": "SIN ENVIAR",
+  "blackMark": "NEGRO",
+  "blackScreen": "PANTALLA NEGRA",
+  "noItemSelected": "Sin elemento seleccionado",
+  "selectAnItem": "Selecciona un elemento del set list",
+  "noSlides": "Sin slides",
+  "slideNumber": "Slide {number}",
+  "@slideNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "previousShortcut": "Anterior  ·  ←",
+  "nextShortcut": "Siguiente  ·  →",
+  "itemCount": "{count, plural, one{1 elemento} other{{count} elementos}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itemRemoved": "\"{title}\" fuera del set list",
+  "@itemRemoved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -38,6 +38,7 @@ class _SetListHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final collection = model.activeCollection;
 
     return Padding(
@@ -50,13 +51,13 @@ class _SetListHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  collection?.name ?? 'Set list',
+                  collection?.name ?? t.setList,
                   style: AppText.panelTitle,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  _subtitle(collection),
+                  _subtitle(L10n.of(context), collection),
                   style: AppText.rowSubtitle,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -70,10 +71,9 @@ class _SetListHeader extends StatelessWidget {
     );
   }
 
-  static String _subtitle(Collection? collection) {
-    if (collection == null) return 'Ninguna colección abierta';
-    final count = collection.items.length;
-    final items = '$count elemento${count == 1 ? '' : 's'}';
+  static String _subtitle(L10n t, Collection? collection) {
+    if (collection == null) return t.noCollectionOpen;
+    final items = t.itemCount(collection.items.length);
     final date = collection.serviceDate;
     if (date == null) return items;
     return '$items  •  ${date.day}/${date.month}/${date.year}';
@@ -88,9 +88,10 @@ class _CollectionSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return PopupMenuButton<String>(
       icon: const Icon(Icons.unfold_more_rounded, color: AppColors.textMuted, size: 17),
-      tooltip: 'Cambiar de colección',
+      tooltip: t.changeCollection,
       color: AppColors.surfaceControl,
       itemBuilder: (_) => [
         for (final collection in model.collections)
@@ -122,63 +123,60 @@ class _CollectionMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final collection = model.activeCollection;
 
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, color: AppColors.textMuted, size: 17),
-      tooltip: 'Opciones de la colección',
+      tooltip: t.collectionOptions,
       color: AppColors.surfaceControl,
       itemBuilder: (_) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'new',
           height: 38,
-          child: AppMenuRow(icon: Icons.add, label: 'Nueva colección'),
+          child: AppMenuRow(icon: Icons.add, label: t.newCollection),
         ),
         if (collection != null) ...[
           const PopupMenuDivider(),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'edit',
             height: 38,
-            child: AppMenuRow(icon: Icons.edit_outlined, label: 'Nombre y fecha'),
+            child: AppMenuRow(icon: Icons.edit_outlined, label: t.nameAndDate),
           ),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'duplicate',
             height: 38,
-            child: AppMenuRow(icon: Icons.copy_all_outlined, label: 'Duplicar para otro domingo'),
+            child: AppMenuRow(icon: Icons.copy_all_outlined, label: t.duplicateForAnotherSunday),
           ),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'template',
             height: 38,
-            child: AppMenuRow(icon: Icons.palette_outlined, label: 'Diseño de los slides'),
+            child: AppMenuRow(icon: Icons.palette_outlined, label: t.slideDesign),
           ),
           PopupMenuItem(
             value: 'audio',
             height: 38,
             child: AppMenuRow(
               icon: Icons.music_note_outlined,
-              label: collection.bgAudioPath == null ? 'Audio de fondo' : 'Cambiar audio de fondo',
+              label: collection.bgAudioPath == null ? t.backgroundAudio : t.changeBackgroundAudio,
             ),
           ),
           if (collection.bgAudioPath != null)
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'clear_audio',
               height: 38,
-              child: AppMenuRow(icon: Icons.music_off_outlined, label: 'Quitar audio de fondo'),
+              child: AppMenuRow(icon: Icons.music_off_outlined, label: t.removeBackgroundAudio),
             ),
           const PopupMenuDivider(),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'export',
             height: 38,
-            child: AppMenuRow(icon: Icons.ios_share_outlined, label: 'Exportar set list'),
+            child: AppMenuRow(icon: Icons.ios_share_outlined, label: t.exportSetList),
           ),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'delete',
             height: 38,
-            child: AppMenuRow(
-              icon: Icons.delete_outline,
-              label: 'Eliminar colección',
-              danger: true,
-            ),
+            child: AppMenuRow(icon: Icons.delete_outline, label: t.deleteCollection, danger: true),
           ),
         ],
       ],
@@ -187,6 +185,7 @@ class _CollectionMenu extends StatelessWidget {
   }
 
   Future<void> _handle(BuildContext context, String value, Collection? collection) async {
+    final t = L10n.of(context);
     final cubit = context.read<ControlCubit>();
 
     if (value == 'new') {
@@ -242,11 +241,9 @@ class _CollectionMenu extends StatelessWidget {
         if (!context.mounted) return;
         final confirmed = await showAppConfirmDialog(
           context,
-          title: 'Eliminar colección',
-          message:
-              '¿Eliminar "${collection.name}"? '
-              'Se eliminan todos sus elementos.',
-          confirmLabel: 'Eliminar',
+          title: t.deleteCollection,
+          message: '${t.deleteCollectionQuestion(collection.name)} ${t.deleteCollectionBody}',
+          confirmLabel: t.delete,
           destructive: true,
           icon: Icons.delete_outline,
         );

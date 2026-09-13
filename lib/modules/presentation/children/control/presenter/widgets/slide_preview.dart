@@ -44,6 +44,7 @@ class _PreviewHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final item = model.currentItem;
     final cubit = context.read<ControlCubit>();
 
@@ -57,7 +58,7 @@ class _PreviewHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              item?.displayTitle ?? 'Sin elemento seleccionado',
+              item?.displayTitle ?? t.noItemSelected,
               style: item == null ? AppText.rowSubtitle : AppText.panelTitle,
               overflow: TextOverflow.ellipsis,
             ),
@@ -73,8 +74,8 @@ class _PreviewHeader extends StatelessWidget {
                 borderRadius: AppRadius.all(AppRadius.xs),
                 border: Border.all(color: AppColors.accentOutline),
               ),
-              child: const Text(
-                'SIN ENVIAR',
+              child: Text(
+                t.notSent,
                 style: TextStyle(
                   color: AppColors.accentLight,
                   fontSize: 9,
@@ -96,13 +97,13 @@ class _PreviewHeader extends StatelessWidget {
               children: [
                 _ViewModeButton(
                   icon: Icons.grid_view_rounded,
-                  label: 'Cuadrícula',
+                  label: t.gridView,
                   active: model.gridView,
                   onTap: model.gridView ? null : cubit.toggleGridView,
                 ),
                 _ViewModeButton(
                   icon: Icons.crop_16_9_rounded,
-                  label: 'Slide grande',
+                  label: t.bigSlideView,
                   active: !model.gridView,
                   onTap: model.gridView ? cubit.toggleGridView : null,
                 ),
@@ -171,13 +172,10 @@ class _SlideGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final item = model.currentItem;
     if (item == null || item.slides.isEmpty) {
-      return const EmptyState(
-        icon: Icons.slideshow_outlined,
-        title: 'Sin slides',
-        message: 'Selecciona un elemento del set list.',
-      );
+      return EmptyState(icon: Icons.slideshow_outlined, title: t.noSlides, message: t.selectAnItem);
     }
 
     final slides = item.slides;
@@ -265,7 +263,7 @@ class _SlideGrid extends StatelessWidget {
                           // the frame it landed on the words whenever the lyric
                           // ran long, which is exactly when you need to read both.
                           Text(
-                            label.isEmpty ? 'Slide ${index + 1}' : label,
+                            label.isEmpty ? t.slideNumber(index + 1) : label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -335,6 +333,7 @@ class _SidePreviewPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     // The projector's item, not the operator's. This panel is the one place
     // that always answers "what are they seeing".
     final item = model.liveItem;
@@ -345,7 +344,7 @@ class _SidePreviewPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PanelHeader(title: 'Salida'),
+          PanelHeader(title: t.output),
           Padding(
             padding: const EdgeInsets.all(AppSpace.sm + 2),
             child: _OutputThumbnail(model: model),
@@ -395,6 +394,7 @@ class _OutputThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final item = model.liveItem;
     final isImage = item?.type == CollectionItemType.imageSlide;
     final isVideo = item?.type == CollectionItemType.videoSlide;
@@ -438,9 +438,9 @@ class _OutputThumbnail extends StatelessWidget {
                   child: face,
                 ),
                 if (isBlank)
-                  const Center(
+                  Center(
                     child: Text(
-                      'NEGRO',
+                      t.blackMark,
                       style: TextStyle(
                         color: AppColors.textDisabled,
                         fontSize: 9,
@@ -529,6 +529,7 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final hasContent = model.currentSlideContent != null;
     // While the operator is looking away from the projector this frame shows
     // where they are looking, so the blank overlay and the live badge, which
@@ -586,9 +587,9 @@ class _Preview extends StatelessWidget {
                   child: face,
                 ),
                 if (isBlank)
-                  const Center(
+                  Center(
                     child: Text(
-                      'PANTALLA NEGRA',
+                      t.blackScreen,
                       style: TextStyle(
                         color: AppColors.textDisabled,
                         fontSize: 14,
@@ -598,9 +599,9 @@ class _Preview extends StatelessWidget {
                     ),
                   ),
                 if (!hasContent && !isBlank)
-                  const Center(
+                  Center(
                     child: Text(
-                      'Selecciona un elemento del set list',
+                      t.selectAnItem,
                       style: TextStyle(color: AppColors.textDisabled, fontSize: 15),
                     ),
                   ),
@@ -625,6 +626,7 @@ class _HoldingBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return Positioned(
       top: AppSpace.md,
       right: AppSpace.md,
@@ -634,8 +636,8 @@ class _HoldingBadge extends StatelessWidget {
           color: AppColors.accent,
           borderRadius: AppRadius.all(AppRadius.xs),
         ),
-        child: const Text(
-          'SIN ENVIAR',
+        child: Text(
+          t.notSent,
           style: TextStyle(
             color: Colors.white,
             fontSize: 10,
@@ -719,6 +721,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final cubit = context.read<ControlCubit>();
 
     return Container(
@@ -754,7 +757,7 @@ class _Controls extends StatelessWidget {
             FilledButton.icon(
               onPressed: cubit.take,
               icon: const Icon(Icons.send_rounded, size: 15),
-              label: const Text('Enviar'),
+              label: Text(t.barSend),
             ),
           ],
         ],
@@ -772,9 +775,10 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     final enabled = onTap != null;
     return Tooltip(
-      message: primary ? 'Siguiente  ·  →' : 'Anterior  ·  ←',
+      message: primary ? t.nextShortcut : t.previousShortcut,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
