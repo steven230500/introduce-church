@@ -5,6 +5,7 @@ import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
+import '../../motion/motion_scenes.dart';
 import '../../utils/image_palette.dart';
 
 class TemplateEditorState extends Equatable {
@@ -50,8 +51,14 @@ class TemplateEditorState extends Equatable {
   /// darkening layer that average is close enough to tell an operator whether
   /// their grey text is going to disappear.
   int? get backdrop => switch (template.bgType) {
-    BackgroundType.image =>
+    BackgroundType.image || BackgroundType.video =>
       photoAverage == null ? null : backdropUnderOverlay(photoAverage!, template.bgOverlayOpacity),
+    // A scene never holds still long enough to be measured, so it is judged by
+    // the colour it was drawn around.
+    BackgroundType.motion => backdropUnderOverlay(
+      MotionSceneX.fromId(template.bgMotion).baseColor,
+      template.bgOverlayOpacity,
+    ),
     _ => template.bgColor,
   };
 
@@ -169,7 +176,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
         dirty: _fingerprint(t) != _opened,
       ),
     );
-    readPhoto(t.bgImagePath);
+    readPhoto(photoOf(t));
   }
 
   /// Emits a change that undo can take back.
@@ -193,11 +200,19 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
   /// Reads the church's colours. A church that cannot be reached simply gets
   /// the built-in swatches, so this never blocks the editor.
   Future<void> loadPalette() async {
-    readPhoto(state.template.bgImagePath);
+    readPhoto(photoOf(state.template));
     final colors = await _orgRepo.getPalette();
     if (isClosed || colors.isEmpty) return;
     emit(state.copyWith(palette: colors));
   }
+
+  /// The picture whose colours are worth reading for [t]: its photo, or the
+  /// still frame of its loop. Nothing for a colour or a scene.
+  static String? photoOf(SlideTemplate t) => switch (t.bgType) {
+    BackgroundType.image => t.bgImagePath,
+    BackgroundType.video => t.bgPosterPath,
+    _ => null,
+  };
 
   /// The path whose colours are in the state, so a photo is read once and a
   /// slider drag does not decode it on every frame.
@@ -240,7 +255,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
 
   void update(SlideTemplate t) {
     _change(t, _whatChanged(state.template, t));
-    readPhoto(t.bgImagePath);
+    readPhoto(photoOf(t));
   }
 
   /// Which fields differ, as a tag. Dragging one slider reports the same tag

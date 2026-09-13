@@ -1,7 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'slide_layer.dart';
 
-enum BackgroundType { solid, gradient, image }
+/// What a design's text sits on.
+///
+/// [motion] is one of the scenes the app draws itself; [video] is a loop the
+/// church uploaded. Both move, and both are drawn behind the text rather than
+/// swapped with it, so a new slide does not restart them.
+enum BackgroundType { solid, gradient, image, motion, video }
 
 enum TextVerticalAlign { top, center, bottom }
 
@@ -18,6 +23,9 @@ class SlideTemplate {
     this.bgGradientEnd = 0xFF000000,
     this.bgGradientAngle = 135.0,
     this.bgImagePath,
+    this.bgMotion,
+    this.bgVideoPath,
+    this.bgPosterPath,
     this.bgOverlayOpacity = 0.45,
     required this.fontSize,
     required this.fontWeight,
@@ -47,6 +55,17 @@ class SlideTemplate {
   final double bgGradientAngle;
   // BackgroundType.image
   final String? bgImagePath;
+
+  /// BackgroundType.motion: the id of the scene.
+  final String? bgMotion;
+
+  /// BackgroundType.video: the loop, and a still frame of it for the places
+  /// that show a design without playing it.
+  final String? bgVideoPath;
+  final String? bgPosterPath;
+
+  /// How much the background is darkened under the text, for every kind of
+  /// background that is a picture rather than a colour.
   final double bgOverlayOpacity;
 
   final double fontSize;
@@ -68,6 +87,25 @@ class SlideTemplate {
   final int transitionDurationMs;
   final List<SlideLayer> layers;
 
+  /// Whether the background moves, and so has to be kept playing behind the
+  /// text instead of being redrawn with each slide.
+  bool get hasMovingBackground => switch (bgType) {
+    BackgroundType.motion => bgMotion != null,
+    BackgroundType.video => bgVideoPath != null,
+    _ => false,
+  };
+
+  /// Two designs with the same value here look the same behind the text. The
+  /// projector keeps a moving background running across slides for as long as
+  /// this does not change.
+  String get backgroundSignature => switch (bgType) {
+    BackgroundType.solid => 'solid:$bgColor',
+    BackgroundType.gradient => 'gradient:$bgColor:$bgGradientEnd:$bgGradientAngle',
+    BackgroundType.image => 'image:$bgImagePath:$bgOverlayOpacity',
+    BackgroundType.motion => 'motion:$bgMotion:$bgOverlayOpacity',
+    BackgroundType.video => 'video:$bgVideoPath:$bgOverlayOpacity',
+  };
+
   // ── Serialization ────────────────────────────────────────────────────────
 
   Map<String, dynamic> toJson() => {
@@ -76,6 +114,9 @@ class SlideTemplate {
     'bgGradientEnd': bgGradientEnd,
     'bgGradientAngle': bgGradientAngle,
     if (bgImagePath != null) 'bgImagePath': bgImagePath,
+    if (bgMotion != null) 'bgMotion': bgMotion,
+    if (bgVideoPath != null) 'bgVideoPath': bgVideoPath,
+    if (bgPosterPath != null) 'bgPosterPath': bgPosterPath,
     'bgOverlayOpacity': bgOverlayOpacity,
     'fontSize': fontSize,
     'fontWeight': fontWeight,
@@ -112,6 +153,9 @@ class SlideTemplate {
       bgGradientEnd: (json['bgGradientEnd'] as num? ?? 0xFF000000).toInt(),
       bgGradientAngle: (json['bgGradientAngle'] as num? ?? 135).toDouble(),
       bgImagePath: json['bgImagePath'] as String?,
+      bgMotion: json['bgMotion'] as String?,
+      bgVideoPath: json['bgVideoPath'] as String?,
+      bgPosterPath: json['bgPosterPath'] as String?,
       bgOverlayOpacity: (json['bgOverlayOpacity'] as num? ?? 0.45).toDouble(),
       fontSize: (json['fontSize'] as num?)?.toDouble() ?? _fallback.fontSize,
       fontWeight: (json['fontWeight'] as num?)?.toInt() ?? _fallback.fontWeight,
@@ -156,6 +200,9 @@ class SlideTemplate {
     int? bgGradientEnd,
     double? bgGradientAngle,
     Object? bgImagePath = _unset,
+    Object? bgMotion = _unset,
+    Object? bgVideoPath = _unset,
+    Object? bgPosterPath = _unset,
     double? bgOverlayOpacity,
     double? fontSize,
     int? fontWeight,
@@ -183,6 +230,9 @@ class SlideTemplate {
       bgGradientEnd: bgGradientEnd ?? this.bgGradientEnd,
       bgGradientAngle: bgGradientAngle ?? this.bgGradientAngle,
       bgImagePath: bgImagePath == _unset ? this.bgImagePath : bgImagePath as String?,
+      bgMotion: bgMotion == _unset ? this.bgMotion : bgMotion as String?,
+      bgVideoPath: bgVideoPath == _unset ? this.bgVideoPath : bgVideoPath as String?,
+      bgPosterPath: bgPosterPath == _unset ? this.bgPosterPath : bgPosterPath as String?,
       bgOverlayOpacity: bgOverlayOpacity ?? this.bgOverlayOpacity,
       fontSize: fontSize ?? this.fontSize,
       fontWeight: fontWeight ?? this.fontWeight,
@@ -206,7 +256,15 @@ class SlideTemplate {
 
   // ── Presets ───────────────────────────────────────────────────────────────
 
-  static const List<SlideTemplate> presets = [darkClassic, blueNight, lowerThird, light];
+  static const List<SlideTemplate> presets = [
+    darkClassic,
+    blueNight,
+    lowerThird,
+    light,
+    mist,
+    rays,
+    silk,
+  ];
 
   static SlideTemplate get defaultTemplate => darkClassic;
 
@@ -314,6 +372,72 @@ class SlideTemplate {
     showReference: true,
     referenceFontSize: 15,
     referenceColor: 0xFF666666,
+    referencePosition: ReferencePosition.bottomRight,
+  );
+
+  // Moving backgrounds. The plain colour is the scene's own, which is what a
+  // copy of the app from before scenes existed shows instead.
+
+  static const SlideTemplate mist = SlideTemplate(
+    id: 'preset_motion_mist',
+    name: 'Bruma',
+    bgType: BackgroundType.motion,
+    bgMotion: 'mist',
+    bgColor: 0xFF1D2733,
+    bgOverlayOpacity: 0.1,
+    fontSize: 54,
+    fontWeight: 300,
+    textColor: 0xFFFFFFFF,
+    textAlign: TextAlign.center,
+    textValign: TextVerticalAlign.center,
+    paddingH: 110,
+    paddingV: 80,
+    textShadow: true,
+    showReference: true,
+    referenceFontSize: 15,
+    referenceColor: 0xFFB8C6D6,
+    referencePosition: ReferencePosition.bottomRight,
+  );
+
+  static const SlideTemplate rays = SlideTemplate(
+    id: 'preset_motion_rays',
+    name: 'Luz de lo alto',
+    bgType: BackgroundType.motion,
+    bgMotion: 'rays',
+    bgColor: 0xFF1A1D2B,
+    bgOverlayOpacity: 0.15,
+    fontSize: 54,
+    fontWeight: 300,
+    textColor: 0xFFFFFFFF,
+    textAlign: TextAlign.center,
+    textValign: TextVerticalAlign.center,
+    paddingH: 110,
+    paddingV: 80,
+    textShadow: true,
+    showReference: true,
+    referenceFontSize: 15,
+    referenceColor: 0xFFD9D3C4,
+    referencePosition: ReferencePosition.bottomCenter,
+  );
+
+  static const SlideTemplate silk = SlideTemplate(
+    id: 'preset_motion_silk',
+    name: 'Seda',
+    bgType: BackgroundType.motion,
+    bgMotion: 'silk',
+    bgColor: 0xFF1A1233,
+    bgOverlayOpacity: 0.2,
+    fontSize: 50,
+    fontWeight: 400,
+    textColor: 0xFFFFFFFF,
+    textAlign: TextAlign.center,
+    textValign: TextVerticalAlign.top,
+    paddingH: 110,
+    paddingV: 90,
+    textShadow: true,
+    showReference: true,
+    referenceFontSize: 15,
+    referenceColor: 0xFFC9B8F0,
     referencePosition: ReferencePosition.bottomRight,
   );
 }

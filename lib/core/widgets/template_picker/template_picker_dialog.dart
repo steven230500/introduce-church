@@ -1,16 +1,18 @@
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
-import '../../models/media_item.dart';
 import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
 import '../app_dialog.dart';
-import '../media_library/media_library_dialog.dart';
+import '../../../l10n/l10n.dart';
+import '../../backgrounds/background_choice.dart';
+import '../../motion/motion_scenes.dart';
+import '../../motion/scene_names.dart';
+import '../backgrounds/background_gallery_dialog.dart';
+import '../slide_background.dart';
 import 'canvas_snap.dart';
 import 'color_field.dart';
 import '../slide_view.dart';
@@ -434,25 +436,32 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
         // on an image background.
         final backdrop = state.backdrop;
 
+        Future<void> chooseBackground() async {
+          final choice = await showBackgroundGallery(
+            context,
+            current: BackgroundChoice.of(cubit.state.template),
+          );
+          if (choice != null) update(applyBackground(cubit.state.template, choice));
+        }
+
         Widget bgControls() => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SectionLabel('Fondo'),
-            _BgTypeToggle(t, update),
+            _BgTypeToggle(t, update, onPicture: chooseBackground),
             const SizedBox(height: 10),
-            if (t.bgType == BackgroundType.image) ...[
-              _ImageBgPicker(
-                imagePath: t.bgImagePath,
-                onPick: (path) => update(t.copyWith(bgImagePath: path)),
-                onClear: () => update(t.copyWith(bgImagePath: null)),
-              ),
+            if (_isPicture(t.bgType)) ...[
+              _BackgroundCard(template: t, onChange: chooseBackground),
               const SizedBox(height: 10),
+              // In percent. As a fraction from 0 to 1 the slider had one
+              // step - fully clear or fully black - and its number read 0 for
+              // everything short of black.
               _SliderRow(
-                label: 'Oscuridad',
-                value: t.bgOverlayOpacity,
-                min: 0.0,
-                max: 1.0,
-                onChanged: (v) => update(t.copyWith(bgOverlayOpacity: v)),
+                label: L10n.of(context).bgDarkness,
+                value: t.bgOverlayOpacity * 100,
+                min: 0,
+                max: 100,
+                onChanged: (v) => update(t.copyWith(bgOverlayOpacity: v / 100)),
               ),
             ] else ...[
               ColorField(
@@ -947,10 +956,15 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(color: AppColors.surfaceControl),
                                       ),
-                                      child: SlideView(
-                                        content: _sampleCtrl.text,
-                                        reference: _sampleRefCtrl.text,
-                                        template: t,
+                                      // The design as the room will see it,
+                                      // moving background and all.
+                                      child: SlideMotion(
+                                        level: MotionLevel.all,
+                                        child: SlideView(
+                                          content: _sampleCtrl.text,
+                                          reference: _sampleRefCtrl.text,
+                                          template: t,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1166,150 +1180,121 @@ class _SectionLabel extends StatelessWidget {
   );
 }
 
+bool _isPicture(BackgroundType type) =>
+    type == BackgroundType.image || type == BackgroundType.motion || type == BackgroundType.video;
+
+/// Colour, gradient, or a picture behind the text - the app's scenes and the
+/// church's own images and loops are all "a background", chosen in the
+/// gallery rather than told apart here.
 class _BgTypeToggle extends StatelessWidget {
-  const _BgTypeToggle(this.t, this.onUpdate);
+  const _BgTypeToggle(this.t, this.onUpdate, {required this.onPicture});
   final SlideTemplate t;
   final void Function(SlideTemplate) onUpdate;
-  @override
-  Widget build(BuildContext context) => SegmentedButton<BackgroundType>(
-    segments: const [
-      // Scaled down rather than wrapped: in the canvas layout these three
-      // share a 240px column and were breaking into "Sóli do" and "Imag en".
-      ButtonSegment(
-        value: BackgroundType.solid,
-        icon: Icon(Icons.rectangle_outlined, size: 13),
-        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Sólido')),
-      ),
-      ButtonSegment(
-        value: BackgroundType.gradient,
-        icon: Icon(Icons.gradient_outlined, size: 13),
-        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Grad.')),
-      ),
-      ButtonSegment(
-        value: BackgroundType.image,
-        icon: Icon(Icons.image_outlined, size: 13),
-        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Imagen')),
-      ),
-    ],
-    selected: {t.bgType},
-    onSelectionChanged: (s) => onUpdate(t.copyWith(bgType: s.first)),
-    style: ButtonStyle(
-      visualDensity: VisualDensity.compact,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 10)),
-      iconSize: const WidgetStatePropertyAll(13),
-    ),
-  );
-}
-
-class _ImageBgPicker extends StatelessWidget {
-  const _ImageBgPicker({required this.imagePath, required this.onPick, required this.onClear});
-  final String? imagePath;
-  final void Function(String path) onPick;
-  final VoidCallback onClear;
-
-  bool get _isUrl =>
-      imagePath != null && (imagePath!.startsWith('http://') || imagePath!.startsWith('https://'));
-
-  String get _label {
-    if (imagePath == null) return 'Sin imagen';
-    if (_isUrl) return Uri.parse(imagePath!).pathSegments.last;
-    return File(imagePath!).uri.pathSegments.last;
-  }
+  final Future<void> Function() onPicture;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                _label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: imagePath != null ? AppColors.textSecondary : AppColors.textMuted,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 4),
-            if (imagePath != null)
-              IconButton(
-                icon: const Icon(Icons.clear, size: 16),
-                visualDensity: VisualDensity.compact,
-                onPressed: onClear,
-              ),
-            FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 11),
-              ),
-              onPressed: () async {
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-                  allowMultiple: false,
-                );
-                final path = result?.files.firstOrNull?.path;
-                if (path != null) onPick(path);
-              },
-              child: const Text('Archivo'),
-            ),
-            const SizedBox(width: 4),
-            FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 11),
-              ),
-              onPressed: () async {
-                if (!context.mounted) return;
-                final item = await showMediaLibraryDialog(context);
-                if (item != null && item.mediaType == MediaType.image) {
-                  onPick(item.url);
-                }
-              },
-              child: const Text('Biblioteca'),
-            ),
-          ],
+    final l = L10n.of(context);
+    final current = _isPicture(t.bgType) ? _BgKind.picture : _BgKind.values[t.bgType.index];
+    return SegmentedButton<_BgKind>(
+      segments: [
+        // Scaled down rather than wrapped: in the canvas layout these three
+        // share a 240px column and were breaking into "Sóli do" and "Imag en".
+        ButtonSegment(
+          value: _BgKind.solid,
+          icon: const Icon(Icons.rectangle_outlined, size: 13),
+          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypeColor)),
         ),
-        if (imagePath != null) ...[
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 60,
-              child: _isUrl
-                  ? Image.network(
-                      imagePath!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, _, _) => const _BrokenImage(),
-                    )
-                  : Image.file(
-                      File(imagePath!),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, _, _) => const _BrokenImage(),
-                    ),
-            ),
-          ),
-        ],
+        ButtonSegment(
+          value: _BgKind.gradient,
+          icon: const Icon(Icons.gradient_outlined, size: 13),
+          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypeGradient)),
+        ),
+        ButtonSegment(
+          value: _BgKind.picture,
+          icon: const Icon(Icons.wallpaper_outlined, size: 13),
+          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypePicture)),
+        ),
       ],
+      selected: {current},
+      onSelectionChanged: (s) {
+        switch (s.first) {
+          case _BgKind.solid:
+            onUpdate(t.copyWith(bgType: BackgroundType.solid));
+          case _BgKind.gradient:
+            onUpdate(t.copyWith(bgType: BackgroundType.gradient));
+          case _BgKind.picture:
+            // Always through the gallery, with the picture this design had
+            // before already marked. A design can remember more than one
+            // earlier picture, and silently bringing back the wrong one costs
+            // more than the one click this saves.
+            onPicture();
+        }
+      },
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 10)),
+        iconSize: const WidgetStatePropertyAll(13),
+      ),
     );
   }
 }
 
-class _BrokenImage extends StatelessWidget {
-  const _BrokenImage();
+enum _BgKind { solid, gradient, picture }
+
+/// The picture a design has, small, with what kind it is and a way to change it.
+class _BackgroundCard extends StatelessWidget {
+  const _BackgroundCard({required this.template, required this.onChange});
+
+  final SlideTemplate template;
+  final VoidCallback onChange;
+
   @override
-  Widget build(BuildContext context) => const ColoredBox(
-    color: AppColors.surfaceControl,
-    child: Center(
-      child: Icon(Icons.broken_image_outlined, color: AppColors.textDisabled, size: 20),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    final kind = switch (template.bgType) {
+      BackgroundType.motion => l.bgKindScene(MotionSceneX.fromId(template.bgMotion).label(l)),
+      BackgroundType.video => l.bgKindVideo,
+      _ => l.bgKindImage,
+    };
+    return InkWell(
+      onTap: onChange,
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 96,
+              height: 54,
+              child: SlideMotion(
+                level: MotionLevel.scenes,
+                child: SlideBackground(template: template.copyWith(bgOverlayOpacity: 0)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              kind,
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              textStyle: const TextStyle(fontSize: 11),
+            ),
+            onPressed: onChange,
+            child: Text(l.bgChange),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SliderRow extends StatelessWidget {
@@ -2096,10 +2081,13 @@ class _LayerCanvasState extends State<_LayerCanvas> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: SlideView(
-                  content: '',
-                  reference: '',
-                  template: widget.template.copyWith(layers: []),
+                child: SlideMotion(
+                  level: MotionLevel.all,
+                  child: SlideView(
+                    content: '',
+                    reference: '',
+                    template: widget.template.copyWith(layers: []),
+                  ),
                 ),
               ),
               const Positioned.fill(child: IgnorePointer(child: _SafeAreaFrame())),

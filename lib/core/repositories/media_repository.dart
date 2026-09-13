@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 
 import '../api/api_client.dart';
+import '../backgrounds/background_standard.dart';
 import '../models/media_item.dart';
 import '../models/storage_usage.dart';
 
@@ -29,6 +30,41 @@ class MediaRepository {
       ),
     });
     final body = await _api.upload<Map<String, dynamic>>('/media/upload', form);
+    return MediaItem.fromJson(body!);
+  }
+
+  /// The backgrounds the church has added for its designs.
+  Future<List<MediaItem>> listBackgrounds() async {
+    final rows = await _api.get<List<dynamic>>('/media/backgrounds');
+    return (rows ?? []).map((r) => MediaItem.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  /// Adds a background that has already been checked against the standard.
+  ///
+  /// The size and length go with it because the server has no video decoder
+  /// to find them out; it checks them against the same standard before it
+  /// keeps anything. [poster] is a still frame of a video.
+  Future<MediaItem> uploadBackground(
+    BackgroundCandidate candidate, {
+    File? poster,
+    void Function(double progress)? onProgress,
+  }) async {
+    final form = FormData.fromMap({
+      'role': 'background',
+      if (candidate.width != null) 'width': '${candidate.width}',
+      if (candidate.height != null) 'height': '${candidate.height}',
+      if (candidate.duration != null) 'duration_ms': '${candidate.duration!.inMilliseconds}',
+      'file': await MultipartFile.fromFile(candidate.path, filename: p.basename(candidate.path)),
+      if (poster != null)
+        'poster': await MultipartFile.fromFile(poster.path, filename: p.basename(poster.path)),
+    });
+    final body = await _api.upload<Map<String, dynamic>>(
+      '/media/upload',
+      form,
+      onSendProgress: onProgress == null
+          ? null
+          : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
+    );
     return MediaItem.fromJson(body!);
   }
 

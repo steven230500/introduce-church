@@ -314,12 +314,12 @@
   "tipWaitingOff": "Quitar la pantalla de espera  ·  W",
   "waitingTitle": "Pantalla de espera",
   "waitingIntro": "Lo que ve la congregación antes del culto y entre partes.",
-  "waitingSceneAurora": "Aurora",
-  "waitingSceneLight": "Luces",
-  "waitingSceneWaves": "Mar",
-  "waitingSceneSunrise": "Amanecer",
-  "waitingSceneStars": "Estrellas",
-  "waitingSceneCalm": "Sereno",
+  "sceneAurora": "Aurora",
+  "sceneLight": "Luces",
+  "sceneWaves": "Mar",
+  "sceneSunrise": "Amanecer",
+  "sceneStars": "Estrellas",
+  "sceneCalm": "Sereno",
   "waitingFieldTitle": "Título",
   "waitingFieldTitleHint": "El nombre de la iglesia",
   "waitingFieldSubtitle": "Mensaje",
@@ -328,5 +328,185 @@
   "waitingClockNote": "Si hay una cuenta regresiva corriendo, se muestra en su lugar.",
   "waitingShow": "Mostrar en pantalla",
   "waitingUpdate": "Actualizar",
-  "waitingHide": "Quitar"
+  "waitingHide": "Quitar",
+  "sceneMist": "Bruma",
+  "sceneRays": "Luz de lo alto",
+  "sceneSilk": "Seda",
+  "bgGalleryTitle": "Fondos",
+  "bgGalleryIntro": "Lo que va detrás de la letra. Los animados vienen con la app; los de tu iglesia los agregas tú.",
+  "bgSectionScenes": "Animados · incluidos",
+  "bgSectionChurch": "De tu iglesia",
+  "bgAdd": "Agregar fondo",
+  "bgChecking": "Revisando…",
+  "bgUploading": "Subiendo {percent} %",
+  "@bgUploading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "bgEmpty": "Todavía no hay fondos propios. Agrega imágenes o videos en bucle que cumplan los requisitos.",
+  "bgLoadFailed": "No se pudieron cargar los fondos de la iglesia. Los animados sí están disponibles.",
+  "bgUse": "Usar este fondo",
+  "bgRequirements": "Requisitos",
+  "bgRequirementsTitle": "Requisitos para un fondo",
+  "bgReqShape": "Horizontal: 16:9, o 16:10 para proyectores WXGA.",
+  "bgReqSize": "{width} × {height} recomendado · mínimo {minWidth} × {minHeight}.",
+  "@bgReqSize": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "minWidth": {
+        "type": "int"
+      },
+      "minHeight": {
+        "type": "int"
+      }
+    }
+  },
+  "bgReqImage": "Imágenes: JPG, PNG o WebP, hasta {limit}.",
+  "@bgReqImage": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "bgReqVideo": "Videos: MP4, MOV o M4V, hasta 4K y {limit}, de {minSeconds} segundos a {maxMinutes} minutos. Se reproducen sin sonido.",
+  "@bgReqVideo": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      },
+      "minSeconds": {
+        "type": "int"
+      },
+      "maxMinutes": {
+        "type": "int"
+      }
+    }
+  },
+  "bgReqTip": "Oscuros y tranquilos se leen mejor. Un bucle que termina en el mismo cuadro con que empieza no se nota al reiniciar.",
+  "bgRefusedTitle": "«{file}» no cumple los requisitos",
+  "@bgRefusedTitle": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "bgChooseOther": "Elegir otro archivo",
+  "bgFailed": "No se pudo subir: {message}",
+  "@bgFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bgDismiss": "Entendido",
+  "bgProblemFormat": "No es un formato de fondo. Imágenes: JPG, PNG o WebP. Videos: MP4, MOV o M4V.",
+  "bgProblemUnreadable": "No se pudo leer el tamaño del archivo. Puede estar dañado.",
+  "bgProblemSmall": "Mide {width} × {height} y el mínimo es {minWidth} × {minHeight}. Expórtalo a 1920 × 1080.",
+  "@bgProblemSmall": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "minWidth": {
+        "type": "int"
+      },
+      "minHeight": {
+        "type": "int"
+      }
+    }
+  },
+  "bgProblemLarge": "Mide {width} × {height} y el máximo para un video es {maxWidth} × {maxHeight} (4K).",
+  "@bgProblemLarge": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "maxWidth": {
+        "type": "int"
+      },
+      "maxHeight": {
+        "type": "int"
+      }
+    }
+  },
+  "bgProblemShape": "Mide {width} × {height}: tiene que ser horizontal, entre 16:10 y 16:9. Recórtalo a 1920 × 1080.",
+  "@bgProblemShape": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "bgProblemHeavy": "Pesa {size} y el máximo es {limit}.",
+  "@bgProblemHeavy": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "bgProblemNoLength": "No se pudo leer cuánto dura el video.",
+  "bgProblemShort": "Dura {seconds} s. Tiene que durar al menos {minSeconds} segundos para que no se note cuando vuelve a empezar.",
+  "@bgProblemShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      },
+      "minSeconds": {
+        "type": "int"
+      }
+    }
+  },
+  "bgProblemLong": "Dura {duration} y un fondo puede durar hasta {maxMinutes} minutos.",
+  "@bgProblemLong": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "maxMinutes": {
+        "type": "int"
+      }
+    }
+  },
+  "bgKindScene": "Animado · {name}",
+  "@bgKindScene": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bgKindImage": "Imagen",
+  "bgKindVideo": "Video en bucle",
+  "bgChange": "Cambiar…",
+  "bgDeleteTitle": "Eliminar fondo",
+  "bgDeleteMessage": "Se borra de la biblioteca de la iglesia. Los diseños que lo usan se quedan con su color de fondo.",
+  "bgDelete": "Eliminar",
+  "bgTypeColor": "Color",
+  "bgTypeGradient": "Degradado",
+  "bgTypePicture": "Fondo",
+  "bgDarkness": "Oscuridad"
 }

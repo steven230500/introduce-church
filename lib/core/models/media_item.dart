@@ -22,6 +22,11 @@ class MediaItem extends Equatable {
     this.userId,
     this.sizeBytes,
     this.createdAt,
+    this.isBackground = false,
+    this.width,
+    this.height,
+    this.durationMs,
+    this.posterUrl,
   });
 
   final String id;
@@ -34,6 +39,20 @@ class MediaItem extends Equatable {
   final int? sizeBytes;
   final DateTime? createdAt;
 
+  /// A file added to sit behind the text of a design, rather than to be put on
+  /// the screen by itself.
+  final bool isBackground;
+
+  /// Recorded for backgrounds, which were checked against them.
+  final int? width;
+  final int? height;
+
+  /// Null for a still.
+  final int? durationMs;
+
+  /// A still frame of a video background.
+  final String? posterUrl;
+
   factory MediaItem.fromJson(Map<String, dynamic> j) => MediaItem(
     id: j['id'] as String,
     name: j['name'] as String,
@@ -44,10 +63,15 @@ class MediaItem extends Equatable {
     userId: j['user_id'] as String?,
     sizeBytes: j['size_bytes'] as int?,
     createdAt: j['created_at'] != null ? DateTime.parse(j['created_at'] as String) : null,
+    isBackground: j['role'] == 'background',
+    width: (j['width'] as num?)?.toInt(),
+    height: (j['height'] as num?)?.toInt(),
+    durationMs: (j['duration_ms'] as num?)?.toInt(),
+    posterUrl: j['poster_url'] as String?,
   );
 
   String get sizeLabel => sizeBytes == null ? '' : humanBytes(sizeBytes!);
 
   @override
-  List<Object?> get props => [id, name, url, mediaType];
+  List<Object?> get props => [id, name, url, mediaType, isBackground, posterUrl];
 }

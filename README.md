@@ -46,6 +46,32 @@ mano.
   suyos para todos los diseños.
 - Deshacer y rehacer con ⌘Z / ⇧⌘Z. Cerrar con cambios pregunta antes.
 
+**Fondos en movimiento.** Nueve escenas animadas vienen con la app, dibujadas
+en código: no pesan, no necesitan internet, se ven nítidas en cualquier
+proyector y nunca se nota dónde vuelven a empezar. La iglesia puede agregar
+las suyas —imágenes o videos en bucle— siempre que cumplan el estándar de
+abajo. El fondo sigue corriendo al pasar de un slide a otro: solo cambia la
+letra. El primer domingo que se usa un video queda guardado en la computadora,
+y desde ahí se reproduce sin internet.
+
+![Fondos](docs/screenshots/fondos.png)
+
+| Estándar de fondos | |
+|---|---|
+| Forma | Horizontal, 16:9 (o 16:10 para proyectores WXGA) |
+| Tamaño | 1920 × 1080 recomendado · mínimo 1280 × 720 · videos hasta 4K |
+| Imágenes | JPG, PNG o WebP, hasta 20 MB |
+| Videos | MP4, MOV o M4V, hasta 250 MB, de 4 segundos a 3 minutos, sin sonido |
+
+La app revisa el archivo antes de subirlo y dice todo lo que no cumple de una
+vez; el servidor vuelve a revisarlo. Consejo para quien los prepara: oscuros y
+tranquilos se leen mejor, y un bucle que termina en el mismo cuadro con que
+empieza no se nota al reiniciar.
+
+**Pantalla de espera.** Antes del culto y entre partes: una escena animada con
+el nombre de la iglesia, un mensaje y la hora o la cuenta regresiva. `W` la
+pone y la quita.
+
 **Avisos en medio de la predicación.** Una línea sobre el slide que ve la
 congregación, con reloj para que se quite sola, o un mensaje que solo ve el
 equipo en la pantalla de escenario. Los avisos que se repiten cada domingo se

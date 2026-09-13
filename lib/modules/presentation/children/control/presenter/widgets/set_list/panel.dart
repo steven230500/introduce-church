@@ -227,6 +227,8 @@ class _CollectionMenu extends StatelessWidget {
           repo: Modular.get<TemplateRepository>(),
           currentTemplateId: collection.templateId,
         );
+        // The picker can also make, change and delete designs.
+        await cubit.refreshTemplates();
         if (templateId != null) {
           cubit.setCollectionTemplate(collection.id, templateId);
         }

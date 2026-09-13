@@ -416,11 +416,16 @@ class _OutputThumbnail extends StatelessWidget {
             videoPath: model.liveSlideContent!,
           )
         : hasContent && !isBlank
-        ? SlideView(
-            content: isImage ? '' : model.liveSlideContent!,
-            reference: model.liveSlideReference,
-            template: model.liveTemplate,
-            imagePath: isImage ? model.liveSlideContent : null,
+        // A painted scene moves here as it does on the wall; a video loop
+        // shows its still frame, since the projector is already playing it.
+        ? SlideMotion(
+            level: MotionLevel.scenes,
+            child: SlideView(
+              content: isImage ? '' : model.liveSlideContent!,
+              reference: model.liveSlideReference,
+              template: model.liveTemplate,
+              imagePath: isImage ? model.liveSlideContent : null,
+            ),
           )
         : const ColoredBox(color: Colors.black);
 
@@ -555,11 +560,14 @@ class _Preview extends StatelessWidget {
             videoPath: model.currentSlideContent!,
           )
         : hasContent && !isBlank
-        ? SlideView(
-            content: isImage ? '' : model.currentSlideContent!,
-            reference: model.currentSlideReference,
-            template: model.activeTemplate,
-            imagePath: isImage ? model.currentSlideContent : null,
+        ? SlideMotion(
+            level: MotionLevel.scenes,
+            child: SlideView(
+              content: isImage ? '' : model.currentSlideContent!,
+              reference: model.currentSlideReference,
+              template: model.activeTemplate,
+              imagePath: isImage ? model.currentSlideContent : null,
+            ),
           )
         : const ColoredBox(color: Colors.black);
 

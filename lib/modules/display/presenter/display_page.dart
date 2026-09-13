@@ -5,9 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../../core/models/slide_template.dart';
+import '../../../core/widgets/slide_background.dart';
 import '../../../core/widgets/slide_transition_view.dart';
 import '../../../core/widgets/slide_view.dart';
-import '../../../core/waiting/waiting_scenes.dart';
+import '../../../core/motion/motion_scenes.dart';
 import '../../../core/waiting/waiting_screen.dart';
 import 'display_cubit.dart';
 import '../../../core/theme/app_colors.dart';
@@ -19,28 +20,51 @@ class DisplayPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: BlocBuilder<DisplayCubit, DisplayState>(
-        builder: (_, state) {
-          final overlay = _overlayFor(state);
-          final transition = state is DisplaySlideState
-              ? state.template.transitionType
-              : SlideTransitionType.fade;
-          final durationMs = state is DisplaySlideState ? state.template.transitionDurationMs : 300;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              AnimatedSwitcher(
-                duration: transition == SlideTransitionType.cut
-                    ? Duration.zero
-                    : Duration(milliseconds: durationMs),
-                transitionBuilder: (child, animation) =>
-                    buildSlideTransition(child, animation, transition),
-                child: _buildChild(state),
-              ),
-              if (overlay != null) _OverlayBar(text: overlay),
-            ],
-          );
-        },
+      // This is the projector: whatever moves, moves.
+      body: SlideMotion(
+        level: MotionLevel.all,
+        child: BlocBuilder<DisplayCubit, DisplayState>(
+          builder: (_, state) {
+            final overlay = _overlayFor(state);
+            final transition = state is DisplaySlideState
+                ? state.template.transitionType
+                : SlideTransitionType.fade;
+            final durationMs = state is DisplaySlideState
+                ? state.template.transitionDurationMs
+                : 300;
+            final duration = transition == SlideTransitionType.cut
+                ? Duration.zero
+                : Duration(milliseconds: durationMs);
+            // A moving background is drawn once, underneath, for as long as
+            // the design behind the slides keeps it. Drawn with each slide,
+            // every new line of a song would cross-fade a loop into a second
+            // copy of itself started from the top.
+            final moving = state is DisplaySlideState && state.template.hasMovingBackground
+                ? state.template
+                : null;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                AnimatedSwitcher(
+                  duration: duration,
+                  child: moving == null
+                      ? const SizedBox.expand(key: ValueKey('no_background'))
+                      : SlideBackground(
+                          key: ValueKey('background_${moving.backgroundSignature}'),
+                          template: moving,
+                        ),
+                ),
+                AnimatedSwitcher(
+                  duration: duration,
+                  transitionBuilder: (child, animation) =>
+                      buildSlideTransition(child, animation, transition),
+                  child: _buildChild(state, drawBackground: moving == null),
+                ),
+                if (overlay != null) _OverlayBar(text: overlay),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -56,7 +80,7 @@ class DisplayPage extends StatelessWidget {
     };
   }
 
-  Widget _buildChild(DisplayState state) {
+  Widget _buildChild(DisplayState state, {required bool drawBackground}) {
     return switch (state) {
       // Keyed by scene only, not by the words or the countdown: changing the
       // title while the loop is up must not restart the animation from the
@@ -75,6 +99,7 @@ class DisplayPage extends StatelessWidget {
         content: state.content,
         reference: state.reference,
         template: state.template,
+        showBackground: drawBackground,
       ),
       DisplayImageState() => Image.file(
         key: ValueKey('img_${state.imagePath}'),

@@ -232,8 +232,11 @@ class ApiClient {
   Future<T?> delete<T>(String path) => _send<T>(() => _dio.delete<T>(path));
 
   /// Sends a multipart upload. Kept separate because the body is not JSON.
-  Future<T?> upload<T>(String path, FormData form) =>
-      _send<T>(() => _dio.post<T>(path, data: form));
+  Future<T?> upload<T>(
+    String path,
+    FormData form, {
+    void Function(int sent, int total)? onSendProgress,
+  }) => _send<T>(() => _dio.post<T>(path, data: form, onSendProgress: onSendProgress));
 
   Future<T?> _send<T>(Future<Response<T>> Function() request) async {
     try {

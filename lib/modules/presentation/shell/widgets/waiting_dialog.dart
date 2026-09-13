@@ -3,7 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
-import '../../../../core/waiting/waiting_scenes.dart';
+import '../../../../core/motion/motion_scenes.dart';
+import '../../../../core/motion/scene_names.dart';
 import '../../../../core/waiting/waiting_screen.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../l10n/l10n.dart';
@@ -59,15 +60,6 @@ class _WaitingDialogState extends State<WaitingDialog> {
     super.dispose();
   }
 
-  static String _sceneName(L10n t, WaitingScene scene) => switch (scene) {
-    WaitingScene.aurora => t.waitingSceneAurora,
-    WaitingScene.light => t.waitingSceneLight,
-    WaitingScene.waves => t.waitingSceneWaves,
-    WaitingScene.sunrise => t.waitingSceneSunrise,
-    WaitingScene.stars => t.waitingSceneStars,
-    WaitingScene.calm => t.waitingSceneCalm,
-  };
-
   @override
   Widget build(BuildContext context) {
     final t = L10n.of(context);
@@ -78,7 +70,7 @@ class _WaitingDialogState extends State<WaitingDialog> {
     return AppDialog(
       title: t.waitingTitle,
       icon: Icons.auto_awesome_outlined,
-      width: 760,
+      width: 900,
       actions: [
         if (up)
           TextButton(
@@ -127,18 +119,18 @@ class _WaitingDialogState extends State<WaitingDialog> {
 
           // Every scene, moving, so the choice is made by looking rather than
           // by guessing from a name.
-          // All six in one row, sharing the width. A scrolling strip hid the
-          // last one behind the edge, and a choice you have to scroll to find
-          // is one most people never see.
+          // All of them in one row, sharing the width. A scrolling strip hid
+          // the last one behind the edge, and a choice you have to scroll to
+          // find is one most people never see.
           Row(
             children: [
-              for (final (index, scene) in WaitingScene.values.indexed) ...[
+              for (final (index, scene) in MotionScene.values.indexed) ...[
                 if (index > 0) const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: AspectRatio(
                     aspectRatio: 16 / 10,
                     child: _SceneThumb(
-                      label: _sceneName(t, scene),
+                      label: scene.label(t),
                       scene: scene,
                       selected: scene == _config.scene,
                       animate: widget.animate,
@@ -204,7 +196,7 @@ class _SceneThumb extends StatelessWidget {
   });
 
   final String label;
-  final WaitingScene scene;
+  final MotionScene scene;
   final bool selected;
   final bool animate;
   final VoidCallback onTap;
@@ -241,11 +233,11 @@ class _SceneThumb extends StatelessWidget {
                     alignment: Alignment.bottomLeft,
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       color: const Color(0x99000000),
                       child: Text(
                         label,
-                        style: const TextStyle(fontSize: 11, color: Colors.white),
+                        style: const TextStyle(fontSize: 10, color: Colors.white),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

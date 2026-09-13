@@ -482,6 +482,8 @@ Future<void> _runItemAction(
         repo: Modular.get<TemplateRepository>(),
         currentTemplateId: item.templateId,
       );
+      // The picker can also make, change and delete designs.
+      await cubit.refreshTemplates();
       if (picked != null) cubit.setItemTemplate(collectionId, item.id, picked);
     case 'clear_template':
       cubit.setItemTemplate(collectionId, item.id, null);

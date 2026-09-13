@@ -21,6 +21,7 @@ import '../../../../../core/theme/app_dimens.dart';
 import '../../../../../core/theme/app_text.dart';
 import '../../../../../core/widgets/app_dialog.dart';
 import '../../../../../core/widgets/free_slide_dialog.dart';
+import '../../../../../core/widgets/slide_background.dart';
 import '../../../../../core/widgets/slide_transition_view.dart';
 import '../../../../../core/widgets/slide_view.dart';
 import '../../../../../core/widgets/template_picker/template_picker_dialog.dart';

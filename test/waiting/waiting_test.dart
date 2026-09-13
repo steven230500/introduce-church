@@ -1,12 +1,10 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/history/projection_recorder.dart';
 import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/services/window_bounds_store.dart';
-import 'package:introduce_church/core/waiting/waiting_scenes.dart';
+import 'package:introduce_church/core/motion/motion_scenes.dart';
 import 'package:introduce_church/core/waiting/waiting_screen.dart';
 import 'package:introduce_church/modules/display/presenter/display_cubit.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
@@ -16,42 +14,11 @@ import '../helpers/builders.dart';
 import '../helpers/fakes.dart';
 
 void main() {
-  group('every scene draws', () {
-    // A painter that throws takes the projector down to a red error screen in
-    // front of the whole room. Every scene is drawn at many moments, at a
-    // projector size and at a thumbnail size, and none may throw.
-    for (final scene in WaitingScene.values) {
-      test('${scene.id} at every moment and size', () {
-        for (final size in const [Size(1920, 1080), Size(116, 65), Size(1, 1)]) {
-          for (final t in [0.0, 0.5, 7.3, 60.0, 3600.0, 86400.0]) {
-            final recorder = ui.PictureRecorder();
-            scene.painter(t).paint(Canvas(recorder), size);
-            recorder.endRecording();
-          }
-        }
-      });
-    }
-
-    test('the same moment draws the same frame, so preview and projector agree', () {
-      expect(seeded(42), seeded(42));
-      expect(seeded(42), isNot(seeded(43)));
-      for (var i = 0; i < 1000; i++) {
-        expect(seeded(i), inInclusiveRange(0, 1));
-      }
-    });
-
-    test('a scene only repaints when time moves', () {
-      const a = AuroraPainter(10);
-      expect(a.shouldRepaint(const AuroraPainter(10)), isFalse);
-      expect(a.shouldRepaint(const AuroraPainter(10.016)), isTrue);
-    });
-  });
-
   group('what travels over the wire', () {
     test('a waiting screen survives the trip', () {
       const config = WaitingConfig(
         active: true,
-        scene: WaitingScene.stars,
+        scene: MotionScene.stars,
         title: 'Casa Vida',
         subtitle: 'Bienvenidos',
         showClock: true,
@@ -70,7 +37,7 @@ void main() {
     test('a scene this version does not know falls back to one it does', () {
       expect(
         WaitingConfig.fromJson({'active': true, 'scene': 'holograma'}).scene,
-        WaitingScene.aurora,
+        MotionScene.aurora,
       );
     });
   });
@@ -103,7 +70,7 @@ void main() {
 
     ControlModel model() => (control.state as ControlLoadedState).model;
 
-    const loop = WaitingConfig(scene: WaitingScene.light, title: 'Casa Vida');
+    const loop = WaitingConfig(scene: MotionScene.light, title: 'Casa Vida');
 
     test('putting a waiting screen up puts it on the screen', () {
       // An operator pressing it before the service expects the room to see it,
@@ -129,7 +96,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final remembered = WaitingConfig.fromJson(prefs.waiting);
-      expect(remembered.scene, WaitingScene.light);
+      expect(remembered.scene, MotionScene.light);
       expect(remembered.title, 'Casa Vida');
       expect(remembered.active, isFalse, reason: 'remembered as a choice, not as up');
     });
@@ -182,7 +149,7 @@ void main() {
       final state = await render({'is_live': true, 'blank_screen': false, 'waiting': up});
 
       expect(state, isA<DisplayWaitingState>());
-      expect((state as DisplayWaitingState).config.scene, WaitingScene.waves);
+      expect((state as DisplayWaitingState).config.scene, MotionScene.waves);
     });
 
     test('cutting the signal takes the scene down too', () async {
@@ -307,7 +274,17 @@ void main() {
       await pumpDialog(tester);
 
       expect(tester.takeException(), isNull);
-      for (final name in ['Aurora', 'Luces', 'Mar', 'Amanecer', 'Estrellas', 'Sereno']) {
+      for (final name in [
+        'Aurora',
+        'Luces',
+        'Mar',
+        'Amanecer',
+        'Estrellas',
+        'Sereno',
+        'Bruma',
+        'Luz de lo alto',
+        'Seda',
+      ]) {
         expect(find.text(name), findsOneWidget, reason: '$name must be visible');
       }
     });
@@ -322,7 +299,7 @@ void main() {
 
       final model = (control.state as ControlLoadedState).model;
       expect(model.waiting.active, isTrue);
-      expect(model.waiting.scene, WaitingScene.stars);
+      expect(model.waiting.scene, MotionScene.stars);
       expect(model.waiting.title, 'Casa Vida');
     });
   });

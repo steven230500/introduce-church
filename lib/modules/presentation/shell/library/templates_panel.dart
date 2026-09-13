@@ -126,6 +126,7 @@ class _TemplatesPanelView extends StatelessWidget {
       isNew: true,
     );
     if (result != null) await cubit.save(result);
+    if (context.mounted) await context.read<ControlCubit>().refreshTemplates();
   }
 
   Future<void> _edit(
@@ -140,6 +141,7 @@ class _TemplatesPanelView extends StatelessWidget {
       isNew: false,
     );
     if (result != null) await cubit.save(result);
+    if (context.mounted) await context.read<ControlCubit>().refreshTemplates();
   }
 
   Future<void> _delete(
@@ -156,6 +158,7 @@ class _TemplatesPanelView extends StatelessWidget {
       icon: Icons.delete_outline,
     );
     if (ok) await cubit.delete(template.id);
+    if (ok && context.mounted) await context.read<ControlCubit>().refreshTemplates();
   }
 }
 

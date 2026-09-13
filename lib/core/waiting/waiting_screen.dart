@@ -2,20 +2,20 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-import 'waiting_scenes.dart';
+import '../motion/motion_scenes.dart';
 
 /// What the screen shows while nothing else is on it, and whether it is up.
 class WaitingConfig extends Equatable {
   const WaitingConfig({
     this.active = false,
-    this.scene = WaitingScene.aurora,
+    this.scene = MotionScene.aurora,
     this.title = '',
     this.subtitle = '',
     this.showClock = false,
   });
 
   final bool active;
-  final WaitingScene scene;
+  final MotionScene scene;
 
   /// Usually the church's name.
   final String title;
@@ -29,7 +29,7 @@ class WaitingConfig extends Equatable {
 
   WaitingConfig copyWith({
     bool? active,
-    WaitingScene? scene,
+    MotionScene? scene,
     String? title,
     String? subtitle,
     bool? showClock,
@@ -56,7 +56,7 @@ class WaitingConfig extends Equatable {
     if (raw is! Map) return const WaitingConfig();
     return WaitingConfig(
       active: raw['active'] == true,
-      scene: WaitingSceneX.fromId(raw['scene'] as String?),
+      scene: MotionSceneX.fromId(raw['scene'] as String?),
       title: raw['title'] as String? ?? '',
       subtitle: raw['subtitle'] as String? ?? '',
       showClock: raw['clock'] == true,

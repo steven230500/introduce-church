@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/slide_background.dart';
 import '../../../core/widgets/template_picker/template_picker_dialog.dart';
 import '../../../core/widgets/ui/app_buttons.dart';
 import '../../../core/widgets/ui/empty_state.dart';
@@ -139,6 +140,8 @@ class CollectionsLibraryPage extends StatelessWidget {
       repo: Modular.get<TemplateRepository>(),
       currentTemplateId: collection.templateId,
     );
+    // The picker can also make, change and delete designs.
+    await cubit.refreshTemplates();
     if (picked != null) cubit.setCollectionTemplate(collection.id, picked);
   }
 
@@ -218,18 +221,7 @@ class _CollectionCardState extends State<_CollectionCard> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (template.bgType == BackgroundType.gradient)
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(template.bgColor), Color(template.bgGradientEnd)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                        )
-                      else
-                        ColoredBox(color: Color(template.bgColor)),
+                      SlideBackground(template: template),
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpace.md),

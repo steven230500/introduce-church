@@ -1,12 +1,19 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:introduce_church/core/api/api_client.dart';
 import 'package:introduce_church/core/api/presentation_socket.dart';
+import 'package:introduce_church/core/backgrounds/background_probe.dart';
+import 'package:introduce_church/core/backgrounds/background_standard.dart';
 import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/collection.dart';
 import 'package:introduce_church/core/models/collection_item_type.dart';
+import 'package:introduce_church/core/models/media_item.dart';
+import 'package:introduce_church/core/models/storage_usage.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/core/models/saved_notice.dart';
 import 'package:introduce_church/core/models/song.dart';
+import 'package:introduce_church/core/repositories/media_repository.dart';
 import 'package:introduce_church/core/repositories/organization_repository.dart';
 import 'package:introduce_church/core/repositories/template_repository.dart';
 import 'package:introduce_church/core/services/app_prefs_service.dart';
@@ -412,4 +419,83 @@ class FakeOrganizationRepository extends OrganizationRepository {
     palette = next;
     return next;
   }
+}
+
+/// The church's backgrounds, in memory.
+class FakeMediaRepository extends MediaRepository {
+  FakeMediaRepository({List<MediaItem>? backgrounds, this.maxUploadBytes = 500 << 20})
+    : backgrounds = backgrounds ?? [],
+      super(fakeApiClient());
+
+  List<MediaItem> backgrounds;
+  int maxUploadBytes;
+
+  /// What was sent, so a test can say nothing was.
+  final uploads = <BackgroundCandidate>[];
+  final posters = <File?>[];
+  final deleted = <String>[];
+
+  /// When set, the upload fails with it, the way the server refuses.
+  ApiException? refuse;
+
+  @override
+  Future<List<MediaItem>> listBackgrounds() async => backgrounds;
+
+  @override
+  Future<StorageUsage> usage() async => StorageUsage(
+    plan: 'free',
+    label: 'Gratis',
+    usedBytes: 0,
+    totalBytes: 500 << 20,
+    maxUploadBytes: maxUploadBytes,
+  );
+
+  @override
+  Future<MediaItem> uploadBackground(
+    BackgroundCandidate candidate, {
+    File? poster,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (refuse != null) throw refuse!;
+    uploads.add(candidate);
+    posters.add(poster);
+    onProgress?.call(0.5);
+    onProgress?.call(1);
+    final video = candidate.kind == BackgroundKind.video;
+    final item = MediaItem(
+      id: 'bg${uploads.length}',
+      name: candidate.path.split('/').last.split('.').first,
+      url: 'https://media.test/${video ? 'videos' : 'images'}/${uploads.length}',
+      storagePath: 'x',
+      mediaType: video ? MediaType.video : MediaType.image,
+      isBackground: true,
+      width: candidate.width,
+      height: candidate.height,
+      durationMs: candidate.duration?.inMilliseconds,
+      posterUrl: video && poster != null ? 'https://media.test/images/poster' : null,
+    );
+    backgrounds = [item, ...backgrounds];
+    return item;
+  }
+
+  @override
+  Future<void> delete(MediaItem item) async {
+    deleted.add(item.id);
+    backgrounds = backgrounds.where((b) => b.id != item.id).toList();
+  }
+}
+
+/// Answers for files by name, without reading any.
+class FakeBackgroundProbe extends BackgroundProbe {
+  const FakeBackgroundProbe(this.files, {this.still});
+
+  final Map<String, BackgroundCandidate> files;
+  final File? still;
+
+  @override
+  Future<BackgroundCandidate> read(String path) async =>
+      files[path] ?? BackgroundCandidate(path: path, bytes: 0);
+
+  @override
+  Future<File?> poster(String videoPath) async => still;
 }

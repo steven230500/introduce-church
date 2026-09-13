@@ -16,7 +16,7 @@ import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
-import '../../../../../../core/waiting/waiting_scenes.dart';
+import '../../../../../../core/motion/motion_scenes.dart';
 import '../../../../../../core/waiting/waiting_screen.dart';
 import '../../../../../../core/services/service_file.dart';
 import '../../../../../songs/children/songs_list/repository/repository.dart';
@@ -1196,8 +1196,38 @@ class ControlCubit extends Cubit<ControlState> {
     await refresh();
   }
 
+  /// Reads the church's designs again, after one was made, changed or deleted
+  /// somewhere the presenter was not looking - the library, the design picker.
+  ///
+  /// Without it a design made in the library and applied straight away was
+  /// drawn as the built-in default, and a design changed mid-service kept its
+  /// old look on the projector, both until the next full refresh.
+  Future<void> refreshTemplates() async {
+    if (state is! ControlLoadedState) return;
+    try {
+      final raw = await _templateRepository.getTemplatesRaw();
+      await _prefs.saveTemplates(raw);
+      if (isClosed || state is! ControlLoadedState) return;
+      final model = (state as ControlLoadedState).model;
+      emit(
+        ControlLoadedState(model.copyWith(userTemplates: TemplateRepository.parseTemplates(raw))),
+      );
+      _syncState();
+    } catch (_) {
+      // Offline, the designs already on hand are the ones there are.
+    }
+  }
+
+  /// Makes sure [templateId] is a design the presenter can draw.
+  Future<void> _knowTemplate(String? templateId) async {
+    if (templateId == null || state is! ControlLoadedState) return;
+    if ((state as ControlLoadedState).model.findTemplate(templateId) != null) return;
+    await refreshTemplates();
+  }
+
   Future<void> setCollectionTemplate(String collectionId, String? templateId) async {
     await _templateRepository.setCollectionTemplate(collectionId, templateId);
+    await _knowTemplate(templateId);
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     final updatedCollections = model.collections.map((c) {
@@ -1216,10 +1246,14 @@ class ControlCubit extends Cubit<ControlState> {
         model.copyWith(collections: updatedCollections, activeCollection: updatedActive),
       ),
     );
+    // Applying a design is asking to see it: the projector changes now, not
+    // at the next slide.
+    _syncState();
   }
 
   Future<void> setItemTemplate(String collectionId, String itemId, String? templateId) async {
     await _templateRepository.setItemTemplate(itemId, templateId);
+    await _knowTemplate(templateId);
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
 
@@ -1241,6 +1275,7 @@ class ControlCubit extends Cubit<ControlState> {
         ),
       ),
     );
+    _syncState();
   }
 
   Future<void> openStageMonitor() async {
@@ -1399,7 +1434,7 @@ class ControlCubit extends Cubit<ControlState> {
   Future<WaitingConfig> lastWaiting() async {
     if (state is ControlLoadedState) {
       final current = (state as ControlLoadedState).model.waiting;
-      if (current.title.isNotEmpty || current.scene != WaitingScene.aurora) return current;
+      if (current.title.isNotEmpty || current.scene != MotionScene.aurora) return current;
     }
     return WaitingConfig.fromJson(await _prefs.loadWaiting());
   }

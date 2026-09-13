@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'fit_text.dart';
+import 'slide_background.dart';
 import '../models/slide_layer.dart';
 import '../models/slide_template.dart';
 import '../../core/theme/app_colors.dart';
@@ -21,6 +21,7 @@ class SlideView extends StatelessWidget {
     required this.reference,
     required this.template,
     this.imagePath,
+    this.showBackground = true,
     super.key,
   });
 
@@ -31,6 +32,11 @@ class SlideView extends StatelessWidget {
   final String reference;
   final SlideTemplate template;
   final String? imagePath;
+
+  /// Off where the background is drawn once underneath, rather than again with
+  /// every slide: the projector does that for a moving background, so a new
+  /// slide changes the words without restarting the picture behind them.
+  final bool showBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +64,7 @@ class SlideView extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            _Background(template: template),
+            if (showBackground) SlideBackground(template: template),
             if (template.layers.isNotEmpty)
               _LayerStack(
                 layers: template.layers,
@@ -181,53 +187,6 @@ class _LayerContent extends StatelessWidget {
     TextAlign.right || TextAlign.end => Alignment.centerRight,
     _ => Alignment.center,
   };
-}
-
-// ── Background ────────────────────────────────────────────────────────────────
-
-class _Background extends StatelessWidget {
-  const _Background({required this.template});
-  final SlideTemplate template;
-
-  @override
-  Widget build(BuildContext context) {
-    if (template.bgType == BackgroundType.image && template.bgImagePath != null) {
-      final path = template.bgImagePath!;
-      final isUrl = path.startsWith('http://') || path.startsWith('https://');
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          isUrl
-              ? Image.network(
-                  path,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFF000000)),
-                )
-              : Image.file(
-                  File(path),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFF000000)),
-                ),
-          if (template.bgOverlayOpacity > 0)
-            ColoredBox(color: Color.fromRGBO(0, 0, 0, template.bgOverlayOpacity.clamp(0.0, 1.0))),
-        ],
-      );
-    }
-    if (template.bgType == BackgroundType.gradient) {
-      final rad = template.bgGradientAngle * math.pi / 180;
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(-math.sin(rad), -math.cos(rad)),
-            end: Alignment(math.sin(rad), math.cos(rad)),
-            colors: [Color(template.bgColor), Color(template.bgGradientEnd)],
-          ),
-        ),
-        child: const SizedBox.expand(),
-      );
-    }
-    return ColoredBox(color: Color(template.bgColor));
-  }
 }
 
 // ── Body text ─────────────────────────────────────────────────────────────────

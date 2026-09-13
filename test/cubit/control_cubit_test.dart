@@ -768,5 +768,30 @@ void main() {
 
       expect(model().activeTemplate.id, SlideTemplate.light.id);
     });
+
+    test('a design made a moment ago draws as itself, not as the default', () async {
+      // Made in the library and applied straight away, it was not in the list
+      // the presenter loaded at the start, so the slides fell back to the
+      // built-in design until the next full refresh.
+      await openFirstCollection();
+      final fresh = SlideTemplate.silk.copyWith(id: 'nuevo', name: 'Olas');
+      templates.templates = [fresh];
+
+      await cubit.setCollectionTemplate('c1', 'nuevo');
+
+      expect(model().activeTemplate.name, 'Olas');
+    });
+
+    test('a design changed elsewhere reaches the presenter when asked', () async {
+      final original = SlideTemplate.silk.copyWith(id: 'd1', name: 'Seda');
+      templates.templates = [original];
+      await openFirstCollection();
+      await cubit.setCollectionTemplate('c1', 'd1');
+
+      templates.templates = [original.copyWith(bgOverlayOpacity: 0.7)];
+      await cubit.refreshTemplates();
+
+      expect(model().activeTemplate.bgOverlayOpacity, 0.7);
+    });
   });
 }

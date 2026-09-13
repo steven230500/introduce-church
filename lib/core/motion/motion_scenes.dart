@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
 
-/// The animated backgrounds a church can leave on the screen while nothing
-/// else is on it.
+/// The animated scenes that come with the app: behind the words of a waiting
+/// screen, and behind the lyrics of a design.
 ///
 /// Painted, not played. A video loop would be tens of megabytes per scene, has
 /// a visible seam where it restarts, and looks soft on a 4K projector. These
@@ -15,24 +15,62 @@ import 'package:flutter/rendering.dart';
 /// and the size it is given. The same t draws the same frame on the operator's
 /// preview and on the projector, and a test can draw any moment without a
 /// clock.
-enum WaitingScene { aurora, light, waves, sunrise, stars, calm }
+///
+/// New scenes go at the end: the order is the order they are offered in, and
+/// an operator who has learned where theirs sits should find it there.
+enum MotionScene { aurora, light, waves, sunrise, stars, calm, mist, rays, silk }
 
-extension WaitingSceneX on WaitingScene {
+extension MotionSceneX on MotionScene {
   /// The id that travels over the wire and is stored.
   String get id => name;
 
-  static WaitingScene fromId(String? id) =>
-      WaitingScene.values.where((scene) => scene.id == id).firstOrNull ?? WaitingScene.aurora;
+  static MotionScene fromId(String? id) =>
+      MotionScene.values.where((scene) => scene.id == id).firstOrNull ?? MotionScene.aurora;
+
+  /// Whether [id] names a scene this version can draw.
+  static bool knows(String? id) => MotionScene.values.any((scene) => scene.id == id);
 
   CustomPainter painter(double t) => switch (this) {
-    WaitingScene.aurora => AuroraPainter(t),
-    WaitingScene.light => LightPainter(t),
-    WaitingScene.waves => WavesPainter(t),
-    WaitingScene.sunrise => SunrisePainter(t),
-    WaitingScene.stars => StarsPainter(t),
-    WaitingScene.calm => CalmPainter(t),
+    MotionScene.aurora => AuroraPainter(t),
+    MotionScene.light => LightPainter(t),
+    MotionScene.waves => WavesPainter(t),
+    MotionScene.sunrise => SunrisePainter(t),
+    MotionScene.stars => StarsPainter(t),
+    MotionScene.calm => CalmPainter(t),
+    MotionScene.mist => MistPainter(t),
+    MotionScene.rays => RaysPainter(t),
+    MotionScene.silk => SilkPainter(t),
+  };
+
+  /// The one colour that stands for the scene.
+  ///
+  /// Two jobs. It is what the design editor judges text against, since a
+  /// moving picture has no single colour to measure. And it is stored as the
+  /// design's plain colour too, so a copy of the app too old to know this
+  /// scene shows something close to it rather than whatever colour was there
+  /// before.
+  int get baseColor => switch (this) {
+    MotionScene.aurora => 0xFF0E1838,
+    MotionScene.light => 0xFF24160B,
+    MotionScene.waves => 0xFF23324F,
+    MotionScene.sunrise => 0xFF6A2C45,
+    MotionScene.stars => 0xFF080C20,
+    MotionScene.calm => 0xFF1F3445,
+    MotionScene.mist => 0xFF1D2733,
+    MotionScene.rays => 0xFF1A1D2B,
+    MotionScene.silk => 0xFF1A1233,
   };
 }
+
+/// The moment every moving background on this machine is drawn at.
+///
+/// Wall-clock seconds, not seconds since something started. The projector and
+/// the operator's preview run in separate windows with separate clocks of
+/// their own, and this is the one they share, so the thumbnail of the output
+/// shows the frame the room is looking at. It also means two slides with the
+/// same background cross-fade into each other without the background jumping,
+/// because both are drawing the same instant.
+double motionClock() => DateTime.now().microsecondsSinceEpoch / 1e6;
 
 /// A stable pseudo-random number in [0, 1) for a given seed.
 ///
@@ -438,6 +476,267 @@ class CalmPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CalmPainter old) => old.t != t;
+}
+
+/// Fog drifting across a dark valley.
+///
+/// Made for lyrics: almost no contrast of its own, so the words are the
+/// brightest thing on the wall, and the movement is slow enough that nobody
+/// follows it with their eyes.
+class MistPainter extends CustomPainter {
+  const MistPainter(this.t);
+  final double t;
+
+  static const _bands = 7;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0E141C), Color(0xFF1D2733), Color(0xFF2B3542)],
+        ).createShader(rect),
+    );
+
+    // A moon behind the fog, far enough gone that it is only a lighter patch.
+    final moon = Offset(size.width * 0.68, size.height * 0.22);
+    final moonGlow = size.height * 0.6;
+    canvas.drawCircle(
+      moon,
+      moonGlow,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [const Color(0xFFB9CCE0).withValues(alpha: 0.16), const Color(0x00B9CCE0)],
+        ).createShader(Rect.fromCircle(center: moon, radius: moonGlow)),
+    );
+
+    void fog(int i) {
+      final depth = seeded(i * 11 + 2);
+      final bandWidth = size.width * (0.9 + depth * 0.7);
+      final bandHeight = size.height * (0.07 + seeded(i * 5 + 9) * 0.08);
+      final y = size.height * (0.42 + i * 0.075) + math.sin(t * 0.03 + i) * size.height * 0.015;
+      // Nearer fog moves faster, and alternate bands move the other way, so
+      // it reads as air with depth rather than one sheet sliding sideways.
+      final direction = i.isEven ? 1 : -1;
+      final travel = (seeded(i * 17 + 4) + direction * t * (0.004 + depth * 0.006)) % 1.0;
+      final x = -size.width * 0.5 + travel * size.width * 2;
+      final breath = 0.75 + 0.25 * math.sin(t * 0.07 + i * 1.3);
+      final paint = Paint()
+        ..color = const Color(0xFFC3D0DE).withValues(alpha: (0.12 + (1 - depth) * 0.12) * breath)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.height * 0.045);
+      // Drawn a full lap either side as well, so a band leaving one edge is
+      // already arriving at the other instead of popping into existence.
+      for (final lap in const [-2.0, 0.0, 2.0]) {
+        final centre = Offset(x + lap * size.width, y);
+        if (centre.dx + bandWidth < 0 || centre.dx - bandWidth > size.width) continue;
+        canvas.drawOval(
+          Rect.fromCenter(center: centre, width: bandWidth, height: bandHeight),
+          paint,
+        );
+      }
+    }
+
+    // Hills, so the fog has something to lie in. Without a horizon it read as
+    // a smudge on the lens.
+    void hills(double top, double height, double seed, Color colour) {
+      final path = Path()..moveTo(0, size.height);
+      const steps = 40;
+      for (var s = 0; s <= steps; s++) {
+        final u = s / steps;
+        final y =
+            size.height * top +
+            math.sin(u * math.pi * 1.4 + seed) * size.height * height +
+            math.sin(u * math.pi * 3.7 + seed * 2) * size.height * height * 0.35;
+        path.lineTo(size.width * u, y);
+      }
+      path
+        ..lineTo(size.width, size.height)
+        ..close();
+      canvas.drawPath(path, Paint()..color = colour);
+    }
+
+    hills(0.60, 0.05, 0.8, const Color(0xFF1A232E));
+    for (var i = 0; i < 4; i++) {
+      fog(i);
+    }
+    hills(0.76, 0.06, 2.6, const Color(0xFF0F151C));
+    for (var i = 4; i < _bands; i++) {
+      fog(i);
+    }
+
+    _vignette(canvas, size, strength: 0.5);
+  }
+
+  @override
+  bool shouldRepaint(MistPainter old) => old.t != t;
+}
+
+/// Light falling from above through a dim room, with dust turning in it.
+class RaysPainter extends CustomPainter {
+  const RaysPainter(this.t);
+  final double t;
+
+  static const _rays = 11;
+  static const _motes = 46;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF2C3148), Color(0xFF151824), Color(0xFF0A0B11)],
+        ).createShader(rect),
+    );
+
+    final source = Offset(size.width * (0.5 + 0.04 * math.sin(t * 0.02)), -size.height * 0.3);
+    final reach = size.height * 1.5;
+
+    for (var i = 0; i < _rays; i++) {
+      final spreadOut = (i / (_rays - 1)) - 0.5;
+      final angle = math.pi / 2 + spreadOut * 1.1 + 0.04 * math.sin(t * 0.045 + i * 1.7);
+      final half = 0.018 + seeded(i + 70) * 0.03;
+      final ray = Path()
+        ..moveTo(source.dx, source.dy)
+        ..lineTo(
+          source.dx + math.cos(angle - half) * reach,
+          source.dy + math.sin(angle - half) * reach,
+        )
+        ..lineTo(
+          source.dx + math.cos(angle + half) * reach,
+          source.dy + math.sin(angle + half) * reach,
+        )
+        ..close();
+      // Each ray fades on its own slow cycle, the way light through a window
+      // comes and goes as clouds pass.
+      final strength = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(t * 0.11 + i * 2.3));
+      canvas.drawPath(
+        ray,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFFFFF3D6).withValues(alpha: 0.22 * strength),
+              const Color(0xFFFFF3D6).withValues(alpha: 0.05 * strength),
+              const Color(0x00FFF3D6),
+            ],
+            stops: const [0.15, 0.6, 1],
+          ).createShader(Rect.fromCircle(center: source, radius: reach))
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.height * 0.02)
+          ..blendMode = BlendMode.plus,
+      );
+    }
+
+    final haze = Offset(size.width * 0.5, 0);
+    canvas.drawCircle(
+      haze,
+      size.height * 0.7,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [const Color(0xFFFFF3D6).withValues(alpha: 0.18), const Color(0x00FFF3D6)],
+        ).createShader(Rect.fromCircle(center: haze, radius: size.height * 0.7)),
+    );
+
+    final shortSide = size.shortestSide;
+    for (var i = 0; i < _motes; i++) {
+      final fall = (seeded(i * 9 + 1) + t * (0.004 + seeded(i * 3 + 7) * 0.006)) % 1.0;
+      final x =
+          size.width * (0.2 + seeded(i * 4 + 5) * 0.6) + math.sin(t * 0.2 + i) * size.width * 0.02;
+      final y = size.height * fall;
+      final twinkle = 0.5 + 0.5 * math.sin(t * (0.9 + seeded(i + 30)) + i * 2.1);
+      // Only visible where the light is, which is towards the top.
+      final lit = (1 - fall).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        Offset(x, y),
+        shortSide * (0.0015 + seeded(i * 6 + 2) * 0.0025),
+        Paint()
+          ..color = const Color(0xFFFFF3D6).withValues(alpha: 0.5 * twinkle * lit)
+          ..blendMode = BlendMode.plus,
+      );
+    }
+
+    _vignette(canvas, size, strength: 0.5);
+  }
+
+  @override
+  bool shouldRepaint(RaysPainter old) => old.t != t;
+}
+
+/// A ribbon of fine threads folding over itself, like silk in slow water.
+class SilkPainter extends CustomPainter {
+  const SilkPainter(this.t);
+  final double t;
+
+  static const _threads = 38;
+  static const _steps = 90;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0C0A1D), Color(0xFF1A1233), Color(0xFF0A1530)],
+        ).createShader(rect),
+    );
+
+    double yAt(double u, double k) =>
+        size.height *
+        (0.55 +
+            0.16 * math.sin(u * math.pi * 1.6 + t * 0.12) +
+            // Scaled by the thread's place in the ribbon, so the ribbon is wide
+            // in some places and pinches to a twist in others.
+            k * 0.26 * math.sin(u * math.pi * 1.3 + t * 0.07 + 1.1) +
+            0.045 * math.sin(u * math.pi * 4.2 - t * 0.09 + k * 2));
+
+    // A glow along the middle of the ribbon, so it lights the dark around it.
+    final centre = Path()..moveTo(0, yAt(0, 0));
+    for (var s = 1; s <= _steps; s++) {
+      final u = s / _steps;
+      centre.lineTo(size.width * u, yAt(u, 0));
+    }
+    canvas.drawPath(
+      centre,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.height * 0.16
+        ..color = const Color(0xFF8A5CF6).withValues(alpha: 0.14)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.height * 0.08),
+    );
+
+    for (var i = 0; i < _threads; i++) {
+      final k = i / (_threads - 1) - 0.5;
+      final path = Path()..moveTo(0, yAt(0, k));
+      for (var s = 1; s <= _steps; s++) {
+        final u = s / _steps;
+        path.lineTo(size.width * u, yAt(u, k));
+      }
+      final colour = Color.lerp(const Color(0xFFE56BD6), const Color(0xFF5BC8FA), k + 0.5)!;
+      final edge = 1 - (k.abs() * 1.6).clamp(0.0, 0.85);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(0.6, size.height * 0.0018)
+          ..color = colour.withValues(alpha: 0.42 * edge)
+          ..blendMode = BlendMode.plus,
+      );
+    }
+
+    _vignette(canvas, size, strength: 0.5);
+  }
+
+  @override
+  bool shouldRepaint(SilkPainter old) => old.t != t;
 }
 
 /// Darkens the corners, which pulls the eye to the middle where the text is and
