@@ -160,5 +160,59 @@
         "type": "String"
       }
     }
+  },
+  "saveAsFile": "Guardar como archivo",
+  "openFromFile": "Abrir desde archivo",
+  "printableList": "Hoja para imprimir",
+  "serviceSaved": "Guardado: {file}",
+  "@serviceSaved": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "serviceOpened": "{name}: {items} elementos",
+  "@serviceOpened": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "items": {
+        "type": "int"
+      }
+    }
+  },
+  "importedSongs": "{count, plural, =0{} one{ · 1 canción nueva} other{ · {count} canciones nuevas}}",
+  "@importedSongs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importedMissingMedia": "{count, plural, =0{} one{ · 1 imagen o video no se encontró} other{ · {count} imágenes o videos no se encontraron}}",
+  "@importedMissingMedia": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openFailed": "No se pudo abrir: {reason}",
+  "@openFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "saveFailed": "No se pudo guardar: {reason}",
+  "@saveFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
   }
 }

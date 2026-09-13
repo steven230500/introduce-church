@@ -99,3 +99,68 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
     }
   }
 }
+
+// ── A service as a file ───────────────────────────────────────────────────────
+//
+// Different from the printable sheet above, which is for a music stand. This
+// one is for another machine: a backup, a move from the rehearsal laptop to the
+// booth, a second campus running the same plan.
+
+Future<void> _saveServiceFile(BuildContext context, Collection collection) async {
+  final t = L10n.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final cubit = context.read<ControlCubit>();
+  final suggested = serviceFileName(collection.name, on: collection.serviceDate);
+
+  final path = await FilePicker.platform.saveFile(
+    dialogTitle: t.saveAsFile,
+    fileName: suggested,
+    type: FileType.custom,
+    allowedExtensions: const [kServiceFileExtension],
+  );
+  if (path == null) return;
+
+  try {
+    await File(path).writeAsString(cubit.exportService(collection));
+    messenger.showSnackBar(
+      SnackBar(content: Text(t.serviceSaved(p.basename(path))), backgroundColor: AppColors.success),
+    );
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(t.saveFailed('$e')), backgroundColor: AppColors.danger),
+    );
+  }
+}
+
+Future<void> _openServiceFile(BuildContext context) async {
+  final t = L10n.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final cubit = context.read<ControlCubit>();
+
+  final picked = await FilePicker.platform.pickFiles(
+    dialogTitle: t.openFromFile,
+    type: FileType.custom,
+    allowedExtensions: const [kServiceFileExtension, 'json'],
+  );
+  final path = picked?.files.singleOrNull?.path;
+  if (path == null) return;
+
+  try {
+    final result = await cubit.importService(await File(path).readAsString());
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          t.serviceOpened(result.name, result.items) +
+              t.importedSongs(result.newSongs) +
+              t.importedMissingMedia(result.missingMedia),
+        ),
+        backgroundColor: result.missingMedia == 0 ? AppColors.success : AppColors.warning,
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(t.openFailed('$e')), backgroundColor: AppColors.danger),
+    );
+  }
+}

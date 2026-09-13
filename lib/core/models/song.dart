@@ -13,6 +13,12 @@ extension VerseTypeX on VerseType {
     VerseType.outro => 'Outro',
   };
 
+  /// The wire spelling, the one [fromString] reads back.
+  String get value => switch (this) {
+    VerseType.preCHORUS => 'pre-chorus',
+    _ => name,
+  };
+
   static VerseType fromString(String value) => switch (value) {
     'chorus' => VerseType.chorus,
     'bridge' => VerseType.bridge,

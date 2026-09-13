@@ -136,6 +136,11 @@ class _CollectionMenu extends StatelessWidget {
           height: 38,
           child: AppMenuRow(icon: Icons.add, label: t.newCollection),
         ),
+        PopupMenuItem(
+          value: 'open_file',
+          height: 38,
+          child: AppMenuRow(icon: Icons.folder_open_outlined, label: t.openFromFile),
+        ),
         if (collection != null) ...[
           const PopupMenuDivider(),
           PopupMenuItem(
@@ -169,9 +174,14 @@ class _CollectionMenu extends StatelessWidget {
             ),
           const PopupMenuDivider(),
           PopupMenuItem(
+            value: 'save_file',
+            height: 38,
+            child: AppMenuRow(icon: Icons.save_alt_outlined, label: t.saveAsFile),
+          ),
+          PopupMenuItem(
             value: 'export',
             height: 38,
-            child: AppMenuRow(icon: Icons.ios_share_outlined, label: t.exportSetList),
+            child: AppMenuRow(icon: Icons.ios_share_outlined, label: t.printableList),
           ),
           PopupMenuItem(
             value: 'delete',
@@ -233,6 +243,12 @@ class _CollectionMenu extends StatelessWidget {
 
       case 'clear_audio':
         cubit.setCollectionBgAudio(collection.id, null);
+
+      case 'open_file':
+        if (context.mounted) await _openServiceFile(context);
+
+      case 'save_file':
+        if (context.mounted) await _saveServiceFile(context, collection);
 
       case 'export':
         if (context.mounted) await _exportSetList(context, collection);

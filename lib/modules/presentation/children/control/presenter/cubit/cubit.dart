@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'package:media_kit/media_kit.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -15,8 +16,11 @@ import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
+import '../../../../../../core/services/service_file.dart';
+import '../../../../../songs/children/songs_list/repository/repository.dart';
 import '../../../../../../core/services/pptx_import_service.dart';
 import '../../../../../../core/models/collection.dart';
+import '../../../../../../core/models/collection_item_type.dart';
 import '../../../../../../core/models/slide_template.dart';
 import '../../../../../../core/models/song.dart';
 import '../../../../../../core/repositories/template_repository.dart';
@@ -274,6 +278,16 @@ class ControlModel extends Equatable {
   ];
 }
 
+/// What opening a file actually produced, so the app can say so plainly
+/// instead of "listo".
+typedef ImportedService = ({
+  String name,
+  int items,
+  int newSongs,
+  int newDesigns,
+  int missingMedia,
+});
+
 class ControlCubit extends Cubit<ControlState> {
   ControlCubit(
     this._repository,
@@ -281,7 +295,9 @@ class ControlCubit extends Cubit<ControlState> {
     this._prefs,
     this._socket, {
     PendingWrites? pending,
+    SongsListRepository? songs,
   }) : _pending = pending ?? PendingWrites(),
+       _songs = songs,
        super(const ControlLoadingState());
 
   final ControlRepository _repository;
@@ -291,6 +307,11 @@ class ControlCubit extends Cubit<ControlState> {
 
   /// Changes made while the server could not be reached, waiting to be sent.
   final PendingWrites _pending;
+
+  /// Only needed when a service is opened from a file, so it is resolved then
+  /// rather than held by every presenter that never imports anything.
+  final SongsListRepository? _songs;
+  SongsListRepository get _songLibrary => _songs ?? Modular.get<SongsListRepository>();
 
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
@@ -780,6 +801,149 @@ class ControlCubit extends Cubit<ControlState> {
     final copy = model.collections.where((c) => c.id == created.id).firstOrNull;
     if (copy != null) selectCollection(copy);
     return copy ?? created;
+  }
+
+  // ── A service in a file ───────────────────────────────────────────────────
+
+  /// The file for [collection], ready to be written to disk.
+  ///
+  /// Reads the designs from the current state, so what lands in the file is
+  /// what the operator is actually looking at.
+  String exportService(Collection collection) {
+    final designs = state is ControlLoadedState
+        ? (state as ControlLoadedState).model.userTemplates
+        : const <SlideTemplate>[];
+    return encodeService(collection, designs: [...SlideTemplate.presets, ...designs]);
+  }
+
+  /// Builds a service out of a file and opens it.
+  ///
+  /// Songs and designs come across as copies in this church's own library,
+  /// because the church opening the file is usually not the one that made it.
+  /// A song it already has is reused rather than duplicated: importing the
+  /// same plan twice should not leave two of every chorus.
+  Future<ImportedService> importService(String source) async {
+    final file = decodeService(source);
+
+    // Designs first: the items point at them. A design this church already
+    // has is reused, the same way a song it already has is: importing the same
+    // plan twice must not leave two of every background.
+    final known = state is ControlLoadedState
+        ? (state as ControlLoadedState).model.userTemplates
+        : const <SlideTemplate>[];
+    final designIds = <String, String>{};
+    var newDesigns = 0;
+    for (final design in file.designs) {
+      final match = known.where((existing) => _sameDesign(existing, design)).firstOrNull;
+      if (match != null) {
+        designIds[design.id] = match.id;
+        continue;
+      }
+      final saved = await _templateRepository.saveTemplate(design.copyWith(id: ''));
+      designIds[design.id] = saved.id;
+      newDesigns++;
+    }
+
+    final library = await _songLibrary.getSongs();
+    final songIds = <String, String>{};
+    var newSongs = 0;
+    for (final song in file.songs) {
+      final known = library.where((existing) => _sameSong(existing, song)).firstOrNull;
+      if (known != null) {
+        songIds[song.id] = known.id;
+        continue;
+      }
+      final saved = await _songLibrary.saveSong(
+        title: song.title,
+        author: song.author,
+        copyright: song.copyright,
+        ccliNumber: song.ccliNumber,
+        verses: [
+          for (final verse in song.verses)
+            (type: verse.type.value, content: verse.content, chords: verse.chords),
+        ],
+      );
+      songIds[song.id] = saved.id;
+      newSongs++;
+    }
+
+    final created = await _repository.createCollection(
+      name: file.name,
+      serviceDate: file.serviceDate,
+    );
+    if (file.designId != null && designIds[file.designId] != null) {
+      await _templateRepository.setCollectionTemplate(created.id, designIds[file.designId]);
+    }
+
+    await _repository.copyItemsInto(created.id, [
+      for (final (order, item) in file.items.indexed)
+        CollectionItem(
+          id: '',
+          collectionId: created.id,
+          type: item.type,
+          order: order,
+          // Only the id travels: copyItemsInto sends song_id, and the row it
+          // points at is this church's own copy.
+          song: _songStub(songIds[item.songId]),
+          templateId: designIds[item.designId],
+          contentJson: item.content,
+          notes: item.notes,
+          autoAdvanceSecs: item.autoAdvanceSecs,
+        ),
+    ]);
+
+    await refresh();
+    if (state is ControlLoadedState) {
+      final model = (state as ControlLoadedState).model;
+      final opened = model.collections.where((c) => c.id == created.id).firstOrNull;
+      if (opened != null) selectCollection(opened);
+    }
+
+    return (
+      name: file.name,
+      items: file.items.length,
+      newSongs: newSongs,
+      newDesigns: newDesigns,
+      missingMedia: file.items
+          .where((item) => _carriesMedia(item.type) && !_mediaIsReachable(item.content))
+          .length,
+    );
+  }
+
+  /// Two designs are the same design when they are named the same and look
+  /// the same. Ids never match across churches, and a name on its own would
+  /// merge two different backgrounds that a church happened to call "Fondo".
+  static bool _sameDesign(SlideTemplate a, SlideTemplate b) =>
+      a.name.trim().toLowerCase() == b.name.trim().toLowerCase() &&
+      a.toJson().toString() == b.toJson().toString();
+
+  /// A placeholder carrying nothing but the id the new row must point at.
+  static Song? _songStub(String? id) => id == null ? null : Song(id: id, title: '');
+
+  /// Two songs are the same song when the church would say so: same title,
+  /// same author. Ids never match across churches.
+  static bool _sameSong(Song a, Song b) =>
+      a.title.trim().toLowerCase() == b.title.trim().toLowerCase() &&
+      (a.author ?? '').trim().toLowerCase() == (b.author ?? '').trim().toLowerCase();
+
+  static bool _carriesMedia(CollectionItemType type) =>
+      type == CollectionItemType.imageSlide || type == CollectionItemType.videoSlide;
+
+  /// Whether the photo or video an item points at can still be found.
+  ///
+  /// A file served by the church's own API travels; a path on somebody's
+  /// laptop does not, and the operator should be told before Sunday rather
+  /// than seeing a broken slide during it.
+  static bool _mediaIsReachable(Map<String, dynamic>? content) {
+    final paths = <String>[
+      ?content?['path'] as String?,
+      for (final path in content?['paths'] as List? ?? const []) path as String,
+    ];
+    if (paths.isEmpty) return true;
+    return paths.every(
+      (path) =>
+          path.startsWith('http://') || path.startsWith('https://') || File(path).existsSync(),
+    );
   }
 
   Future<void> deleteCollection(String id) async {
