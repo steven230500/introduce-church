@@ -15,8 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned, not "latest stable": a Flutter release can deprecate a widget
+      # API overnight, and the first anyone would hear of it is a red build on
+      # a commit that touched nothing related. Raise it deliberately, with the
+      # deprecations fixed in the same change.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.41.2
           channel: stable
           cache: true
 
