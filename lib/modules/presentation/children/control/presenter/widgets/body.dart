@@ -1,5 +1,7 @@
 part of '../page.dart';
 
+const _resizeHint = 'Arrastra para cambiar el ancho. Doble clic para volver al original.';
+
 /// Three columns: the plan, the output, and what comes next.
 class _Body extends StatelessWidget {
   const _Body();
@@ -22,17 +24,36 @@ class _Body extends StatelessWidget {
         ControlLoadedState(:final model) when model.activeCollection == null => _NoCollection(
           model: model,
         ),
-        ControlLoadedState(:final model) => Row(
-          children: [
-            _SetListPanel(model: model),
-            const VerticalDivider(width: 1, color: AppColors.divider),
-            Expanded(child: _SlidePreview(model: model)),
-            const VerticalDivider(width: 1, color: AppColors.divider),
-            // The right column always mirrors the projector in some form:
-            // the slide queue when the big preview is centre stage, the
-            // output panel when the grid is.
-            if (model.gridView) _SidePreviewPanel(model: model) else _SlideQueue(model: model),
-          ],
+        ControlLoadedState(:final model) => BlocBuilder<ShellCubit, ShellState>(
+          buildWhen: (a, b) => a.widths != b.widths,
+          builder: (context, shell) {
+            final layout = context.read<ShellCubit>();
+            return Row(
+              children: [
+                _SetListPanel(model: model, width: shell.widthOf(ShellPanel.setList)),
+                PanelResizer(
+                  tooltip: _resizeHint,
+                  onDrag: (dx) => layout.resizePanel(ShellPanel.setList, dx),
+                  onReset: () => layout.resetPanel(ShellPanel.setList),
+                ),
+                Expanded(child: _SlidePreview(model: model)),
+                PanelResizer(
+                  tooltip: _resizeHint,
+                  // This edge is on the panel's left, so dragging left is what
+                  // makes it wider.
+                  onDrag: (dx) => layout.resizePanel(ShellPanel.queue, -dx),
+                  onReset: () => layout.resetPanel(ShellPanel.queue),
+                ),
+                // The right column always mirrors the projector in some form:
+                // the slide queue when the big preview is centre stage, the
+                // output panel when the grid is.
+                if (model.gridView)
+                  _SidePreviewPanel(model: model, width: shell.widthOf(ShellPanel.queue))
+                else
+                  _SlideQueue(model: model, width: shell.widthOf(ShellPanel.queue)),
+              ],
+            );
+          },
         ),
       },
     );

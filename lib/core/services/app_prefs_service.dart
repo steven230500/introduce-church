@@ -74,6 +74,27 @@ class AppPrefsService {
     return list?.cast<Map<String, dynamic>>();
   }
 
+  /// How wide the operator dragged each panel.
+  ///
+  /// Churches differ: one has long song titles and wants the set list wide,
+  /// another wants the biggest preview it can get. Hard-coding one answer was
+  /// always going to be wrong for somebody.
+  Future<void> saveLayout(Map<String, double> widths) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['layout'] = widths;
+    await _write(d);
+  }
+
+  Future<Map<String, double>?> loadLayout() async {
+    final d = await _read();
+    final raw = d['layout'];
+    if (raw is! Map) return null;
+    return {
+      for (final entry in raw.entries)
+        if (entry.value is num) entry.key as String: (entry.value as num).toDouble(),
+    };
+  }
+
   // ── Session ────────────────────────────────────────────────────────────────
   //
   // Tokens live in the same file as the rest of the preferences. On a desktop

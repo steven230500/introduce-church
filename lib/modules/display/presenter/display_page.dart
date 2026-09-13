@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../../core/models/slide_template.dart';
+import '../../../core/widgets/slide_transition_view.dart';
 import '../../../core/widgets/slide_view.dart';
 import 'display_cubit.dart';
 import '../../../core/theme/app_colors.dart';
@@ -31,7 +32,7 @@ class DisplayPage extends StatelessWidget {
                     ? Duration.zero
                     : Duration(milliseconds: durationMs),
                 transitionBuilder: (child, animation) =>
-                    _slideTransition(child, animation, transition),
+                    buildSlideTransition(child, animation, transition),
                 child: _buildChild(state),
               ),
               if (overlay != null) _OverlayBar(text: overlay),
@@ -90,28 +91,6 @@ class DisplayPage extends StatelessWidget {
       _ => const SizedBox.expand(key: ValueKey('idle')),
     };
   }
-}
-
-// ── Slide transition builder ──────────────────────────────────────────────────
-
-Widget _slideTransition(Widget child, Animation<double> animation, SlideTransitionType type) {
-  final curved = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
-  return switch (type) {
-    SlideTransitionType.cut => child,
-    SlideTransitionType.fade => FadeTransition(opacity: curved, child: child),
-    SlideTransitionType.slideLeft => SlideTransition(
-      position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(curved),
-      child: FadeTransition(opacity: animation, child: child),
-    ),
-    SlideTransitionType.slideRight => SlideTransition(
-      position: Tween(begin: const Offset(-0.06, 0), end: Offset.zero).animate(curved),
-      child: FadeTransition(opacity: animation, child: child),
-    ),
-    SlideTransitionType.zoomIn => ScaleTransition(
-      scale: Tween(begin: 0.96, end: 1.0).animate(curved),
-      child: FadeTransition(opacity: animation, child: child),
-    ),
-  };
 }
 
 // ── Announcement view ─────────────────────────────────────────────────────────

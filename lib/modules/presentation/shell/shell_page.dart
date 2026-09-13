@@ -11,6 +11,8 @@ import '../children/control/presenter/page.dart';
 import 'collections_library_page.dart';
 import 'library/library_dock.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/services/app_prefs_service.dart';
+import '../../../core/widgets/ui/panel_resizer.dart';
 import '../../auth/utils/navigator.dart';
 import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
@@ -30,7 +32,9 @@ class ShellPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => ShellCubit()),
+        BlocProvider(
+          create: (_) => ShellCubit(prefs: Modular.get<AppPrefsService>())..restoreLayout(),
+        ),
         BlocProvider(create: (_) => Modular.get<ControlCubit>()..load()),
       ],
       child: const _ShellScaffold(),
@@ -145,17 +149,46 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
             const LiveBar(),
             Expanded(
               child: BlocBuilder<ShellCubit, ShellState>(
-                builder: (context, shell) => Row(
-                  children: [
-                    _Sidebar(current: shell.section),
-                    const VerticalDivider(width: 1, color: AppColors.divider),
-                    Expanded(child: _body(context, shell.section)),
-                    if (shell.section == ShellSection.presenter && shell.dockOpen) ...[
+                builder: (context, shell) {
+                  final inPresenter = shell.section == ShellSection.presenter;
+                  final showDock = inPresenter && shell.dockOpen;
+                  final dockWidth = shell.widthOf(ShellPanel.dock);
+                  final layout = context.read<ShellCubit>();
+
+                  return Row(
+                    children: [
+                      _Sidebar(current: shell.section),
                       const VerticalDivider(width: 1, color: AppColors.divider),
-                      const LibraryDock(),
+                      Expanded(child: _body(context, shell.section)),
+                      if (showDock)
+                        PanelResizer(
+                          tooltip:
+                              'Arrastra para cambiar el ancho. '
+                              'Doble clic para volver al original.',
+                          // The dock's edge is on its left, so dragging left
+                          // is what makes it wider.
+                          onDrag: (dx) => layout.resizePanel(ShellPanel.dock, -dx),
+                          onReset: () => layout.resetPanel(ShellPanel.dock),
+                        ),
+                      // Slides out rather than vanishing. Half the window used
+                      // to change shape between one frame and the next, which
+                      // reads as a glitch rather than as a panel closing.
+                      AnimatedContainer(
+                        duration: AppMotion.slow,
+                        curve: Curves.easeOutCubic,
+                        width: showDock ? dockWidth : 0,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.centerLeft,
+                            minWidth: dockWidth,
+                            maxWidth: dockWidth,
+                            child: LibraryDock(width: dockWidth),
+                          ),
+                        ),
+                      ),
                     ],
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],

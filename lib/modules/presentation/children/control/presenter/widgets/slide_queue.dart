@@ -2,16 +2,17 @@ part of '../page.dart';
 
 /// The slides of the current item, in order, with the live one highlighted.
 class _SlideQueue extends StatelessWidget {
-  const _SlideQueue({required this.model});
+  const _SlideQueue({required this.model, required this.width});
 
   final ControlModel model;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final item = model.currentItem;
 
     return Container(
-      width: AppSizes.queueWidth,
+      width: width,
       color: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,28 +148,33 @@ class _SlideListState extends State<_SlideList> {
         // They are the same tile until the operator holds the screen.
         final isOnAir = widget.model.isLiveAt(widget.model.currentItemIndex, index);
 
-        return GestureDetector(
-          onTap: () => context.read<ControlCubit>().selectSlide(index),
-          child: AnimatedContainer(
-            duration: AppMotion.fast,
-            margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
-            padding: const EdgeInsets.all(AppSpace.sm + 2),
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.accentFillSoft : AppColors.surfaceControl,
-              borderRadius: AppRadius.all(AppRadius.md),
-              border: Border.all(
-                color: isOnAir
-                    ? AppColors.live
-                    : (isActive ? AppColors.accent : Colors.transparent),
+        return HoverBuilder(
+          cursor: SystemMouseCursors.click,
+          builder: (context, hovering) => GestureDetector(
+            onTap: () => context.read<ControlCubit>().selectSlide(index),
+            child: AnimatedContainer(
+              duration: AppMotion.fast,
+              margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
+              padding: const EdgeInsets.all(AppSpace.sm + 2),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.accentFillSoft
+                    : (hovering ? AppColors.surfaceRaised : AppColors.surfaceControl),
+                borderRadius: AppRadius.all(AppRadius.md),
+                border: Border.all(
+                  color: isOnAir
+                      ? AppColors.live
+                      : (isActive ? AppColors.accent : Colors.transparent),
+                ),
               ),
-            ),
-            child: _SlideTile(
-              item: item,
-              index: index,
-              slide: slides[index],
-              label: index < labels.length ? labels[index] : '',
-              ref: index < refs.length ? refs[index] : '',
-              isActive: isActive,
+              child: _SlideTile(
+                item: item,
+                index: index,
+                slide: slides[index],
+                label: index < labels.length ? labels[index] : '',
+                ref: index < refs.length ? refs[index] : '',
+                isActive: isActive,
+              ),
             ),
           ),
         );

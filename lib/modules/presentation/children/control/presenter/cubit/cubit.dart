@@ -121,9 +121,16 @@ class ControlModel extends Equatable {
 
   SlideTemplate get liveTemplate => templateFor(liveItem);
 
-  /// Whether a given position is the one on the projector.
+  /// Whether a given position is the one the congregation is seeing.
+  ///
+  /// Off air nothing is, so the red marker has to go with the feed. It used to
+  /// mark the live position even with the projector cut, which says "they are
+  /// seeing this" about a screen showing nothing.
   bool isLiveAt(int itemIndex, int slideIndex) =>
-      itemIndex == liveItemIndex && slideIndex == liveSlideIndex;
+      isLive && itemIndex == liveItemIndex && slideIndex == liveSlideIndex;
+
+  /// Whether the congregation is seeing this item, on any of its slides.
+  bool isLiveItem(int itemIndex) => isLive && itemIndex == liveItemIndex;
 
   /// True when the operator is looking at something the congregation is not.
   ///

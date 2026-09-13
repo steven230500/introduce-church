@@ -2,7 +2,9 @@ import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/widgets/slide_transition_view.dart';
 import 'package:introduce_church/core/widgets/slide_view.dart';
+import 'package:introduce_church/core/widgets/ui/panel_resizer.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/page.dart';
 import 'package:introduce_church/modules/presentation/shell/shell_cubit.dart';
@@ -146,11 +148,23 @@ void main() {
 
     testWidgets('the set list marks the row that is on the projector', (tester) async {
       await pumpPresenter(tester);
+      control.toggleLive();
       control.setFollowCursor(false);
       control.selectItem(1);
       await tester.pumpAndSettle();
 
       expect(find.byTooltip('En la pantalla ahora'), findsOneWidget);
+    });
+
+    testWidgets('off air nothing is marked as being on the screen', (tester) async {
+      // Red says "they are seeing this". With the feed cut they are seeing
+      // nothing, whatever the live position happens to be.
+      await pumpPresenter(tester);
+      control.setFollowCursor(false);
+      control.selectItem(1);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('En la pantalla ahora'), findsNothing);
     });
 
     testWidgets('the big preview says it is not on air, and sends', (tester) async {
@@ -186,6 +200,52 @@ void main() {
 
       expect(find.byTooltip('En la pantalla ahora'), findsNothing);
       expect(find.text('SIN ENVIAR'), findsNothing);
+    });
+  });
+
+  group('the workspace itself', () {
+    /// Drags the set list edge by [dx], past the slop a pointer spends being
+    /// recognised as a drag at all.
+    Future<void> dragSetListEdge(WidgetTester tester, double dx) async {
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(PanelResizer).first));
+      await gesture.moveBy(const Offset(kDragSlopDefault, 0));
+      await gesture.moveBy(Offset(dx, 0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      // The width is written once the drag settles, and a timer still pending
+      // when the test ends is a failure in its own right.
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('the columns can be dragged to a different width', (tester) async {
+      // One hard-coded width was always going to be wrong for somebody: a set
+      // list full of long titles wants room, a small screen wants the preview.
+      await pumpPresenter(tester);
+
+      await dragSetListEdge(tester, 40);
+
+      expect(shell.state.widthOf(ShellPanel.setList), ShellPanel.setList.defaultWidth + 40);
+    });
+
+    testWidgets('a double click puts a column back', (tester) async {
+      await pumpPresenter(tester);
+      await dragSetListEdge(tester, 40);
+
+      await tester.tap(find.byType(PanelResizer).first);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byType(PanelResizer).first);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(shell.state.widthOf(ShellPanel.setList), ShellPanel.setList.defaultWidth);
+    });
+
+    testWidgets('the preview moves between slides the way the projector does', (tester) async {
+      // It used to cut while the screen it mirrors dissolved, which made the
+      // preview a slightly dishonest picture and the workspace feel stiff.
+      await pumpPresenter(tester);
+
+      expect(find.byType(SlideTransitionView), findsWidgets);
     });
   });
 

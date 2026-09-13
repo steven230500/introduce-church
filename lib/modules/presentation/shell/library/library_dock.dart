@@ -17,7 +17,9 @@ import 'templates_panel.dart';
 /// they live now, and it sits next to the set list so adding content never
 /// costs you sight of what is on the projector.
 class LibraryDock extends StatelessWidget {
-  const LibraryDock({super.key});
+  const LibraryDock({super.key, required this.width});
+
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class LibraryDock extends StatelessWidget {
       buildWhen: (a, b) => a.tab != b.tab,
       builder: (context, shell) {
         return Container(
-          width: AppSizes.dockWidth,
+          width: width,
           color: AppColors.surface,
           child: Column(
             children: [

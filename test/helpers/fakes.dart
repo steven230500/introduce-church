@@ -55,6 +55,16 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<List<Map<String, dynamic>>?> loadTemplates() async => savedTemplates;
 
+  Map<String, double>? layout;
+
+  @override
+  Future<void> saveLayout(Map<String, double> widths) async {
+    layout = widths;
+  }
+
+  @override
+  Future<Map<String, double>?> loadLayout() async => layout;
+
   @override
   Future<Map<String, dynamic>?> loadSession() async => session;
 

@@ -15,7 +15,14 @@ class _SlidePreview extends StatelessWidget {
         children: [
           _PreviewHeader(model: model),
           Expanded(
-            child: model.gridView ? _SlideGrid(model: model) : _Preview(model: model),
+            // Fades between the two ways of looking at an item. Swapping the
+            // whole middle of the window in one frame read as a glitch.
+            child: AnimatedSwitcher(
+              duration: AppMotion.slow,
+              child: model.gridView
+                  ? _SlideGrid(key: const ValueKey('grid'), model: model)
+                  : _Preview(key: const ValueKey('single'), model: model),
+            ),
           ),
           if (!model.gridView) _Controls(model: model),
         ],
@@ -158,7 +165,7 @@ class _ViewModeButton extends StatelessWidget {
 // ── Grid of slides ────────────────────────────────────────────────────────────
 
 class _SlideGrid extends StatelessWidget {
-  const _SlideGrid({required this.model});
+  const _SlideGrid({super.key, required this.model});
 
   final ControlModel model;
 
@@ -208,56 +215,71 @@ class _SlideGrid extends StatelessWidget {
                 // Red for what the congregation sees, blue for what the
                 // operator has picked. The same tile until the screen is held.
                 final isOnAir = model.isLiveAt(model.currentItemIndex, index);
-                final outline = isOnAir
-                    ? AppColors.live
-                    : (isSelected ? AppColors.accent : AppColors.divider);
                 final label = index < labels.length ? labels[index] : '';
 
-                return GestureDetector(
-                  onTap: () => cubit.selectSlide(index),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: AnimatedContainer(
-                          duration: AppMotion.fast,
-                          decoration: BoxDecoration(
-                            borderRadius: AppRadius.all(AppRadius.sm),
-                            border: Border.all(
-                              color: outline,
-                              width: isSelected || isOnAir ? 2 : 1,
+                return HoverBuilder(
+                  cursor: SystemMouseCursors.click,
+                  builder: (context, hovering) {
+                    final outline = isOnAir
+                        ? AppColors.live
+                        : isSelected
+                        ? AppColors.accent
+                        : (hovering ? AppColors.textMuted : AppColors.divider);
+
+                    return GestureDetector(
+                      onTap: () => cubit.selectSlide(index),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: AnimatedContainer(
+                              duration: AppMotion.fast,
+                              decoration: BoxDecoration(
+                                borderRadius: AppRadius.all(AppRadius.sm),
+                                border: Border.all(
+                                  color: outline,
+                                  width: isSelected || isOnAir ? 2 : 1,
+                                ),
+                                boxShadow: isSelected || isOnAir
+                                    ? [
+                                        BoxShadow(
+                                          color: outline.withValues(alpha: 0.3),
+                                          blurRadius: 6,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: AppRadius.all(AppRadius.xs + 1),
+                                child: SlideView(
+                                  content: isImageSlide ? '' : slides[index],
+                                  reference: '',
+                                  template: model.activeTemplate,
+                                  imagePath: isImageSlide ? slides[index] : null,
+                                ),
+                              ),
                             ),
-                            boxShadow: isSelected || isOnAir
-                                ? [BoxShadow(color: outline.withValues(alpha: 0.3), blurRadius: 6)]
-                                : null,
                           ),
-                          child: ClipRRect(
-                            borderRadius: AppRadius.all(AppRadius.xs + 1),
-                            child: SlideView(
-                              content: isImageSlide ? '' : slides[index],
-                              reference: '',
-                              template: model.activeTemplate,
-                              imagePath: isImageSlide ? slides[index] : null,
+                          const SizedBox(height: 3),
+                          // Under the slide, not on top of it. As a badge inside
+                          // the frame it landed on the words whenever the lyric
+                          // ran long, which is exactly when you need to read both.
+                          Text(
+                            label.isEmpty ? 'Slide ${index + 1}' : label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.accentLight
+                                  : (hovering ? AppColors.textSecondary : AppColors.textMuted),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
-                      // Under the slide, not on top of it. As a badge inside
-                      // the frame it landed on the words whenever the lyric
-                      // ran long, which is exactly when you need to read both.
-                      Text(
-                        label.isEmpty ? 'Slide ${index + 1}' : label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isSelected ? AppColors.accentLight : AppColors.textMuted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -306,9 +328,10 @@ class _SlideGrid extends StatelessWidget {
 /// preview, the transport controls and the position readout. It used to hold a
 /// thumbnail and nothing else, which left a dead 220px column.
 class _SidePreviewPanel extends StatelessWidget {
-  const _SidePreviewPanel({required this.model});
+  const _SidePreviewPanel({required this.model, required this.width});
 
   final ControlModel model;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +340,7 @@ class _SidePreviewPanel extends StatelessWidget {
     final item = model.liveItem;
 
     return Container(
-      width: AppSizes.queueWidth,
+      width: width,
       color: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -378,6 +401,20 @@ class _OutputThumbnail extends StatelessWidget {
     final isBlank = model.blankScreen;
     final hasContent = model.liveSlideContent != null;
 
+    final face = isVideo && hasContent && !isBlank
+        ? _VideoPreview(
+            key: ValueKey('side_${model.liveSlideContent}'),
+            videoPath: model.liveSlideContent!,
+          )
+        : hasContent && !isBlank
+        ? SlideView(
+            content: isImage ? '' : model.liveSlideContent!,
+            reference: model.liveSlideReference,
+            template: model.liveTemplate,
+            imagePath: isImage ? model.liveSlideContent : null,
+          )
+        : const ColoredBox(color: Colors.black);
+
     return ClipRRect(
       borderRadius: AppRadius.all(AppRadius.sm),
       child: AspectRatio(
@@ -393,20 +430,13 @@ class _OutputThumbnail extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (isVideo && hasContent && !isBlank)
-                  _VideoPreview(
-                    key: ValueKey('side_${model.liveSlideContent}'),
-                    videoPath: model.liveSlideContent!,
-                  )
-                else if (hasContent && !isBlank)
-                  SlideView(
-                    content: isImage ? '' : model.liveSlideContent!,
-                    reference: model.liveSlideReference,
-                    template: model.liveTemplate,
-                    imagePath: isImage ? model.liveSlideContent : null,
-                  )
-                else
-                  const ColoredBox(color: Colors.black),
+                // Dissolves with the projector, because this is a picture of
+                // the projector.
+                SlideTransitionView(
+                  template: model.liveTemplate,
+                  slideKey: '${model.liveItemIndex}:${model.liveSlideIndex}:$isBlank',
+                  child: face,
+                ),
                 if (isBlank)
                   const Center(
                     child: Text(
@@ -493,7 +523,7 @@ class _NotePreview extends StatelessWidget {
 // ── Large single-slide preview ────────────────────────────────────────────────
 
 class _Preview extends StatelessWidget {
-  const _Preview({required this.model});
+  const _Preview({super.key, required this.model});
 
   final ControlModel model;
 
@@ -508,6 +538,20 @@ class _Preview extends StatelessWidget {
     final onAir = model.isLive && !holding;
     final isVideo = model.currentItem?.type == CollectionItemType.videoSlide;
     final isImage = model.currentItem?.type == CollectionItemType.imageSlide;
+
+    final face = isVideo && hasContent && !isBlank
+        ? _VideoPreview(
+            key: ValueKey('main_${model.currentSlideContent}'),
+            videoPath: model.currentSlideContent!,
+          )
+        : hasContent && !isBlank
+        ? SlideView(
+            content: isImage ? '' : model.currentSlideContent!,
+            reference: model.currentSlideReference,
+            template: model.activeTemplate,
+            imagePath: isImage ? model.currentSlideContent : null,
+          )
+        : const ColoredBox(color: Colors.black);
 
     return Center(
       child: AspectRatio(
@@ -534,20 +578,13 @@ class _Preview extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (isVideo && hasContent && !isBlank)
-                  _VideoPreview(
-                    key: ValueKey('main_${model.currentSlideContent}'),
-                    videoPath: model.currentSlideContent!,
-                  )
-                else if (hasContent && !isBlank)
-                  SlideView(
-                    content: isImage ? '' : model.currentSlideContent!,
-                    reference: model.currentSlideReference,
-                    template: model.activeTemplate,
-                    imagePath: isImage ? model.currentSlideContent : null,
-                  )
-                else
-                  const ColoredBox(color: Colors.black),
+                // The same move the design makes on the projector. This used
+                // to cut while the screen it mirrors dissolved.
+                SlideTransitionView(
+                  template: model.activeTemplate,
+                  slideKey: '${model.currentItemIndex}:${model.currentSlideIndex}:$isBlank',
+                  child: face,
+                ),
                 if (isBlank)
                   const Center(
                     child: Text(

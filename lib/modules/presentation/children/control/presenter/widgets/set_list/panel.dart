@@ -2,14 +2,15 @@ part of '../../page.dart';
 
 /// The set list: the ordered plan for a service.
 class _SetListPanel extends StatelessWidget {
-  const _SetListPanel({required this.model});
+  const _SetListPanel({required this.model, required this.width});
 
   final ControlModel model;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: AppSizes.setListWidth,
+      width: width,
       color: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

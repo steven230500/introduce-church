@@ -91,7 +91,7 @@ class _SetListItems extends StatelessWidget {
               item: items[index],
               index: index,
               isActive: model.currentItemIndex == index,
-              isOnAir: model.liveItemIndex == index,
+              isOnAir: model.isLiveItem(index),
             ),
           ),
         ),
@@ -125,83 +125,87 @@ class _SetListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.read<ControlCubit>().selectItem(index),
-      // Right click opens the same menu as the kebab. The kebab is 13px and
-      // most operators never found it.
-      onSecondaryTapDown: (details) => _showItemMenu(context, model, item, details.globalPosition),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.md,
-          AppSpace.sm + 2,
-          AppSpace.xs,
-          AppSpace.sm + 2,
-        ),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.accentFill : Colors.transparent,
-          borderRadius: AppRadius.all(AppRadius.md),
-          border: isActive
-              ? Border.all(color: AppColors.accentOutline)
-              : Border.all(color: Colors.transparent),
-        ),
-        child: Row(
-          children: [
-            ReorderableDragStartListener(
-              index: index,
-              child: Tooltip(
-                message: 'Arrastra para cambiar el orden',
-                waitDuration: const Duration(milliseconds: 600),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.grab,
-                  child: _OrderBadge(index: index, isActive: isActive),
+    return HoverBuilder(
+      cursor: SystemMouseCursors.click,
+      builder: (context, hovering) => GestureDetector(
+        onTap: () => context.read<ControlCubit>().selectItem(index),
+        // Right click opens the same menu as the kebab. The kebab is 13px and
+        // most operators never found it.
+        onSecondaryTapDown: (details) =>
+            _showItemMenu(context, model, item, details.globalPosition),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.md,
+            AppSpace.sm + 2,
+            AppSpace.xs,
+            AppSpace.sm + 2,
+          ),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.accentFill
+                : (hovering ? AppColors.surfaceRaised : Colors.transparent),
+            borderRadius: AppRadius.all(AppRadius.md),
+            border: Border.all(color: isActive ? AppColors.accentOutline : Colors.transparent),
+          ),
+          child: Row(
+            children: [
+              ReorderableDragStartListener(
+                index: index,
+                child: Tooltip(
+                  message: 'Arrastra para cambiar el orden',
+                  waitDuration: const Duration(milliseconds: 600),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: _OrderBadge(index: index, isActive: isActive),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: AppSpace.sm + 2),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _typeIcon(item.type),
-                        size: 11,
-                        color: isActive ? AppColors.accentLight : AppColors.textDisabled,
-                      ),
-                      const SizedBox(width: AppSpace.xs + 1),
-                      Expanded(
-                        child: Text(
-                          item.displayTitle,
-                          style: TextStyle(
-                            color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+              const SizedBox(width: AppSpace.sm + 2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _typeIcon(item.type),
+                          size: 11,
+                          color: isActive ? AppColors.accentLight : AppColors.textDisabled,
                         ),
-                      ),
-                      // Only when the two have come apart. While they agree the
-                      // blue row already says everything.
-                      if (isOnAir && !isActive) const _OnAirDot(),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Text(
-                      _subtitle(model, item),
-                      style: AppText.rowSubtitle,
-                      overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: AppSpace.xs + 1),
+                        Expanded(
+                          child: Text(
+                            item.displayTitle,
+                            style: TextStyle(
+                              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Only when the two have come apart. While they agree the
+                        // blue row already says everything.
+                        if (isOnAir && !isActive) const _OnAirDot(),
+                      ],
                     ),
-                  ),
-                  _TileFlags(model: model, item: item),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Text(
+                        _subtitle(model, item),
+                        style: AppText.rowSubtitle,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    _TileFlags(model: model, item: item),
+                  ],
+                ),
               ),
-            ),
-            _ItemMenuButton(model: model, item: item),
-          ],
+              _ItemMenuButton(model: model, item: item),
+            ],
+          ),
         ),
       ),
     );
