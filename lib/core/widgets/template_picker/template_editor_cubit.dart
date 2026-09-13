@@ -3,14 +3,23 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
+import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
 
 class TemplateEditorState extends Equatable {
-  const TemplateEditorState({required this.template, this.saving = false, this.selectedLayerId});
+  const TemplateEditorState({
+    required this.template,
+    this.saving = false,
+    this.selectedLayerId,
+    this.palette = const [],
+  });
 
   final SlideTemplate template;
   final bool saving;
   final String? selectedLayerId;
+
+  /// The colours this church has saved, offered before the built-in swatches.
+  final List<int> palette;
 
   SlideLayer? get selectedLayer =>
       template.layers.where((l) => l.id == selectedLayerId).firstOrNull;
@@ -19,23 +28,50 @@ class TemplateEditorState extends Equatable {
     SlideTemplate? template,
     bool? saving,
     Object? selectedLayerId = _unset,
+    List<int>? palette,
   }) => TemplateEditorState(
     template: template ?? this.template,
     saving: saving ?? this.saving,
     selectedLayerId: selectedLayerId == _unset ? this.selectedLayerId : selectedLayerId as String?,
+    palette: palette ?? this.palette,
   );
 
   static const _unset = Object();
 
   @override
-  List<Object?> get props => [template, saving, selectedLayerId];
+  List<Object?> get props => [template, saving, selectedLayerId, palette];
 }
 
 class TemplateEditorCubit extends Cubit<TemplateEditorState> {
-  TemplateEditorCubit(this._repo, SlideTemplate initial)
+  TemplateEditorCubit(this._repo, this._orgRepo, SlideTemplate initial)
     : super(TemplateEditorState(template: initial));
 
   final TemplateRepository _repo;
+  final OrganizationRepository _orgRepo;
+
+  /// Reads the church's colours. A church that cannot be reached simply gets
+  /// the built-in swatches, so this never blocks the editor.
+  Future<void> loadPalette() async {
+    final colors = await _orgRepo.getPalette();
+    if (isClosed || colors.isEmpty) return;
+    emit(state.copyWith(palette: colors));
+  }
+
+  /// Keeps a colour for the whole church, so the next design can reach it.
+  Future<void> saveColor(int colour) async {
+    if (state.palette.contains(colour)) return;
+    final next = [...state.palette, colour];
+    emit(state.copyWith(palette: next));
+    final saved = await _orgRepo.setPalette(next);
+    if (!isClosed) emit(state.copyWith(palette: saved));
+  }
+
+  Future<void> forgetColor(int colour) async {
+    final next = [...state.palette]..remove(colour);
+    emit(state.copyWith(palette: next));
+    final saved = await _orgRepo.setPalette(next);
+    if (!isClosed) emit(state.copyWith(palette: saved));
+  }
 
   // ── Flat template update ──────────────────────────────────────────────────
 

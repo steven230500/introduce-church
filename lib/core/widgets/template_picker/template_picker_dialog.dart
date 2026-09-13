@@ -2,12 +2,15 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../models/media_item.dart';
 import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
+import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
 import '../media_library/media_library_dialog.dart';
 import 'canvas_snap.dart';
+import 'color_field.dart';
 import '../slide_view.dart';
 import 'template_editor_cubit.dart';
 import 'template_picker_cubit.dart';
@@ -287,7 +290,8 @@ Future<SlideTemplate?> showTemplateEditor(
   return showDialog<SlideTemplate>(
     context: context,
     builder: (_) => BlocProvider(
-      create: (_) => TemplateEditorCubit(repo, initial),
+      create: (_) =>
+          TemplateEditorCubit(repo, Modular.get<OrganizationRepository>(), initial)..loadPalette(),
       child: _TemplateEditorDialog(isNew: isNew),
     ),
   );
@@ -341,6 +345,11 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
 
         // ── Shared sub-builders ─────────────────────────────────────────────
 
+        // What text will sit on, when that can be known. A photo background
+        // has no single colour, so no verdict is offered rather than a wrong
+        // one.
+        final int? backdrop = t.bgType == BackgroundType.image ? null : t.bgColor;
+
         Widget bgControls() => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -362,16 +371,22 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                 onChanged: (v) => update(t.copyWith(bgOverlayOpacity: v)),
               ),
             ] else ...[
-              _ColorRow(
+              ColorField(
                 label: t.bgType == BackgroundType.gradient ? 'Color inicio' : 'Color',
-                colorValue: t.bgColor,
+                value: t.bgColor,
+                saved: state.palette,
+                onSave: cubit.saveColor,
+                onForget: cubit.forgetColor,
                 onChanged: (v) => update(t.copyWith(bgColor: v)),
               ),
               if (t.bgType == BackgroundType.gradient) ...[
                 const SizedBox(height: 8),
-                _ColorRow(
+                ColorField(
                   label: 'Color fin',
-                  colorValue: t.bgGradientEnd,
+                  value: t.bgGradientEnd,
+                  saved: state.palette,
+                  onSave: cubit.saveColor,
+                  onForget: cubit.forgetColor,
                   onChanged: (v) => update(t.copyWith(bgGradientEnd: v)),
                 ),
                 const SizedBox(height: 8),
@@ -694,9 +709,13 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                 onChanged: (f) => update(t.copyWith(fontFamily: f)),
                               ),
                               const SizedBox(height: 8),
-                              _ColorRow(
+                              ColorField(
                                 label: 'Color texto',
-                                colorValue: t.textColor,
+                                value: t.textColor,
+                                saved: state.palette,
+                                onSave: cubit.saveColor,
+                                onForget: cubit.forgetColor,
+                                against: backdrop,
                                 onChanged: (v) => update(t.copyWith(textColor: v)),
                               ),
                               const SizedBox(height: 8),
@@ -752,9 +771,13 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                   onChanged: (v) => update(t.copyWith(referenceFontSize: v)),
                                 ),
                                 const SizedBox(height: 8),
-                                _ColorRow(
+                                ColorField(
                                   label: 'Color ref.',
-                                  colorValue: t.referenceColor,
+                                  value: t.referenceColor,
+                                  saved: state.palette,
+                                  onSave: cubit.saveColor,
+                                  onForget: cubit.forgetColor,
+                                  against: backdrop,
                                   onChanged: (v) => update(t.copyWith(referenceColor: v)),
                                 ),
                                 const SizedBox(height: 8),
@@ -1100,76 +1123,6 @@ class _BrokenImage extends StatelessWidget {
       child: Icon(Icons.broken_image_outlined, color: AppColors.textDisabled, size: 20),
     ),
   );
-}
-
-class _ColorRow extends StatelessWidget {
-  const _ColorRow({required this.label, required this.colorValue, required this.onChanged});
-  final String label;
-  final int colorValue;
-  final void Function(int) onChanged;
-
-  static const _palette = [
-    0xFF000000,
-    0xFF1A1A2E,
-    0xFF0D0D2B,
-    0xFF0F3460,
-    0xFF1B1B1B,
-    0xFF2C2C2E,
-    0xFF3A3A3C,
-    0xFF48484A,
-    0xFFFFFFFF,
-    0xFFF5F5F5,
-    0xFFE0E0E0,
-    0xFFBBBBBB,
-    0xFFFF3B30,
-    0xFFFF9500,
-    0xFFFFCC00,
-    0xFF34C759,
-    0xFF0A84FF,
-    0xFF5856D6,
-    0xFFBF5AF2,
-    0xFFFF2D55,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12)),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 3,
-          runSpacing: 3,
-          children: _palette.map((c) {
-            final selected = c == colorValue;
-            return GestureDetector(
-              onTap: () => onChanged(c),
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Color(c),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(
-                    color: selected ? AppColors.accent : Colors.white24,
-                    width: selected ? 2 : 1,
-                  ),
-                ),
-                child: selected
-                    ? Icon(
-                        Icons.check,
-                        size: 12,
-                        color: c == 0xFFFFFFFF ? Colors.black : Colors.white,
-                      )
-                    : null,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
 }
 
 class _SliderRow extends StatelessWidget {

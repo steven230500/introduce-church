@@ -1,5 +1,6 @@
 import '../api/api_client.dart';
 import '../models/organization.dart';
+import '../utils/color_contrast.dart';
 
 class OrganizationRepository {
   const OrganizationRepository(this._api);
@@ -20,6 +21,42 @@ class OrganizationRepository {
       if (e.statusCode == 404) return null;
       rethrow;
     }
+  }
+
+  /// The colours this church has saved, as 0xAARRGGBB values.
+  ///
+  /// A church that cannot be asked, or has saved none, simply gets the
+  /// built-in swatches, so this never fails an editor.
+  Future<List<int>> getPalette() async {
+    try {
+      final body = await _api.get<Map<String, dynamic>>('/org/palette');
+      return _readColors(body?['colors']);
+    } on ApiException {
+      return const [];
+    }
+  }
+
+  Future<List<int>> setPalette(List<int> colors) async {
+    final body = await _api.put<Map<String, dynamic>>(
+      '/org/palette',
+      data: {
+        'colors': [for (final c in colors) hexOf(c)],
+      },
+    );
+    final saved = _readColors(body?['colors']);
+    return saved.isEmpty && colors.isNotEmpty ? colors : saved;
+  }
+
+  /// Reads a list of hex strings, skipping anything that is not one.
+  static List<int> _readColors(Object? colors) {
+    if (colors is! List) return const [];
+    final out = <int>[];
+    for (final raw in colors) {
+      if (raw is! String) continue;
+      final value = parseHexColor(raw);
+      if (value != null) out.add(value);
+    }
+    return out;
   }
 
   Future<List<Organization>> searchOrganizations(String query) async {
