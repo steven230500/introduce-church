@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/local_db/app_database.dart';
 import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
@@ -65,6 +66,7 @@ void main() {
       FakeTemplateRepository(),
       FakePrefsService(),
       FakePresentationSocket(),
+      pending: PendingWrites.inMemory(),
     );
   });
 

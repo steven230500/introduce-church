@@ -217,12 +217,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
     final colors = await readPhotoColors(path);
     // A second photo may have been chosen while this one was being read.
     if (isClosed || _photoFor != path) return;
-    emit(
-      state.copyWith(
-        photoPalette: colors?.palette ?? const [],
-        photoAverage: colors?.average,
-      ),
-    );
+    emit(state.copyWith(photoPalette: colors?.palette ?? const [], photoAverage: colors?.average));
   }
 
   /// Keeps a colour for the whole church, so the next design can reach it.
@@ -261,11 +256,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
 
   void enableLayers() {
     final layers = SlideLayer.defaultLayers();
-    _change(
-      state.template.copyWith(layers: layers),
-      'mode',
-      select: layers.first.id,
-    );
+    _change(state.template.copyWith(layers: layers), 'mode', select: layers.first.id);
   }
 
   void disableLayers() {

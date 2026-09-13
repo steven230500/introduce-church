@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/models/saved_notice.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 import 'package:introduce_church/modules/presentation/shell/widgets/notices_dialog.dart';
@@ -30,6 +31,7 @@ void main() {
       FakeTemplateRepository(),
       FakePrefsService(),
       FakePresentationSocket(),
+      pending: PendingWrites.inMemory(),
     );
   });
 

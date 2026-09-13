@@ -26,12 +26,7 @@ void main() {
 
     test('the colour there is most of comes first', () {
       // A sunset: mostly orange sky, a strip of dark ground.
-      final result = photoColorsFrom(
-        pixels([
-          (20, 20, 30, 30),
-          (230, 120, 40, 70),
-        ]),
-      );
+      final result = photoColorsFrom(pixels([(20, 20, 30, 30), (230, 120, 40, 70)]));
 
       expect(result.palette.first, 0xFFE67828, reason: 'the orange is most of the picture');
       expect(result.palette, hasLength(2));
@@ -40,23 +35,13 @@ void main() {
     test('a stray highlight is not one of the colours', () {
       // Two pixels of white in a thousand is a lens flare, and a swatch for it
       // is a swatch nobody wanted.
-      final result = photoColorsFrom(
-        pixels([
-          (10, 40, 90, 998),
-          (255, 255, 255, 2),
-        ]),
-      );
+      final result = photoColorsFrom(pixels([(10, 40, 90, 998), (255, 255, 255, 2)]));
 
       expect(result.palette, hasLength(1));
     });
 
     test('two colours the eye cannot tell apart become one swatch', () {
-      final result = photoColorsFrom(
-        pixels([
-          (100, 100, 100, 50),
-          (108, 104, 102, 50),
-        ]),
-      );
+      final result = photoColorsFrom(pixels([(100, 100, 100, 50), (108, 104, 102, 50)]));
 
       expect(result.palette, hasLength(1));
     });

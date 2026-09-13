@@ -79,7 +79,7 @@ class LiveBar extends StatelessWidget {
                   const SizedBox(width: AppSpace.md),
 
                   if (model?.offline == true) ...[
-                    const _OfflineChip(),
+                    _OfflineChip(waiting: model?.pendingWrites ?? 0),
                     const SizedBox(width: AppSpace.md),
                   ],
 
@@ -370,14 +370,25 @@ class _ProjectorButton extends StatelessWidget {
 /// an operator who removes an item and sees nothing happen has no other way to
 /// find out why.
 class _OfflineChip extends StatelessWidget {
-  const _OfflineChip();
+  const _OfflineChip({required this.waiting});
+
+  /// Changes made offline that have not reached the server yet.
+  final int waiting;
 
   @override
   Widget build(BuildContext context) {
+    final label = waiting == 0
+        ? 'Sin conexión'
+        : waiting == 1
+        ? 'Sin conexión · 1 cambio'
+        : 'Sin conexión · $waiting cambios';
+
     return Tooltip(
-      message:
-          'El servicio corre igual: el plan está guardado en esta máquina.\n'
-          'Lo que edites ahora no se guarda hasta que vuelva la conexión.',
+      message: waiting == 0
+          ? 'El servicio corre igual: el plan está guardado en esta máquina.'
+          : 'El servicio corre igual: el plan está guardado en esta máquina.\n'
+                'Los cambios quedan guardados aquí y se envían solos cuando '
+                'vuelva la conexión.',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
         decoration: BoxDecoration(
@@ -385,14 +396,18 @@ class _OfflineChip extends StatelessWidget {
           borderRadius: AppRadius.all(AppRadius.sm),
           border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off_rounded, size: 13, color: AppColors.warning),
-            SizedBox(width: AppSpace.sm - 2),
+            const Icon(Icons.cloud_off_rounded, size: 13, color: AppColors.warning),
+            const SizedBox(width: AppSpace.sm - 2),
             Text(
-              'Sin conexión',
-              style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600),
+              label,
+              style: const TextStyle(
+                color: AppColors.warning,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

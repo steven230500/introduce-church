@@ -5,10 +5,8 @@ import 'package:introduce_church/core/widgets/template_picker/template_editor_cu
 import '../helpers/fakes.dart';
 
 void main() {
-  TemplateEditorState stateFor(
-    SlideTemplate template, {
-    int? photoAverage,
-  }) => TemplateEditorState(template: template, photoAverage: photoAverage);
+  TemplateEditorState stateFor(SlideTemplate template, {int? photoAverage}) =>
+      TemplateEditorState(template: template, photoAverage: photoAverage);
 
   final base = SlideTemplate.defaultTemplate;
 

@@ -148,21 +148,30 @@ class CollectionItem extends Equatable {
   );
 
   CollectionItem copyWith({
+    int? order,
     String? templateId,
+    Map<String, dynamic>? contentJson,
     String? notes,
+    bool clearNotes = false,
     int? autoAdvanceSecs,
     bool clearAutoAdvance = false,
   }) => CollectionItem(
     id: id,
     collectionId: collectionId,
     type: type,
-    order: order,
+    order: order ?? this.order,
     song: song,
     templateId: templateId ?? this.templateId,
-    contentJson: contentJson,
-    notes: notes ?? this.notes,
+    contentJson: contentJson ?? this.contentJson,
+    notes: clearNotes ? null : notes ?? this.notes,
     autoAdvanceSecs: clearAutoAdvance ? null : autoAdvanceSecs ?? this.autoAdvanceSecs,
   );
+
+  /// The same item under a new name.
+  ///
+  /// The title lives inside `content_json` next to the slide paths and the
+  /// sermon points, so renaming has to leave the rest of that map alone.
+  CollectionItem renamed(String title) => copyWith(contentJson: {...?contentJson, 'title': title});
 
   factory CollectionItem.fromJson(Map<String, dynamic> json) => CollectionItem(
     id: json['id'] as String,

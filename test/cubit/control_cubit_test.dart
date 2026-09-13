@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
@@ -32,7 +33,13 @@ void main() {
   setUp(() {
     repo = FakeControlRepository(rows: twoSongs());
     templates = FakeTemplateRepository();
-    cubit = ControlCubit(repo, templates, FakePrefsService(), FakePresentationSocket());
+    cubit = ControlCubit(
+      repo,
+      templates,
+      FakePrefsService(),
+      FakePresentationSocket(),
+      pending: PendingWrites.inMemory(),
+    );
   });
 
   tearDown(() => cubit.close());
@@ -78,7 +85,13 @@ void main() {
 
     test('falls back to cached collections when the network is down', () async {
       final prefs = FakePrefsService();
-      final offline = ControlCubit(repo, templates, prefs, FakePresentationSocket());
+      final offline = ControlCubit(
+        repo,
+        templates,
+        prefs,
+        FakePresentationSocket(),
+        pending: PendingWrites.inMemory(),
+      );
       await offline.load(); // primes the cache
       repo.failWith = Exception('Failed host lookup: supabase.co');
 
@@ -107,11 +120,23 @@ void main() {
       final prefs = FakePrefsService();
       templates.templates = [SlideTemplate.blueNight];
 
-      final primed = ControlCubit(repo, templates, prefs, FakePresentationSocket());
+      final primed = ControlCubit(
+        repo,
+        templates,
+        prefs,
+        FakePresentationSocket(),
+        pending: PendingWrites.inMemory(),
+      );
       await primed.load();
       await primed.close();
 
-      final offline = ControlCubit(repo, templates, prefs, FakePresentationSocket());
+      final offline = ControlCubit(
+        repo,
+        templates,
+        prefs,
+        FakePresentationSocket(),
+        pending: PendingWrites.inMemory(),
+      );
       repo.failWith = Exception('Failed host lookup: api.introduce.test');
       await offline.load();
 

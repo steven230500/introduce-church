@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/widgets/slide_transition_view.dart';
 import 'package:introduce_church/core/widgets/slide_view.dart';
 import 'package:introduce_church/core/widgets/ui/panel_resizer.dart';
@@ -49,6 +50,7 @@ void main() {
       FakeTemplateRepository(),
       FakePrefsService(),
       FakePresentationSocket(),
+      pending: PendingWrites.inMemory(),
     );
     shell = ShellCubit();
   });

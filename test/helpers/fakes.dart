@@ -105,6 +105,10 @@ class FakeControlRepository extends ControlRepository {
   /// Throw this on the next read, to exercise the offline and error paths.
   Object? failWith;
 
+  /// Throw this on every write until it is cleared, to exercise the queue that
+  /// holds changes made with no network.
+  Object? failWritesWith;
+
   int reads = 0;
   int syncs = 0;
 
@@ -254,8 +258,16 @@ class FakeControlRepository extends ControlRepository {
     );
   }
 
+  /// Every write goes through here, so one switch turns the network off for
+  /// all of them at once.
+  void _checkNetwork() {
+    final failure = failWritesWith;
+    if (failure != null) throw failure;
+  }
+
   @override
   Future<void> updateItemTitle(String itemId, String title) async {
+    _checkNetwork();
     calls.add('title:$itemId:$title');
     for (final row in rows) {
       for (final item in (row['collection_items'] as List).cast<Map<String, dynamic>>()) {
@@ -273,6 +285,7 @@ class FakeControlRepository extends ControlRepository {
   // list back and see where an item actually landed.
   @override
   Future<void> reorderItems(String collectionId, List<String> orderedIds) async {
+    _checkNetwork();
     calls.add('reorder:${orderedIds.join(",")}');
     final items = _items(collectionId)
       ..sort(
@@ -286,6 +299,7 @@ class FakeControlRepository extends ControlRepository {
 
   @override
   Future<void> updateItemNotes(String itemId, String? notes) async {
+    _checkNetwork();
     calls.add('notes:$itemId:$notes');
   }
 

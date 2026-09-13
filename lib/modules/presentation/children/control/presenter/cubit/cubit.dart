@@ -14,6 +14,7 @@ import '../../../../../../core/utils/app_logger.dart';
 import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
+import '../../../../../../core/services/pending_writes.dart';
 import '../../../../../../core/services/pptx_import_service.dart';
 import '../../../../../../core/models/collection.dart';
 import '../../../../../../core/models/slide_template.dart';
@@ -43,6 +44,7 @@ class ControlModel extends Equatable {
     this.overlayText,
     this.stageMessage,
     this.offline = false,
+    this.pendingWrites = 0,
   });
 
   final List<Collection> collections;
@@ -83,6 +85,10 @@ class ControlModel extends Equatable {
   /// keeps working. What does not work is writing, and an operator who removes
   /// an item and sees nothing happen deserves to know why.
   final bool offline;
+
+  /// Changes made with no network, waiting to be sent. Shown next to the
+  /// offline mark so the operator knows there is work that has not landed yet.
+  final int pendingWrites;
 
   SlideTemplate? findTemplate(String id) =>
       SlideTemplate.findPreset(id) ?? userTemplates.where((t) => t.id == id).firstOrNull;
@@ -221,6 +227,7 @@ class ControlModel extends Equatable {
     String? stageMessage,
     bool clearStageMessage = false,
     bool? offline,
+    int? pendingWrites,
   }) {
     return ControlModel(
       collections: collections ?? this.collections,
@@ -240,6 +247,7 @@ class ControlModel extends Equatable {
       overlayText: clearOverlayText ? null : overlayText ?? this.overlayText,
       stageMessage: clearStageMessage ? null : stageMessage ?? this.stageMessage,
       offline: offline ?? this.offline,
+      pendingWrites: pendingWrites ?? this.pendingWrites,
     );
   }
 
@@ -262,17 +270,28 @@ class ControlModel extends Equatable {
     overlayText,
     stageMessage,
     offline,
+    pendingWrites,
   ];
 }
 
 class ControlCubit extends Cubit<ControlState> {
-  ControlCubit(this._repository, this._templateRepository, this._prefs, this._socket)
-    : super(const ControlLoadingState());
+  ControlCubit(
+    this._repository,
+    this._templateRepository,
+    this._prefs,
+    this._socket, {
+    PendingWrites? pending,
+  }) : _pending = pending ?? PendingWrites(),
+       super(const ControlLoadingState());
 
   final ControlRepository _repository;
   final TemplateRepository _templateRepository;
   final AppPrefsService _prefs;
   final PresentationSocket _socket;
+
+  /// Changes made while the server could not be reached, waiting to be sent.
+  final PendingWrites _pending;
+
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
   Timer? _overlayTimer;
@@ -284,6 +303,129 @@ class ControlCubit extends Cubit<ControlState> {
   /// of these rooms, is not there.
   List<Map<String, dynamic>> _rawCollections = const [];
   Player? _audioPlayer;
+
+  // ── Writing with no network ───────────────────────────────────────────────
+
+  /// Whether a failure was the network rather than the request.
+  ///
+  /// One place, because the four string tests this replaces were copied into
+  /// every method that cared and had already started to drift apart.
+  static bool _isNetworkFailure(Object error) {
+    if (error is ApiException) {
+      // A refused or malformed request came back with a status, so the server
+      // was reachable and retrying it later would fail exactly the same way.
+      return error.statusCode == null;
+    }
+    final text = error.toString();
+    return text.contains('SocketException') ||
+        text.contains('Failed host lookup') ||
+        text.contains('host lookup') ||
+        text.contains('TimeoutException') ||
+        text.contains('timeout') ||
+        text.contains('Connection refused') ||
+        text.contains('Network is unreachable');
+  }
+
+  /// Sends a change, or remembers it if the server cannot be reached.
+  ///
+  /// The change is applied on screen either way. Before this, an edit made in
+  /// a building with no internet threw into nothing: the operator saw the old
+  /// title, assumed the click had missed, and did it again.
+  /// Callers that already put the change on screen themselves pass
+  /// `reload: false`: reloading the whole plan after a slider moves costs a
+  /// round trip and makes the set list jump under the operator's hand.
+  Future<void> _write(
+    PendingWrite change,
+    Future<void> Function() send, {
+    bool reload = true,
+  }) async {
+    try {
+      await send();
+      if (reload) await refresh();
+    } catch (error) {
+      if (!_isNetworkFailure(error)) rethrow;
+      await _pending.add(change);
+      _applyLocally(change, (await _pending.load()).length);
+    }
+  }
+
+  /// Shows a queued change immediately, and says the app is offline.
+  void _applyLocally(PendingWrite change, int waiting) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final collections = [
+      for (final collection in model.collections) applyPendingWrite(collection, change),
+    ];
+    final active = model.activeCollection == null
+        ? null
+        : collections.where((c) => c.id == model.activeCollection!.id).firstOrNull;
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          collections: collections,
+          activeCollection: active,
+          offline: true,
+          pendingWrites: waiting,
+        ),
+      ),
+    );
+  }
+
+  /// Sends everything that was made offline, oldest first.
+  ///
+  /// Before the fetch, never after: a reload that ran first would hand back
+  /// the server's older copy and quietly undo the work on screen.
+  Future<int> _flushPending() async {
+    final queue = await _pending.load();
+    if (queue.isEmpty) return 0;
+    final stillWaiting = <PendingWrite>[];
+    for (final change in queue) {
+      try {
+        await _send(change);
+      } catch (error) {
+        // Still no network: keep it. Anything else means the server has an
+        // opinion about this change, and retrying it every refresh forever
+        // would be worse than dropping it.
+        if (_isNetworkFailure(error)) stillWaiting.add(change);
+      }
+    }
+    await _pending.save(stillWaiting);
+    return stillWaiting.length;
+  }
+
+  Future<void> _send(PendingWrite change) async {
+    final args = change.args;
+    switch (change.kind) {
+      case PendingKind.collectionDetails:
+        final date = args['service_date'] as String?;
+        await _repository.updateCollection(
+          id: change.target,
+          name: args['name'] as String? ?? '',
+          serviceDate: date == null ? null : DateTime.tryParse(date),
+        );
+      case PendingKind.collectionBgAudio:
+        await _repository.updateCollectionBgAudio(change.target, args['path'] as String?);
+      case PendingKind.collectionTemplate:
+        await _templateRepository.setCollectionTemplate(
+          change.target,
+          args['template_id'] as String?,
+        );
+      case PendingKind.itemTitle:
+        await _repository.updateItemTitle(change.target, args['title'] as String? ?? '');
+      case PendingKind.itemNotes:
+        await _repository.updateItemNotes(change.target, args['notes'] as String?);
+      case PendingKind.itemAutoAdvance:
+        await _repository.updateItemAutoAdvance(change.target, args['auto_advance_secs'] as int?);
+      case PendingKind.itemOrder:
+        await _repository.reorderItems(
+          change.target,
+          List<String>.from(args['item_ids'] as List? ?? const []),
+        );
+    }
+  }
+
+  /// How many changes are waiting for the network to come back.
+  Future<int> pendingCount() async => (await _pending.load()).length;
 
   /// Full load with a loading state. Use only for the first load and for
   /// recovering from an error screen.
@@ -314,6 +456,7 @@ class ControlCubit extends Cubit<ControlState> {
     final previous = state is ControlLoadedState ? (state as ControlLoadedState).model : null;
     if (showSpinner) emit(const ControlLoadingState());
     try {
+      final stillWaiting = await _flushPending();
       final rawCollections = await _repository.getCollectionsRaw();
       final rawTemplates = await _templateRepository.getTemplatesRaw();
       final userTemplates = TemplateRepository.parseTemplates(rawTemplates);
@@ -339,6 +482,7 @@ class ControlCubit extends Cubit<ControlState> {
             liveSlideIndex: previousLiveSlide,
             followCursor: previous?.followCursor ?? true,
             offline: false,
+            pendingWrites: stillWaiting,
             isLive: previous?.isLive ?? false,
             blankScreen: previous?.blankScreen ?? false,
             gridView: previous?.gridView ?? true,
@@ -356,13 +500,7 @@ class ControlCubit extends Cubit<ControlState> {
         AuthNavigator.goToLogin();
         return;
       }
-      final isNetworkError =
-          s.contains('host lookup') ||
-          s.contains('SocketException') ||
-          s.contains('timeout') ||
-          s.contains('TimeoutException') ||
-          s.contains('Failed host lookup');
-      if (isNetworkError) {
+      if (_isNetworkFailure(e)) {
         final cached = await _prefs.loadCollections();
         if (cached != null && cached.isNotEmpty) {
           final collections = cached.map(Collection.fromJson).toList();
@@ -381,8 +519,10 @@ class ControlCubit extends Cubit<ControlState> {
                     : TemplateRepository.parseTemplates(cachedTemplates),
                 followCursor: previous?.followCursor ?? true,
                 // Everything needed to run the service is on the disk. Writing
-                // is what stops working, and the operator has to be told.
+                // still works, it just waits: the queue holds it until the
+                // network is back, and the operator is told how much is waiting.
                 offline: true,
+                pendingWrites: (await _pending.load()).length,
                 isLive: previous?.isLive ?? false,
                 blankScreen: previous?.blankScreen ?? false,
                 gridView: previous?.gridView ?? true,
@@ -604,9 +744,15 @@ class ControlCubit extends Cubit<ControlState> {
     }
   }
 
-  Future<void> updateCollection(String id, String name, {DateTime? serviceDate}) async {
-    await _repository.updateCollection(id: id, name: name, serviceDate: serviceDate);
-    await refresh();
+  Future<void> updateCollection(String id, String name, {DateTime? serviceDate}) {
+    return _write(
+      PendingWrite(
+        kind: PendingKind.collectionDetails,
+        target: id,
+        args: {'name': name, 'service_date': serviceDate?.toIso8601String()},
+      ),
+      () => _repository.updateCollection(id: id, name: name, serviceDate: serviceDate),
+    );
   }
 
   /// Copies a whole plan into a new one and opens it.
@@ -811,8 +957,10 @@ class ControlCubit extends Cubit<ControlState> {
     final ids = collection.items.map((i) => i.id).toList();
     if (ids.length < 2 || index < 0 || index >= ids.length - 1) return;
     ids.insert(index, ids.removeLast());
-    await _repository.reorderItems(collection.id, ids);
-    await refresh();
+    await _write(
+      PendingWrite(kind: PendingKind.itemOrder, target: collection.id, args: {'item_ids': ids}),
+      () => _repository.reorderItems(collection.id, ids),
+    );
   }
 
   /// Adds a reading straight after the item on screen, and goes to it.
@@ -838,9 +986,11 @@ class ControlCubit extends Cubit<ControlState> {
     selectItem(target);
   }
 
-  Future<void> setItemTitle(String itemId, String title) async {
-    await _repository.updateItemTitle(itemId, title);
-    await refresh();
+  Future<void> setItemTitle(String itemId, String title) {
+    return _write(
+      PendingWrite(kind: PendingKind.itemTitle, target: itemId, args: {'title': title}),
+      () => _repository.updateItemTitle(itemId, title),
+    );
   }
 
   Future<void> addSermon(String title, List<String> points) async {
@@ -983,9 +1133,11 @@ class ControlCubit extends Cubit<ControlState> {
     await _displayController!.show();
   }
 
-  Future<void> updateItemNotes(String itemId, String? notes) async {
-    await _repository.updateItemNotes(itemId, notes);
-    await refresh();
+  Future<void> updateItemNotes(String itemId, String? notes) {
+    return _write(
+      PendingWrite(kind: PendingKind.itemNotes, target: itemId, args: {'notes': notes}),
+      () => _repository.updateItemNotes(itemId, notes),
+    );
   }
 
   Future<void> reorderItem(int oldIndex, int newIndex) async {
@@ -1001,7 +1153,12 @@ class ControlCubit extends Cubit<ControlState> {
     final updated = col.copyWith(items: items);
     emit(ControlLoadedState(model.copyWith(activeCollection: updated)));
 
-    await _repository.reorderItems(col.id, items.map((i) => i.id).toList());
+    final ids = items.map((i) => i.id).toList();
+    await _write(
+      PendingWrite(kind: PendingKind.itemOrder, target: col.id, args: {'item_ids': ids}),
+      () => _repository.reorderItems(col.id, ids),
+      reload: false,
+    );
   }
 
   void startCountdown(int seconds) {
@@ -1075,7 +1232,11 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   Future<void> setCollectionBgAudio(String collectionId, String? path) async {
-    await _repository.updateCollectionBgAudio(collectionId, path);
+    await _write(
+      PendingWrite(kind: PendingKind.collectionBgAudio, target: collectionId, args: {'path': path}),
+      () => _repository.updateCollectionBgAudio(collectionId, path),
+      reload: false,
+    );
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     final updated = model.activeCollection?.copyWith(bgAudioPath: path, clearBgAudio: path == null);
@@ -1123,7 +1284,15 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   Future<void> setItemAutoAdvance(String itemId, int? secs) async {
-    await _repository.updateItemAutoAdvance(itemId, secs);
+    await _write(
+      PendingWrite(
+        kind: PendingKind.itemAutoAdvance,
+        target: itemId,
+        args: {'auto_advance_secs': secs},
+      ),
+      () => _repository.updateItemAutoAdvance(itemId, secs),
+      reload: false,
+    );
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     final col = model.activeCollection;

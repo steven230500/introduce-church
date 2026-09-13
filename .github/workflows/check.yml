@@ -1,0 +1,31 @@
+# Static analysis and the test suite, on every push.
+#
+# Runs on Linux even though the app ships for macOS: nothing under test needs a
+# window, and a Linux runner starts in a fraction of the time a macOS one does.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # .env is a required asset and is not in the repository, because where
+      # the API lives is a deployment decision rather than a source file.
+      - name: Write .env
+        run: echo "API_URL=${{ vars.API_URL || 'https://api.example.invalid' }}" > .env
+
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test

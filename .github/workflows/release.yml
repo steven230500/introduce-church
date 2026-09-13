@@ -1,0 +1,77 @@
+# Builds the macOS app and attaches it to a GitHub release.
+#
+# The download button on the landing page points at this repository's latest
+# release, so a tag pushed here is what turns that button from a dead link into
+# an app a church can install.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Not a secret - it is the public address of the API, and every copy of
+      # the app has to know it. It is out of the repository because which API a
+      # build talks to is a deployment decision.
+      - name: Write .env
+        run: |
+          if [ -z "${{ vars.API_URL }}" ]; then
+            echo "Set the API_URL repository variable (Settings → Secrets and variables → Actions → Variables)." >&2
+            exit 1
+          fi
+          echo "API_URL=${{ vars.API_URL }}" > .env
+
+      - run: flutter pub get
+
+      # Ship nothing that does not pass. A broken release is worse than a late
+      # one when the people installing it are volunteers.
+      - run: flutter analyze
+      - run: flutter test
+
+      - run: flutter build macos --release
+
+      - name: Package
+        id: package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          name="Introduce-macOS-${version}.zip"
+          cd build/macos/Build/Products/Release
+          # --symlinks, or the frameworks inside the bundle are copied rather
+          # than linked and macOS refuses to open it.
+          zip -r --symlinks "../../../../../${name}" Introduce.app
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Write the release notes
+        run: |
+          cat > NOTES.md <<'NOTES'
+          ## Instalar en Mac
+
+          1. Descargar el `.zip` y descomprimirlo.
+          2. Arrastrar `Introduce.app` a Aplicaciones.
+          3. **La primera vez**: clic derecho sobre la app, **Abrir**, **Abrir**.
+
+          Ese último paso hace falta porque la app todavía no está firmada con un
+          certificado de Apple. macOS avisa una vez y después la abre normal.
+          NOTES
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${{ steps.package.outputs.name }}" \
+            --title "Introduce ${GITHUB_REF_NAME}" \
+            --notes-file NOTES.md
