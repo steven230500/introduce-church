@@ -248,5 +248,65 @@
         "type": "String"
       }
     }
-  }
+  },
+  "sideHistory": "Historial",
+  "historyTitle": "Lo que se proyectó",
+  "historyServices": "Servicios",
+  "historyLicences": "Reporte de licencias",
+  "historyRangeWeek": "Última semana",
+  "historyRangeMonth": "Último mes",
+  "historyRangeQuarter": "Últimos 3 meses",
+  "historyRangeYear": "Último año",
+  "historyEmpty": "Todavía no hay nada registrado en este período",
+  "historyEmptyBody": "Lo que salga a la pantalla con la señal en vivo se va anotando solo, y aparece aquí.",
+  "historyLoadFailed": "No se pudo cargar el historial: {reason}",
+  "@historyLoadFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "historyItems": "{count, plural, one{1 elemento} other{{count} elementos}}",
+  "@historyItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyNoSongs": "Ninguna canción proyectada en este período",
+  "historySongsUsed": "{count, plural, one{1 canción} other{{count} canciones}}",
+  "@historySongsUsed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyUses": "{count, plural, one{1 vez} other{{count} veces}}",
+  "@historyUses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyNoLicence": "Sin número de licencia",
+  "historyExportCsv": "Exportar a Excel",
+  "historyExported": "Reporte guardado: {file}",
+  "@historyExported": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "historyLicenceNote": "Cuenta cada servicio en que se usó una canción, no cada vez que salió a pantalla. Lo que estuvo menos de 5 segundos no cuenta.",
+  "csvTitle": "Título",
+  "csvAuthor": "Autor",
+  "csvCopyright": "Copyright",
+  "csvLicence": "Número CCLI",
+  "csvUses": "Usos",
+  "csvDates": "Fechas"
 }

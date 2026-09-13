@@ -241,5 +241,65 @@
         "type": "String"
       }
     }
-  }
+  },
+  "sideHistory": "History",
+  "historyTitle": "What was projected",
+  "historyServices": "Services",
+  "historyLicences": "Licence report",
+  "historyRangeWeek": "Last week",
+  "historyRangeMonth": "Last month",
+  "historyRangeQuarter": "Last 3 months",
+  "historyRangeYear": "Last year",
+  "historyEmpty": "Nothing recorded in this period yet",
+  "historyEmptyBody": "Whatever goes on the screen while the output is live is written down by itself and shows up here.",
+  "historyLoadFailed": "Could not load the history: {reason}",
+  "@historyLoadFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "historyItems": "{count, plural, one{1 item} other{{count} items}}",
+  "@historyItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyNoSongs": "No songs projected in this period",
+  "historySongsUsed": "{count, plural, one{1 song} other{{count} songs}}",
+  "@historySongsUsed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyUses": "{count, plural, one{once} other{{count} times}}",
+  "@historyUses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyNoLicence": "No licence number",
+  "historyExportCsv": "Export to a spreadsheet",
+  "historyExported": "Report saved: {file}",
+  "@historyExported": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "historyLicenceNote": "Counts each service a song was used in, not each time it went on screen. Anything up for less than 5 seconds does not count.",
+  "csvTitle": "Title",
+  "csvAuthor": "Author",
+  "csvCopyright": "Copyright",
+  "csvLicence": "CCLI number",
+  "csvUses": "Uses",
+  "csvDates": "Dates"
 }

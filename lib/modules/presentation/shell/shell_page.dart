@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,8 +12,10 @@ import '../../../core/widgets/ui/app_buttons.dart';
 import '../children/control/presenter/cubit/cubit.dart';
 import '../children/control/presenter/page.dart';
 import 'collections_library_page.dart';
+import 'history_page.dart';
 import 'library/library_dock.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/history/projection_recorder.dart';
 import '../../../core/services/app_prefs_service.dart';
 import '../../../core/services/locale_controller.dart';
 import '../../../l10n/l10n.dart';
@@ -56,8 +61,35 @@ class _ShellScaffold extends StatefulWidget {
 class _ShellScaffoldState extends State<_ShellScaffold> {
   final _focusNode = FocusNode(debugLabel: 'shell');
 
+  /// Writes down what goes on the screen, for the history and the licence
+  /// report. Lives exactly as long as the presenter does.
+  late final ProjectionRecorder _recorder = ProjectionRecorder(
+    context.read<ControlCubit>(),
+    Modular.get<HistoryRepository>(),
+    Modular.get<ProjectionOutbox>(),
+  )..start();
+
+  /// Quitting the app with a song still on the screen must still record that
+  /// song, and dispose() is not guaranteed to run on the way out.
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onExitRequested: () async {
+      await _recorder.stop();
+      return AppExitResponse.exit;
+    },
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Touching both starts them.
+    _recorder;
+    _lifecycle;
+  }
+
   @override
   void dispose() {
+    unawaited(_recorder.stop());
+    _lifecycle.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -220,6 +252,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       ShellSection.collections => CollectionsLibraryPage(
         onOpenCollection: () => context.read<ShellCubit>().goTo(ShellSection.presenter),
       ),
+      ShellSection.history => const HistoryPage(),
     };
   }
 }
@@ -257,6 +290,12 @@ class _Sidebar extends StatelessWidget {
             label: 'Colecciones',
             active: current == ShellSection.collections,
             onTap: () => shell.goTo(ShellSection.collections),
+          ),
+          _SideButton(
+            icon: Icons.history_rounded,
+            label: L10n.of(context).sideHistory,
+            active: current == ShellSection.history,
+            onTap: () => shell.goTo(ShellSection.history),
           ),
           const Spacer(),
           _SideButton(

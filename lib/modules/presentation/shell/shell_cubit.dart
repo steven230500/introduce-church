@@ -14,7 +14,7 @@ import '../../../core/theme/app_dimens.dart';
 /// collections is where services are planned. Everything else is a library, and
 /// libraries live in the dock beside the presenter so the operator never has to
 /// leave the controls to find content.
-enum ShellSection { presenter, collections }
+enum ShellSection { presenter, collections, history }
 
 /// Tabs inside the library dock.
 enum LibraryTab { songs, bible, media, templates }

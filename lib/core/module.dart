@@ -4,6 +4,7 @@ import 'package:flutter_modular/flutter_modular.dart' show Module, Modular, Inje
 import 'api/api_client.dart';
 import 'api/bootstrap.dart';
 import 'api/presentation_socket.dart';
+import 'history/projection_recorder.dart';
 import 'local_db/app_database.dart';
 import 'local_db/bible_import_service.dart';
 import 'local_db/bible_repository.dart';
@@ -26,6 +27,10 @@ class CoreModule extends Module {
     i.addLazySingleton<ApiClient>(
       () => ApiClient(Modular.get<Dio>(), Modular.get<AppPrefsService>()),
     );
+    // One outbox for the process: two would each think the other's file was
+    // theirs, and the same service would be sent twice.
+    i.addLazySingleton<ProjectionOutbox>(ProjectionOutbox.new);
+    i.addLazySingleton<HistoryRepository>(() => HistoryRepository(Modular.get<ApiClient>()));
     i.addLazySingleton<PresentationSocket>(
       () => PresentationSocket(Modular.get<ApiClient>(), apiBaseUrl),
     );
