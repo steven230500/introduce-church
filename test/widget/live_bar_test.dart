@@ -85,7 +85,7 @@ void main() {
   testWidgets('the screen-state controls are named on a wide window', (tester) async {
     await pumpBar(tester, width: 1440);
 
-    for (final label in ['Cuenta', 'Aviso', 'Negro']) {
+    for (final label in ['Cuenta', 'Avisos', 'Negro']) {
       expect(find.text(label), findsOneWidget, reason: '$label must be readable');
     }
     expect(tester.takeException(), isNull);
@@ -98,7 +98,7 @@ void main() {
     // window the app refuses to shrink below, they cannot drift apart again.
     await pumpBar(tester, width: kMinWindowSize.width);
 
-    for (final label in ['Cuenta', 'Aviso', 'Negro', 'Proyector', 'Escenario']) {
+    for (final label in ['Cuenta', 'Avisos', 'Negro', 'Proyector', 'Escenario']) {
       expect(find.text(label), findsOneWidget, reason: '$label must be readable');
     }
     expect(tester.takeException(), isNull);
@@ -234,7 +234,7 @@ void main() {
 
     // The bar lives in the shell, so leaving the presenter must not remove it.
     expect(find.byTooltip('Poner la pantalla en negro  ·  B'), findsOneWidget);
-    expect(find.byTooltip('Abrir la ventana de proyección para el público'), findsOneWidget);
+    expect(find.byIcon(Icons.present_to_all_outlined), findsOneWidget);
     expect(find.byTooltip('Abrir el monitor con notas para el equipo'), findsOneWidget);
     expect(find.text('En vivo'), findsOneWidget);
   });

@@ -46,6 +46,15 @@ void main() {
 
   tearDown(() => cubit.close());
 
+  test('a line for the platform reaches this screen and only this one', () async {
+    // The overlay goes to the projector, which is everyone. Telling the
+    // preacher they have five minutes needed somewhere else to go.
+    await cubit.applyLocalState({...operatorState(), 'stage_message': 'Quedan 5 minutos'});
+
+    expect(cubit.state.stageMessage, 'Quedan 5 minutos');
+    expect(cubit.state.overlayVisible, isFalse);
+  });
+
   test('shows the slide and the one after it, with no network', () async {
     await cubit.applyLocalState(operatorState());
 

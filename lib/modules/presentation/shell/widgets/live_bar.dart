@@ -8,6 +8,8 @@ import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../shell_cubit.dart';
+import 'notices_dialog.dart';
+import 'projector_picker_dialog.dart';
 
 /// The always-visible control bar at the top of the window.
 ///
@@ -103,14 +105,14 @@ class LiveBar extends StatelessWidget {
                               },
                       ),
                       AppIconButton(
-                        icon: Icons.subtitles_outlined,
-                        label: labelState ? 'Aviso' : null,
-                        tooltip: model?.overlayVisible == true
-                            ? 'Quitar el aviso sobre el slide'
-                            : 'Escribir un aviso sobre el slide',
-                        active: model?.overlayVisible ?? false,
+                        icon: Icons.campaign_outlined,
+                        label: labelState ? 'Avisos' : null,
+                        tooltip: 'Avisos para la pantalla y mensajes para el escenario',
+                        active:
+                            (model?.overlayVisible ?? false) ||
+                            (model?.stageMessage ?? '').isNotEmpty,
                         activeColor: AppColors.success,
-                        onTap: !enabled ? null : () => handleOverlay(context, model),
+                        onTap: !enabled ? null : () => showNoticesDialog(context),
                       ),
                       AppIconButton(
                         icon: Icons.visibility_off_outlined,
@@ -128,12 +130,7 @@ class LiveBar extends StatelessWidget {
                   // ── Extra windows ─────────────────────────────────────────
                   AppButtonGroup(
                     children: [
-                      AppIconButton(
-                        icon: Icons.present_to_all_outlined,
-                        label: labelOutputs ? 'Proyector' : null,
-                        tooltip: 'Abrir la ventana de proyección para el público',
-                        onTap: enabled ? cubit.openDisplayWindow : null,
-                      ),
+                      _ProjectorButton(labelled: labelOutputs, enabled: enabled),
                       AppIconButton(
                         icon: Icons.co_present_outlined,
                         label: labelOutputs ? 'Escenario' : null,
@@ -314,6 +311,52 @@ class _DockToggle extends StatelessWidget {
           onTap: context.read<ShellCubit>().toggleDock,
         );
       },
+    );
+  }
+}
+
+// ── Projector ─────────────────────────────────────────────────────────────────
+
+/// Opens the projection window, asking which screen the first time it has to
+/// guess between more than one.
+class _ProjectorButton extends StatelessWidget {
+  const _ProjectorButton({required this.labelled, required this.enabled});
+
+  final bool labelled;
+  final bool enabled;
+
+  Future<void> _open(BuildContext context, {required bool alwaysAsk}) async {
+    final cubit = context.read<ControlCubit>();
+    final displays = await cubit.projectorDisplays();
+    final remembered = await cubit.rememberedProjector();
+
+    // Ask when there is a real choice and no answer on file. One screen means
+    // there is nothing to ask about, and a remembered one means it was asked
+    // already.
+    final mustAsk = alwaysAsk || (displays.length > 1 && remembered == null);
+    if (!mustAsk) {
+      await cubit.openDisplayWindow();
+      return;
+    }
+    if (!context.mounted) return;
+
+    final chosen = await showProjectorPicker(context, displays: displays, current: remembered);
+    if (chosen == null) return;
+    await cubit.openDisplayWindow(on: chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onSecondaryTap: enabled ? () => _open(context, alwaysAsk: true) : null,
+      child: AppIconButton(
+        icon: Icons.present_to_all_outlined,
+        label: labelled ? 'Proyector' : null,
+        tooltip:
+            'Abrir la ventana de proyección para el público\n'
+            'Clic derecho para elegir la pantalla',
+        onTap: enabled ? () => _open(context, alwaysAsk: false) : null,
+      ),
     );
   }
 }
@@ -539,45 +582,4 @@ class _CountdownDialogState extends State<_CountdownDialog> {
       ),
     );
   }
-}
-
-// ── Overlay ───────────────────────────────────────────────────────────────────
-
-Future<void> handleOverlay(BuildContext context, ControlModel model) async {
-  final cubit = context.read<ControlCubit>();
-
-  if (model.overlayVisible) {
-    cubit.toggleOverlay();
-    return;
-  }
-
-  final ctrl = TextEditingController(text: model.overlayText ?? '');
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AppDialog(
-      title: 'Texto del overlay',
-      icon: Icons.subtitles_outlined,
-      width: 380,
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-        const SizedBox(width: AppSpace.sm),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mostrar')),
-      ],
-      child: AppTextField(
-        controller: ctrl,
-        hintText: 'Texto a mostrar sobre el slide...',
-        maxLines: 2,
-        autofocus: true,
-      ),
-    ),
-  );
-
-  if (confirmed == true && context.mounted) {
-    final text = ctrl.text.trim();
-    if (text.isNotEmpty) {
-      cubit.setOverlayText(text);
-      if (!model.overlayVisible) cubit.toggleOverlay();
-    }
-  }
-  ctrl.dispose();
 }

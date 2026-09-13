@@ -346,6 +346,61 @@ void main() {
     });
   });
 
+  group('saying something mid-service', () {
+    test('a notice goes over the slide and out to the screens', () async {
+      await openFirstCollection();
+
+      cubit.showOverlay('Los niños pasan al salón');
+
+      expect(model().overlayVisible, isTrue);
+      expect(model().overlayText, 'Los niños pasan al salón');
+      expect(repo.syncs, greaterThan(0));
+      cubit.hideOverlay();
+    });
+
+    test('a notice on a clock takes itself down', () async {
+      // An operator who has to remember to take it down again will not.
+      await openFirstCollection();
+
+      cubit.showOverlay('Ofrenda', autoHideSecs: 1);
+      expect(model().overlayVisible, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+      expect(model().overlayVisible, isFalse);
+    });
+
+    test('showing a second notice cancels the first one\'s clock', () async {
+      await openFirstCollection();
+      cubit.showOverlay('Primero', autoHideSecs: 1);
+
+      cubit.showOverlay('Segundo');
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+      expect(model().overlayVisible, isTrue, reason: 'the second one has no clock');
+      expect(model().overlayText, 'Segundo');
+      cubit.hideOverlay();
+    });
+
+    test('a line for the platform never becomes an overlay', () async {
+      await openFirstCollection();
+
+      cubit.setStageMessage('Quedan 5 minutos');
+
+      expect(model().stageMessage, 'Quedan 5 minutos');
+      expect(model().overlayVisible, isFalse);
+    });
+
+    test('an empty line clears it rather than sending blank', () async {
+      await openFirstCollection();
+      cubit.setStageMessage('Algo');
+
+      cubit.setStageMessage('   ');
+
+      expect(model().stageMessage, isNull);
+    });
+  });
+
   group('duplicating a service', () {
     test('carries the whole running order into the copy', () async {
       // Most services share a skeleton, and rebuilding it every week is the

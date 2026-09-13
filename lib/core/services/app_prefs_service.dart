@@ -95,6 +95,25 @@ class AppPrefsService {
     };
   }
 
+  /// Which display the projector window opens on.
+  ///
+  /// A church wires the same room the same way every week, and the app used to
+  /// take the second display it was handed and hope.
+  Future<String?> getProjectorDisplay() async {
+    final d = await _read();
+    return d['projector_display'] as String?;
+  }
+
+  Future<void> setProjectorDisplay(String? id) async {
+    final d = Map<String, dynamic>.from(await _read());
+    if (id == null) {
+      d.remove('projector_display');
+    } else {
+      d['projector_display'] = id;
+    }
+    await _write(d);
+  }
+
   // ── Session ────────────────────────────────────────────────────────────────
   //
   // Tokens live in the same file as the rest of the preferences. On a desktop

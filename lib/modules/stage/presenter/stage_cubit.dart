@@ -59,6 +59,7 @@ class StageState extends Equatable {
     this.countdownEnd,
     this.overlayVisible = false,
     this.overlayText,
+    this.stageMessage,
   });
 
   final StageSlide? current;
@@ -70,6 +71,9 @@ class StageState extends Equatable {
   final bool overlayVisible;
   final String? overlayText;
 
+  /// A line from the operator that only this window shows.
+  final String? stageMessage;
+
   @override
   List<Object?> get props => [
     current,
@@ -80,6 +84,7 @@ class StageState extends Equatable {
     countdownEnd,
     overlayVisible,
     overlayText,
+    stageMessage,
   ];
 }
 
@@ -121,6 +126,7 @@ class StageCubit extends Cubit<StageState> {
     final countdownEndStr = row['countdown_end'] as String?;
     final overlayVisible = row['overlay_visible'] as bool? ?? false;
     final overlayText = row['overlay_text'] as String?;
+    final stageMessage = row['stage_message'] as String?;
 
     DateTime? countdownEnd;
     if (countdownActive && countdownEndStr != null) {
@@ -140,6 +146,7 @@ class StageCubit extends Cubit<StageState> {
           countdownEnd: countdownEnd,
           overlayVisible: overlayVisible,
           overlayText: overlayText,
+          stageMessage: stageMessage,
         ),
       );
       return;
@@ -164,6 +171,7 @@ class StageCubit extends Cubit<StageState> {
           countdownEnd: countdownEnd,
           overlayVisible: overlayVisible,
           overlayText: overlayText,
+          stageMessage: stageMessage,
         ),
       );
     } catch (_) {

@@ -24,6 +24,19 @@ class _StageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final message = state.stageMessage;
+
+    return Column(
+      children: [
+        // Above everything, because it is the one thing here that somebody
+        // typed on purpose for the person reading this screen.
+        if (message != null && message.isNotEmpty) _StageMessage(text: message),
+        Expanded(child: _panels()),
+      ],
+    );
+  }
+
+  Widget _panels() {
     return Row(
       children: [
         // Left: current slide (large)
@@ -83,6 +96,41 @@ class _StageLayout extends StatelessWidget {
 }
 
 // ── Section label ─────────────────────────────────────────────────────────────
+
+/// A line the operator sent to the platform.
+class _StageMessage extends StatelessWidget {
+  const _StageMessage({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFFFFCC00),
+      child: Row(
+        children: [
+          const Icon(Icons.campaign_rounded, size: 22, color: Colors.black87),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label, {required this.isLive});

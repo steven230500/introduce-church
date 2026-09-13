@@ -5,7 +5,9 @@ import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/collection.dart';
 import 'package:introduce_church/core/models/collection_item_type.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
+import 'package:introduce_church/core/models/saved_notice.dart';
 import 'package:introduce_church/core/models/song.dart';
+import 'package:introduce_church/core/repositories/organization_repository.dart';
 import 'package:introduce_church/core/repositories/template_repository.dart';
 import 'package:introduce_church/core/services/app_prefs_service.dart';
 import 'package:introduce_church/modules/presentation/children/control/repository/repository.dart';
@@ -347,5 +349,32 @@ class OfflineApiClient extends ApiClient {
   Future<T?> get<T>(String path, {Map<String, dynamic>? query}) async {
     calls++;
     throw const ApiException('sin conexión');
+  }
+}
+
+/// Organization repository backed by a list, so the notices dialog can be
+/// driven without a server.
+class FakeOrganizationRepository extends OrganizationRepository {
+  FakeOrganizationRepository({this.notices = const []}) : super(fakeApiClient());
+
+  List<SavedNotice> notices;
+  List<int> palette = const [];
+
+  @override
+  Future<List<SavedNotice>> getNotices() async => notices;
+
+  @override
+  Future<List<SavedNotice>> setNotices(List<SavedNotice> next) async {
+    notices = next;
+    return next;
+  }
+
+  @override
+  Future<List<int>> getPalette() async => palette;
+
+  @override
+  Future<List<int>> setPalette(List<int> next) async {
+    palette = next;
+    return next;
   }
 }

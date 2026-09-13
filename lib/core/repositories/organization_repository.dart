@@ -1,5 +1,6 @@
 import '../api/api_client.dart';
 import '../models/organization.dart';
+import '../models/saved_notice.dart';
 import '../utils/color_contrast.dart';
 
 class OrganizationRepository {
@@ -55,6 +56,41 @@ class OrganizationRepository {
       if (raw is! String) continue;
       final value = parseHexColor(raw);
       if (value != null) out.add(value);
+    }
+    return out;
+  }
+
+  /// The notices this church keeps ready.
+  ///
+  /// A church that cannot be reached simply gets none, and the operator can
+  /// still type one, so this never blocks a service.
+  Future<List<SavedNotice>> getNotices() async {
+    try {
+      final body = await _api.get<Map<String, dynamic>>('/org/notices');
+      return _readNotices(body?['notices']);
+    } on ApiException {
+      return const [];
+    }
+  }
+
+  Future<List<SavedNotice>> setNotices(List<SavedNotice> notices) async {
+    final body = await _api.put<Map<String, dynamic>>(
+      '/org/notices',
+      data: {
+        'notices': [for (final n in notices) n.toJson()],
+      },
+    );
+    final saved = _readNotices(body?['notices']);
+    return saved.isEmpty && notices.isNotEmpty ? notices : saved;
+  }
+
+  static List<SavedNotice> _readNotices(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <SavedNotice>[];
+    for (final row in raw) {
+      if (row is! Map) continue;
+      final notice = SavedNotice.fromJson(Map<String, dynamic>.from(row));
+      if (notice.text.isNotEmpty) out.add(notice);
     }
     return out;
   }

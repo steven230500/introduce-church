@@ -41,6 +41,7 @@ class ControlModel extends Equatable {
     this.countdownEnd,
     this.overlayVisible = false,
     this.overlayText,
+    this.stageMessage,
     this.offline = false,
   });
 
@@ -68,6 +69,12 @@ class ControlModel extends Equatable {
   final DateTime? countdownEnd;
   final bool overlayVisible;
   final String? overlayText;
+
+  /// A line for the platform that the congregation never sees.
+  ///
+  /// The overlay goes to the projector, which is everyone. Telling the
+  /// preacher they have five minutes left needed somewhere else to go.
+  final String? stageMessage;
 
   /// True when the last read came from the cache because the server could not
   /// be reached.
@@ -211,6 +218,8 @@ class ControlModel extends Equatable {
     bool? overlayVisible,
     String? overlayText,
     bool clearOverlayText = false,
+    String? stageMessage,
+    bool clearStageMessage = false,
     bool? offline,
   }) {
     return ControlModel(
@@ -229,6 +238,7 @@ class ControlModel extends Equatable {
       countdownEnd: clearCountdownEnd ? null : countdownEnd ?? this.countdownEnd,
       overlayVisible: overlayVisible ?? this.overlayVisible,
       overlayText: clearOverlayText ? null : overlayText ?? this.overlayText,
+      stageMessage: clearStageMessage ? null : stageMessage ?? this.stageMessage,
       offline: offline ?? this.offline,
     );
   }
@@ -250,6 +260,7 @@ class ControlModel extends Equatable {
     countdownEnd,
     overlayVisible,
     overlayText,
+    stageMessage,
     offline,
   ];
 }
@@ -264,6 +275,7 @@ class ControlCubit extends Cubit<ControlState> {
   final PresentationSocket _socket;
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
+  Timer? _overlayTimer;
 
   /// The collection rows exactly as the server sent them.
   ///
@@ -915,7 +927,20 @@ class ControlCubit extends Cubit<ControlState> {
     await controller.show();
   }
 
-  Future<void> openDisplayWindow() async {
+  /// Every screen the projector window could be opened on.
+  Future<List<Display>> projectorDisplays() => screenRetriever.getAllDisplays();
+
+  /// The screen last chosen for the projector, if it is still plugged in.
+  Future<Display?> rememberedProjector() async {
+    final id = await _prefs.getProjectorDisplay();
+    if (id == null) return null;
+    final displays = await screenRetriever.getAllDisplays();
+    return displays.where((d) => d.id == id).firstOrNull;
+  }
+
+  Future<void> rememberProjector(Display display) => _prefs.setProjectorDisplay(display.id);
+
+  Future<void> openDisplayWindow({Display? on}) async {
     // Reset live so display starts black
     if (state is ControlLoadedState) {
       final model = (state as ControlLoadedState).model;
@@ -935,12 +960,17 @@ class ControlCubit extends Cubit<ControlState> {
       }
     }
 
+    // The chosen screen, else the one chosen last time, else the second one,
+    // which is the guess this used to make every time and get wrong in any
+    // room wired with three.
     final displays = await screenRetriever.getAllDisplays();
+    final target = on ?? await rememberedProjector() ?? (displays.length > 1 ? displays[1] : null);
+    if (target != null) await rememberProjector(target);
+
     Map<String, dynamic> screenData = {};
-    if (displays.length > 1) {
-      final d = displays[1];
-      final pos = d.visiblePosition ?? Offset.zero;
-      final size = d.visibleSize ?? d.size;
+    if (target != null) {
+      final pos = target.visiblePosition ?? Offset.zero;
+      final size = target.visibleSize ?? target.size;
       screenData = {'x': pos.dx, 'y': pos.dy, 'w': size.width, 'h': size.height};
     }
 
@@ -998,7 +1028,49 @@ class ControlCubit extends Cubit<ControlState> {
   void toggleOverlay() {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
+    if (model.overlayVisible) _overlayTimer?.cancel();
     emit(ControlLoadedState(model.copyWith(overlayVisible: !model.overlayVisible)));
+    _syncState();
+  }
+
+  /// Puts a notice over whatever is projected, optionally on a clock.
+  ///
+  /// The clock is what makes a saved notice usable during a service: an
+  /// operator who has to remember to take it down again will not.
+  void showOverlay(String text, {int autoHideSecs = 0}) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    _overlayTimer?.cancel();
+
+    emit(ControlLoadedState(model.copyWith(overlayText: text, overlayVisible: true)));
+    _syncState();
+
+    if (autoHideSecs > 0) {
+      _overlayTimer = Timer(Duration(seconds: autoHideSecs), hideOverlay);
+    }
+  }
+
+  void hideOverlay() {
+    _overlayTimer?.cancel();
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (!model.overlayVisible) return;
+    emit(ControlLoadedState(model.copyWith(overlayVisible: false)));
+    _syncState();
+  }
+
+  /// Sends a line to the stage monitor, or clears it.
+  void setStageMessage(String? message) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final text = message?.trim();
+    emit(
+      ControlLoadedState(
+        text == null || text.isEmpty
+            ? model.copyWith(clearStageMessage: true)
+            : model.copyWith(stageMessage: text),
+      ),
+    );
     _syncState();
   }
 
@@ -1032,6 +1104,7 @@ class ControlCubit extends Cubit<ControlState> {
   @override
   Future<void> close() {
     _autoAdvanceTimer?.cancel();
+    _overlayTimer?.cancel();
     _audioPlayer?.dispose();
     return super.close();
   }
@@ -1090,6 +1163,7 @@ class ControlCubit extends Cubit<ControlState> {
       'countdown_end': model.countdownEnd?.toUtc().toIso8601String(),
       'overlay_visible': model.overlayVisible,
       'overlay_text': model.overlayText,
+      'stage_message': model.stageMessage,
     };
 
     // The other windows first, and over the local link, which is the only path
