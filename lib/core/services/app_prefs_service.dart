@@ -99,6 +99,19 @@ class AppPrefsService {
   ///
   /// A church wires the same room the same way every week, and the app used to
   /// take the second display it was handed and hope.
+  /// The waiting screen chosen last, so the picker opens on it.
+  Future<Map<String, dynamic>?> loadWaiting() async {
+    final d = await _read();
+    final raw = d['waiting'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : null;
+  }
+
+  Future<void> saveWaiting(Map<String, dynamic> config) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['waiting'] = config;
+    await _write(d);
+  }
+
   /// The language the operator chose, or null to follow the computer.
   ///
   /// A church in a bilingual city runs the machine in one language and the

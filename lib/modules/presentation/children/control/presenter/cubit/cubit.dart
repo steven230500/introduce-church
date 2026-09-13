@@ -16,6 +16,8 @@ import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
+import '../../../../../../core/waiting/waiting_scenes.dart';
+import '../../../../../../core/waiting/waiting_screen.dart';
 import '../../../../../../core/services/service_file.dart';
 import '../../../../../songs/children/songs_list/repository/repository.dart';
 import '../../../../../../core/services/pptx_import_service.dart';
@@ -47,6 +49,7 @@ class ControlModel extends Equatable {
     this.overlayVisible = false,
     this.overlayText,
     this.stageMessage,
+    this.waiting = const WaitingConfig(),
     this.offline = false,
     this.pendingWrites = 0,
   });
@@ -81,6 +84,9 @@ class ControlModel extends Equatable {
   /// The overlay goes to the projector, which is everyone. Telling the
   /// preacher they have five minutes left needed somewhere else to go.
   final String? stageMessage;
+
+  /// The animated scene shown while nothing else is on the screen.
+  final WaitingConfig waiting;
 
   /// True when the last read came from the cache because the server could not
   /// be reached.
@@ -229,6 +235,7 @@ class ControlModel extends Equatable {
     String? overlayText,
     bool clearOverlayText = false,
     String? stageMessage,
+    WaitingConfig? waiting,
     bool clearStageMessage = false,
     bool? offline,
     int? pendingWrites,
@@ -250,6 +257,7 @@ class ControlModel extends Equatable {
       overlayVisible: overlayVisible ?? this.overlayVisible,
       overlayText: clearOverlayText ? null : overlayText ?? this.overlayText,
       stageMessage: clearStageMessage ? null : stageMessage ?? this.stageMessage,
+      waiting: waiting ?? this.waiting,
       offline: offline ?? this.offline,
       pendingWrites: pendingWrites ?? this.pendingWrites,
     );
@@ -273,6 +281,7 @@ class ControlModel extends Equatable {
     overlayVisible,
     overlayText,
     stageMessage,
+    waiting,
     offline,
     pendingWrites,
   ];
@@ -511,6 +520,7 @@ class ControlCubit extends Cubit<ControlState> {
             countdownEnd: previous?.countdownEnd,
             overlayVisible: previous?.overlayVisible ?? false,
             overlayText: previous?.overlayText,
+            waiting: previous?.waiting ?? const WaitingConfig(),
           ),
         ),
       );
@@ -547,6 +557,7 @@ class ControlCubit extends Cubit<ControlState> {
                 isLive: previous?.isLive ?? false,
                 blankScreen: previous?.blankScreen ?? false,
                 gridView: previous?.gridView ?? true,
+                waiting: previous?.waiting ?? const WaitingConfig(),
               ),
             ),
           );
@@ -1346,6 +1357,53 @@ class ControlCubit extends Cubit<ControlState> {
     emit(ControlLoadedState(model.copyWith(overlayText: text)));
   }
 
+  // ── Waiting screen ────────────────────────────────────────────────────────
+
+  /// Puts a waiting scene on the screen, and remembers it for next time.
+  ///
+  /// Remembered on this machine because the same church opens the same loop
+  /// before every service, and choosing it again each Sunday is a step
+  /// somebody will skip.
+  void showWaiting(WaitingConfig config) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final up = config.copyWith(active: true);
+    // Putting the loop up means putting it on the screen: the signal goes live
+    // and black comes off. Cutting the signal still takes everything down,
+    // the loop included, because that is what cutting means.
+    emit(ControlLoadedState(model.copyWith(waiting: up, isLive: true, blankScreen: false)));
+    unawaited(_prefs.saveWaiting(up.copyWith(active: false).toJson()));
+    _syncState();
+  }
+
+  void hideWaiting() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (!model.waiting.active) return;
+    emit(ControlLoadedState(model.copyWith(waiting: model.waiting.copyWith(active: false))));
+    _syncState();
+  }
+
+  /// Up with whatever was chosen last, or down.
+  Future<void> toggleWaiting() async {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (model.waiting.active) {
+      hideWaiting();
+      return;
+    }
+    showWaiting(await lastWaiting());
+  }
+
+  /// The scene and words chosen last time, for the picker to open on.
+  Future<WaitingConfig> lastWaiting() async {
+    if (state is ControlLoadedState) {
+      final current = (state as ControlLoadedState).model.waiting;
+      if (current.title.isNotEmpty || current.scene != WaitingScene.aurora) return current;
+    }
+    return WaitingConfig.fromJson(await _prefs.loadWaiting());
+  }
+
   void toggleOverlay() {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
@@ -1497,6 +1555,7 @@ class ControlCubit extends Cubit<ControlState> {
       'overlay_visible': model.overlayVisible,
       'overlay_text': model.overlayText,
       'stage_message': model.stageMessage,
+      'waiting': model.waiting.toJson(),
     };
 
     // The other windows first, and over the local link, which is the only path

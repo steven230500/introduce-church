@@ -6,6 +6,7 @@ import '../../../core/api/presentation_socket.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/collection_item_type.dart';
 import '../../../core/models/slide_template.dart';
+import '../../../core/waiting/waiting_screen.dart';
 import '../../../core/windows/window_link.dart';
 
 /// What the projector is drawing.
@@ -77,6 +78,19 @@ class DisplayCountdownState extends DisplayState {
   List<Object?> get props => [countdownEnd, overlayVisible, overlayText];
 }
 
+/// An animated scene with the church's words, while nothing else is on.
+class DisplayWaitingState extends DisplayState {
+  const DisplayWaitingState({required this.config, this.countdownEnd});
+
+  final WaitingConfig config;
+
+  /// A running countdown shows in place of the clock.
+  final DateTime? countdownEnd;
+
+  @override
+  List<Object?> get props => [config, countdownEnd];
+}
+
 class DisplayAnnouncementState extends DisplayState {
   final String message;
   final DateTime? timerTarget;
@@ -136,6 +150,20 @@ class DisplayCubit extends Cubit<DisplayState> {
     final countdownEndStr = row['countdown_end'] as String?;
     final overlayVisible = row['overlay_visible'] as bool? ?? false;
     final overlayText = row['overlay_text'] as String?;
+    final waiting = WaitingConfig.fromJson(row['waiting']);
+
+    // The waiting scene sits above slides and above a bare countdown, and
+    // carries the countdown with it when one is running: counting down to the
+    // service over the pre-service loop is the reason both exist.
+    if (waiting.active && isLive && !blank) {
+      DateTime? end;
+      if (countdownActive && countdownEndStr != null) {
+        final parsed = DateTime.parse(countdownEndStr).toLocal();
+        if (parsed.isAfter(DateTime.now())) end = parsed;
+      }
+      emit(DisplayWaitingState(config: waiting, countdownEnd: end));
+      return;
+    }
 
     // Countdown takes priority over everything
     if (countdownActive && countdownEndStr != null) {

@@ -7,6 +7,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../../core/models/slide_template.dart';
 import '../../../core/widgets/slide_transition_view.dart';
 import '../../../core/widgets/slide_view.dart';
+import '../../../core/waiting/waiting_scenes.dart';
+import '../../../core/waiting/waiting_screen.dart';
 import 'display_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -56,6 +58,14 @@ class DisplayPage extends StatelessWidget {
 
   Widget _buildChild(DisplayState state) {
     return switch (state) {
+      // Keyed by scene only, not by the words or the countdown: changing the
+      // title while the loop is up must not restart the animation from the
+      // top, which on a wall reads as a glitch.
+      DisplayWaitingState() => WaitingScreen(
+        key: ValueKey('waiting_${state.config.scene.id}'),
+        config: state.config,
+        countdownEnd: state.countdownEnd,
+      ),
       DisplayCountdownState() => _CountdownView(
         key: ValueKey('countdown_${state.countdownEnd}'),
         countdownEnd: state.countdownEnd,

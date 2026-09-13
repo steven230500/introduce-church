@@ -113,6 +113,11 @@ class AppButtonGroup extends StatelessWidget {
 }
 
 /// Thin rule separating two button groups.
+///
+/// The groups on either side carry their own padding, so the rule needs only a
+/// hairline of space around it. The wider margin it used to have was three
+/// times over the room the live bar needed to fit one more control at the
+/// narrowest window.
 class AppVerticalDivider extends StatelessWidget {
   const AppVerticalDivider({super.key, this.height = 24});
 
@@ -123,7 +128,7 @@ class AppVerticalDivider extends StatelessWidget {
     width: 1,
     height: height,
     color: AppColors.border,
-    margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+    margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs + 2),
   );
 }
 

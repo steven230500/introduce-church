@@ -58,6 +58,16 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<List<Map<String, dynamic>>?> loadTemplates() async => savedTemplates;
 
+  Map<String, dynamic>? waiting;
+
+  @override
+  Future<Map<String, dynamic>?> loadWaiting() async => waiting;
+
+  @override
+  Future<void> saveWaiting(Map<String, dynamic> config) async {
+    waiting = config;
+  }
+
   /// The chosen language, or null while the machine follows the computer.
   String? locale;
 

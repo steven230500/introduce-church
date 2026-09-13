@@ -183,6 +183,9 @@ OnAir? onAirIn(ControlState state) {
   if (state is! ControlLoadedState) return null;
   final model = state.model;
   if (!model.isLive || model.blankScreen) return null;
+  // A waiting scene is not an item of the service, and a loop left up for
+  // twenty minutes before the service is not twenty minutes of a song.
+  if (model.waiting.active) return null;
   final collection = model.activeCollection;
   if (collection == null) return null;
   final index = model.liveItemIndex;

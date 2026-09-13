@@ -400,8 +400,17 @@ class _OutputThumbnail extends StatelessWidget {
     final isVideo = item?.type == CollectionItemType.videoSlide;
     final isBlank = model.blankScreen;
     final hasContent = model.liveSlideContent != null;
+    // This is a picture of the projector, so it shows the waiting scene when
+    // the projector does - not the slide sitting underneath it.
+    final waiting = model.waiting.active && model.isLive && !isBlank;
 
-    final face = isVideo && hasContent && !isBlank
+    final face = waiting
+        ? WaitingScreen(
+            key: ValueKey('waiting_${model.waiting.scene.name}'),
+            config: model.waiting,
+            countdownEnd: model.countdownActive ? model.countdownEnd : null,
+          )
+        : isVideo && hasContent && !isBlank
         ? _VideoPreview(
             key: ValueKey('side_${model.liveSlideContent}'),
             videoPath: model.liveSlideContent!,
@@ -434,7 +443,7 @@ class _OutputThumbnail extends StatelessWidget {
                 // the projector.
                 SlideTransitionView(
                   template: model.liveTemplate,
-                  slideKey: '${model.liveItemIndex}:${model.liveSlideIndex}:$isBlank',
+                  slideKey: '${model.liveItemIndex}:${model.liveSlideIndex}:$isBlank:$waiting',
                   child: face,
                 ),
                 if (isBlank)

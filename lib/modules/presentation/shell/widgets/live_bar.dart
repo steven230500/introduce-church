@@ -10,6 +10,7 @@ import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../shell_cubit.dart';
 import 'notices_dialog.dart';
+import 'waiting_dialog.dart';
 import 'projector_picker_dialog.dart';
 
 /// The always-visible control bar at the top of the window.
@@ -50,6 +51,12 @@ class LiveBar extends StatelessWidget {
             final width = constraints.maxWidth;
             final labelOutputs = width >= 960;
             final labelState = width >= 1100;
+            // The follow toggle gives its label up first. Its link icon and the
+            // warning colour it turns when held already say what it is, and
+            // the label is what makes room for the waiting screen at the
+            // narrowest window, where every button that changes what the room
+            // sees has to stay named.
+            final labelFollow = width >= 1500;
 
             return Container(
               height: AppSizes.liveBarHeight,
@@ -72,8 +79,17 @@ class LiveBar extends StatelessWidget {
                           // features; the word "Introduce" is the one thing
                           // here nobody needs to read twice.
                           const Flexible(child: _AppMark()),
-                          const SizedBox(width: AppSpace.lg),
-                          Expanded(flex: 4, child: _NowShowing(model: model)),
+                          // The gap lives inside the flexible readout rather than
+                          // beside it, so it gives way with the readout instead of
+                          // being the sixteen pixels that push the bar over when
+                          // the offline mark appears on a narrow window.
+                          Expanded(
+                            flex: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: AppSpace.lg),
+                              child: _NowShowing(model: model),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -124,6 +140,16 @@ class LiveBar extends StatelessWidget {
                         activeColor: AppColors.textMuted,
                         onTap: enabled ? cubit.toggleBlank : null,
                       ),
+                      // Opens the picker rather than toggling: which scene and
+                      // what it says are choices, and W is the quick way to put
+                      // the last one back up.
+                      AppIconButton(
+                        icon: Icons.auto_awesome_outlined,
+                        label: labelState ? t.barWaiting : null,
+                        tooltip: (model?.waiting.active ?? false) ? t.tipWaitingOff : t.tipWaiting,
+                        active: model?.waiting.active ?? false,
+                        onTap: enabled ? () => showWaitingDialog(context) : null,
+                      ),
                     ],
                   ),
 
@@ -149,7 +175,7 @@ class LiveBar extends StatelessWidget {
                     icon: model?.followCursor == false
                         ? Icons.link_off_rounded
                         : Icons.link_rounded,
-                    label: labelState
+                    label: labelFollow
                         ? (model?.followCursor == false ? t.barHeld : t.barFollow)
                         : null,
                     tooltip: model?.followCursor == false ? t.tipFollowOff : t.tipFollowOn,

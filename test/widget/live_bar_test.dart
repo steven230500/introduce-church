@@ -105,7 +105,7 @@ void main() {
     // window the app refuses to shrink below, they cannot drift apart again.
     await pumpBar(tester, width: kMinWindowSize.width);
 
-    for (final label in ['Cuenta', 'Avisos', 'Negro', 'Proyector', 'Escenario']) {
+    for (final label in ['Cuenta', 'Avisos', 'Negro', 'Espera', 'Proyector', 'Escenario']) {
       expect(find.text(label), findsOneWidget, reason: '$label must be readable');
     }
     expect(tester.takeException(), isNull);
@@ -161,7 +161,8 @@ void main() {
   });
 
   testWidgets('the hold toggle says which way round it is', (tester) async {
-    await pumpBar(tester);
+    // Wide enough for its label, which it gives up first on a narrow window.
+    await pumpBar(tester, width: 1600);
     await openCollection(tester);
 
     expect(find.text('Sigue'), findsOneWidget);

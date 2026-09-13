@@ -26,6 +26,7 @@ class _ShortcutsDialog extends StatelessWidget {
     'Proyección': [
       ('L', 'Entrar o salir de vivo'),
       ('B', 'Pantalla negra'),
+      ('W', 'Pantalla de espera: la última elegida'),
       ('Esc', 'Quitar la pantalla negra'),
     ],
     'Contenido': [

@@ -149,6 +149,9 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       control.toggleFollowCursor();
     } else if (key == LogicalKeyboardKey.keyB) {
       control.toggleBlank();
+    } else if (key == LogicalKeyboardKey.keyW) {
+      // The last waiting screen, back up or down, without opening the picker.
+      control.toggleWaiting();
     } else if (key == LogicalKeyboardKey.keyL) {
       control.toggleLive();
     } else if (key == LogicalKeyboardKey.keyG) {
