@@ -314,7 +314,13 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
   void initState() {
     super.initState();
     final t = context.read<TemplateEditorCubit>().state.template;
-    _nameCtrl = TextEditingController(text: t.name);
+    // Saving a built-in design creates a copy rather than changing it, so the
+    // name is offered already distinct. Four designs called "Oscuro clásico"
+    // is what happens when it is not.
+    final fromPreset = SlideTemplate.findPreset(t.id) != null;
+    final suggested = fromPreset ? '${t.name} (mío)' : t.name;
+    _nameCtrl = TextEditingController(text: suggested)
+      ..selection = TextSelection(baseOffset: 0, extentOffset: suggested.length);
     _sampleCtrl = TextEditingController(
       text: '"Porque de tal manera amó Dios al mundo,\nque ha dado a su Hijo unigénito"',
     );
@@ -988,20 +994,22 @@ class _BgTypeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SegmentedButton<BackgroundType>(
     segments: const [
+      // Scaled down rather than wrapped: in the canvas layout these three
+      // share a 240px column and were breaking into "Sóli do" and "Imag en".
       ButtonSegment(
         value: BackgroundType.solid,
         icon: Icon(Icons.rectangle_outlined, size: 13),
-        label: Text('Sólido'),
+        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Sólido')),
       ),
       ButtonSegment(
         value: BackgroundType.gradient,
         icon: Icon(Icons.gradient_outlined, size: 13),
-        label: Text('Grad.'),
+        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Grad.')),
       ),
       ButtonSegment(
         value: BackgroundType.image,
         icon: Icon(Icons.image_outlined, size: 13),
-        label: Text('Imagen'),
+        label: FittedBox(fit: BoxFit.scaleDown, child: Text('Imagen')),
       ),
     ],
     selected: {t.bgType},
@@ -1157,11 +1165,76 @@ class _SliderRow extends StatelessWidget {
             onChanged: onChanged,
           ),
         ),
-        SizedBox(
-          width: 32,
-          child: Text(_display, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        _SliderValue(
+          text: _display,
+          onSubmitted: (raw) {
+            final parsed = double.tryParse(raw.replaceAll(',', '.'));
+            if (parsed != null) onChanged(parsed.clamp(min, max));
+          },
         ),
       ],
+    );
+  }
+}
+
+/// The number beside a slider, which can also be typed into.
+///
+/// A slider cannot be asked for 48 on purpose. The value was a label, so the
+/// only way to reach an exact size was to nudge the handle and hope.
+class _SliderValue extends StatefulWidget {
+  const _SliderValue({required this.text, required this.onSubmitted});
+
+  final String text;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  State<_SliderValue> createState() => _SliderValueState();
+}
+
+class _SliderValueState extends State<_SliderValue> {
+  late final TextEditingController _controller = TextEditingController(text: widget.text);
+  final _focus = FocusNode();
+
+  @override
+  void didUpdateWidget(_SliderValue old) {
+    super.didUpdateWidget(old);
+    // The slider moved. Do not overwrite what is being typed.
+    if (widget.text != old.text && !_focus.hasFocus) _controller.text = widget.text;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _commit() {
+    widget.onSubmitted(_controller.text);
+    _controller.text = widget.text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 44,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focus,
+        textAlign: TextAlign.right,
+        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        decoration: const InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: 6),
+        ),
+        onSubmitted: (_) => _commit(),
+        onTapOutside: (_) {
+          if (!_focus.hasFocus) return;
+          _focus.unfocus();
+          _commit();
+        },
+      ),
     );
   }
 }
