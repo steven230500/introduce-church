@@ -13,17 +13,26 @@ typedef CollectionDraft = ({String name, DateTime? date});
 /// There is exactly one of these. The app used to have two, and only one of
 /// them asked for a service date, so the same button produced different
 /// results depending on which screen you pressed it from.
-Future<CollectionDraft?> showCollectionDialog(BuildContext context, {Collection? existing}) {
+Future<CollectionDraft?> showCollectionDialog(
+  BuildContext context, {
+  Collection? existing,
+  Collection? duplicating,
+}) {
   return showDialog<CollectionDraft>(
     context: context,
-    builder: (_) => _CollectionDialog(existing: existing),
+    builder: (_) => _CollectionDialog(existing: existing, duplicating: duplicating),
   );
 }
 
 class _CollectionDialog extends StatefulWidget {
-  const _CollectionDialog({this.existing});
+  const _CollectionDialog({this.existing, this.duplicating});
 
+  /// The collection being renamed.
   final Collection? existing;
+
+  /// The collection being copied. Its name is offered with a suffix and its
+  /// date is left blank, because a copy is for a different Sunday.
+  final Collection? duplicating;
 
   @override
   State<_CollectionDialog> createState() => _CollectionDialogState();
@@ -36,7 +45,11 @@ class _CollectionDialogState extends State<_CollectionDialog> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
+    final copying = widget.duplicating;
+    final suggested = widget.existing?.name ?? (copying == null ? '' : '${copying.name} (copia)');
+    _nameCtrl = TextEditingController(text: suggested)
+      // Selected, not just filled, so the suggestion can be typed over.
+      ..selection = TextSelection(baseOffset: 0, extentOffset: suggested.length);
     _date = widget.existing?.serviceDate;
   }
 
@@ -68,15 +81,19 @@ class _CollectionDialogState extends State<_CollectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isCopy = widget.duplicating != null;
     final isNew = widget.existing == null;
     return AppDialog(
-      title: isNew ? 'Nueva colección' : 'Editar colección',
-      icon: Icons.folder_outlined,
+      title: isCopy ? 'Duplicar colección' : (isNew ? 'Nueva colección' : 'Editar colección'),
+      icon: isCopy ? Icons.copy_all_outlined : Icons.folder_outlined,
       width: 400,
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         const SizedBox(width: AppSpace.sm),
-        FilledButton(onPressed: _save, child: Text(isNew ? 'Crear' : 'Guardar')),
+        FilledButton(
+          onPressed: _save,
+          child: Text(isCopy ? 'Duplicar' : (isNew ? 'Crear' : 'Guardar')),
+        ),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,

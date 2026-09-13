@@ -346,6 +346,60 @@ void main() {
     });
   });
 
+  group('duplicating a service', () {
+    test('carries the whole running order into the copy', () async {
+      // Most services share a skeleton, and rebuilding it every week is the
+      // kind of work an app is for.
+      await openFirstCollection();
+      final source = model().activeCollection!;
+
+      await cubit.duplicateCollection(source, name: 'Culto siguiente');
+
+      expect(repo.calls, contains('createCollection:Culto siguiente'));
+      expect(repo.calls, contains('copyItems:2'));
+      expect(model().activeCollection!.name, 'Culto siguiente');
+      expect(model().activeCollection!.items.map((i) => i.displayTitle), ['Primera', 'Segunda']);
+    });
+
+    test('the copy opens, so the next edit lands in it', () async {
+      await openFirstCollection();
+      final source = model().activeCollection!;
+
+      await cubit.duplicateCollection(source, name: 'Copia');
+
+      expect(model().activeCollection!.id, isNot(source.id));
+      expect(model().collections, hasLength(2));
+    });
+
+    test('the design comes along, because a copy that looks different is not one', () async {
+      repo.rows = [
+        collectionRow(
+          id: 'c1',
+          templateId: SlideTemplate.blueNight.id,
+          items: [songItemRow(id: 'i1', collectionId: 'c1', order: 0)],
+        ),
+      ];
+      await openFirstCollection();
+
+      await cubit.duplicateCollection(model().activeCollection!, name: 'Copia');
+
+      expect(
+        templates.calls,
+        contains('collectionTemplate:new-collection:${SlideTemplate.blueNight.id}'),
+      );
+    });
+
+    test('an empty plan copies as an empty plan, not as a failure', () async {
+      repo.rows = [collectionRow(id: 'c1', name: 'Vacía')];
+      await openFirstCollection();
+
+      await cubit.duplicateCollection(model().activeCollection!, name: 'Copia');
+
+      expect(model().activeCollection!.items, isEmpty);
+      expect(repo.calls.where((c) => c.startsWith('copyItems')), isEmpty);
+    });
+  });
+
   group('a verse looked up mid-sermon', () {
     BibleVerseRef verse() => const BibleVerseRef(
       versionCode: 'rvr1960',

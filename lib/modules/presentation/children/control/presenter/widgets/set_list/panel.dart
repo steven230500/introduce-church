@@ -142,6 +142,11 @@ class _CollectionMenu extends StatelessWidget {
             child: AppMenuRow(icon: Icons.edit_outlined, label: 'Nombre y fecha'),
           ),
           const PopupMenuItem(
+            value: 'duplicate',
+            height: 38,
+            child: AppMenuRow(icon: Icons.copy_all_outlined, label: 'Duplicar para otro domingo'),
+          ),
+          const PopupMenuItem(
             value: 'template',
             height: 38,
             child: AppMenuRow(icon: Icons.palette_outlined, label: 'Diseño de los slides'),
@@ -199,6 +204,12 @@ class _CollectionMenu extends StatelessWidget {
         final draft = await showCollectionDialog(context, existing: collection);
         if (draft != null) {
           await cubit.updateCollection(collection.id, draft.name, serviceDate: draft.date);
+        }
+
+      case 'duplicate':
+        final copy = await showCollectionDialog(context, duplicating: collection);
+        if (copy != null) {
+          await cubit.duplicateCollection(collection, name: copy.name, serviceDate: copy.date);
         }
 
       case 'template':

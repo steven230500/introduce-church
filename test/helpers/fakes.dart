@@ -173,6 +173,27 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
+  Future<void> copyItemsInto(String collectionId, List<CollectionItem> items) async {
+    // The real one sends nothing for an empty plan, and so does this.
+    if (items.isEmpty) return;
+    calls.add('copyItems:${items.length}');
+    final target = _items(collectionId);
+    for (final item in items) {
+      target.add({
+        'id': 'copy-${target.length}',
+        'collection_id': collectionId,
+        'item_type': item.type.value,
+        'item_order': target.length,
+        'template_id': item.templateId,
+        'content_json': item.contentJson,
+        'notes': item.notes,
+        'auto_advance_secs': item.autoAdvanceSecs,
+        'songs': ?_songRow(item.song),
+      });
+    }
+  }
+
+  @override
   Future<void> restoreItem(CollectionItem item) async {
     calls.add('restore:${item.displayTitle}');
     final items = _items(item.collectionId);
@@ -269,7 +290,13 @@ class FakeControlRepository extends ControlRepository {
   @override
   Future<Collection> createCollection({required String name, DateTime? serviceDate}) async {
     calls.add('createCollection:$name');
-    return Collection(id: 'new-collection', name: name, serviceDate: serviceDate);
+    final created = Collection(id: 'new-collection', name: name, serviceDate: serviceDate);
+    // A real server hands back a row that the next read will find.
+    rows = [
+      ...rows,
+      collectionRow(id: created.id, name: name, serviceDate: serviceDate?.toIso8601String()),
+    ];
+    return created;
   }
 
   @override

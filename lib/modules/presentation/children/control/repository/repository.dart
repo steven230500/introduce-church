@@ -175,16 +175,27 @@ class ControlRepository {
   ///
   /// The API only ever appends, so the restored row lands at the end of the
   /// running order and the caller has to move it back to where it was.
-  Future<void> restoreItem(CollectionItem item) => _addItems(item.collectionId, [
-    {
-      'item_type': item.type.value,
-      'song_id': ?item.song?.id,
-      'template_id': ?item.templateId,
-      'content_json': ?item.contentJson,
-      'notes': ?item.notes,
-      'auto_advance_secs': ?item.autoAdvanceSecs,
-    },
-  ]);
+  Future<void> restoreItem(CollectionItem item) =>
+      _addItems(item.collectionId, [_itemPayload(item)]);
+
+  /// Copies a whole running order into another collection.
+  ///
+  /// One request, so a fourteen-item plan cannot end up half copied because
+  /// the wifi dropped between item six and item seven.
+  Future<void> copyItemsInto(String collectionId, List<CollectionItem> items) {
+    if (items.isEmpty) return Future.value();
+    return _addItems(collectionId, [for (final item in items) _itemPayload(item)]);
+  }
+
+  /// Everything about an item that is worth carrying to a new row.
+  static Map<String, dynamic> _itemPayload(CollectionItem item) => {
+    'item_type': item.type.value,
+    'song_id': ?item.song?.id,
+    'template_id': ?item.templateId,
+    'content_json': ?item.contentJson,
+    'notes': ?item.notes,
+    'auto_advance_secs': ?item.autoAdvanceSecs,
+  };
 
   /// Renames an item whose title lives in its own content.
   ///

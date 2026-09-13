@@ -97,6 +97,7 @@ class CollectionsLibraryPage extends StatelessWidget {
                             onOpenCollection();
                           },
                           onRename: () => _rename(context, cubit, collection),
+                          onDuplicate: () => _duplicate(context, cubit, collection),
                           onChangeTemplate: () => _changeTemplate(context, cubit, collection),
                           onDelete: () => _delete(context, cubit, collection),
                         );
@@ -120,6 +121,12 @@ class CollectionsLibraryPage extends StatelessWidget {
     final draft = await showCollectionDialog(context, existing: collection);
     if (draft == null) return;
     await cubit.updateCollection(collection.id, draft.name, serviceDate: draft.date);
+  }
+
+  Future<void> _duplicate(BuildContext context, ControlCubit cubit, Collection collection) async {
+    final draft = await showCollectionDialog(context, duplicating: collection);
+    if (draft == null) return;
+    await cubit.duplicateCollection(collection, name: draft.name, serviceDate: draft.date);
   }
 
   Future<void> _changeTemplate(
@@ -157,6 +164,7 @@ class _CollectionCard extends StatefulWidget {
     required this.isActive,
     required this.onOpen,
     required this.onRename,
+    required this.onDuplicate,
     required this.onChangeTemplate,
     required this.onDelete,
   });
@@ -166,6 +174,7 @@ class _CollectionCard extends StatefulWidget {
   final bool isActive;
   final VoidCallback onOpen;
   final VoidCallback onRename;
+  final VoidCallback onDuplicate;
   final VoidCallback onChangeTemplate;
   final VoidCallback onDelete;
 
@@ -306,6 +315,14 @@ class _CollectionCardState extends State<_CollectionCard> {
                           child: AppMenuRow(icon: Icons.edit_outlined, label: 'Nombre y fecha'),
                         ),
                         PopupMenuItem(
+                          value: 'duplicate',
+                          height: 38,
+                          child: AppMenuRow(
+                            icon: Icons.copy_all_outlined,
+                            label: 'Duplicar para otro domingo',
+                          ),
+                        ),
+                        PopupMenuItem(
                           value: 'template',
                           height: 38,
                           child: AppMenuRow(
@@ -326,6 +343,7 @@ class _CollectionCardState extends State<_CollectionCard> {
                       ],
                       onSelected: (value) => switch (value) {
                         'rename' => widget.onRename(),
+                        'duplicate' => widget.onDuplicate(),
                         'template' => widget.onChangeTemplate(),
                         'delete' => widget.onDelete(),
                         _ => null,

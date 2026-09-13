@@ -597,6 +597,33 @@ class ControlCubit extends Cubit<ControlState> {
     await refresh();
   }
 
+  /// Copies a whole plan into a new one and opens it.
+  ///
+  /// Most services share a skeleton, and rebuilding it every week is the kind
+  /// of work an app is for. The design and the background audio come along:
+  /// a copy that loses how the slides look is not a copy of the service.
+  Future<Collection?> duplicateCollection(
+    Collection source, {
+    required String name,
+    DateTime? serviceDate,
+  }) async {
+    final created = await _repository.createCollection(name: name, serviceDate: serviceDate);
+    await _repository.copyItemsInto(created.id, source.items);
+    if (source.templateId != null) {
+      await _templateRepository.setCollectionTemplate(created.id, source.templateId);
+    }
+    if (source.bgAudioPath != null) {
+      await _repository.updateCollectionBgAudio(created.id, source.bgAudioPath);
+    }
+    await refresh();
+
+    if (state is! ControlLoadedState) return created;
+    final model = (state as ControlLoadedState).model;
+    final copy = model.collections.where((c) => c.id == created.id).firstOrNull;
+    if (copy != null) selectCollection(copy);
+    return copy ?? created;
+  }
+
   Future<void> deleteCollection(String id) async {
     await _repository.deleteCollection(id);
     await refresh();
