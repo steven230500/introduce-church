@@ -16,6 +16,7 @@ import 'template_editor_cubit.dart';
 import 'template_picker_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_text.dart';
 
 /// Shows a grid of presets + custom templates. Returns selected template id.
 Future<String?> showTemplatePicker(
@@ -464,25 +465,39 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
 
         Widget sampleFields() => Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                flex: 3,
-                child: _DarkField(
-                  controller: _sampleCtrl,
-                  hint: 'Texto de muestra',
-                  maxLines: 2,
-                  onChanged: (_) => setState(() {}),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _DarkField(
+                      controller: _sampleCtrl,
+                      hint: 'Texto de muestra',
+                      maxLines: 2,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    flex: 2,
+                    child: _DarkField(
+                      controller: _sampleRefCtrl,
+                      hint: 'Referencia',
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 2,
-                child: _DarkField(
-                  controller: _sampleRefCtrl,
-                  hint: 'Referencia',
-                  onChanged: (_) => setState(() {}),
-                ),
+              const SizedBox(height: 6),
+              // The sample was one two-line verse, so a design was judged on
+              // the one length it never has to survive. These are the lengths
+              // a real service throws at it.
+              _SampleLengths(
+                onPick: (content, reference) => setState(() {
+                  _sampleCtrl.text = content;
+                  _sampleRefCtrl.text = reference;
+                }),
               ),
             ],
           ),
@@ -825,31 +840,9 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                     color: AppColors.background,
                     child: Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: _DarkField(
-                                  controller: _sampleCtrl,
-                                  hint: 'Texto de muestra',
-                                  maxLines: 2,
-                                  onChanged: (_) => setState(() {}),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 2,
-                                child: _DarkField(
-                                  controller: _sampleRefCtrl,
-                                  hint: 'Referencia',
-                                  onChanged: (_) => setState(() {}),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // The same row the canvas uses. It was a second copy
+                        // here, so the lengths only reached one of the modes.
+                        sampleFields(),
                         Expanded(
                           child: Center(
                             child: AspectRatio(
@@ -963,6 +956,59 @@ class _ModeButton extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The lengths a design has to survive, one press each.
+///
+/// A chorus line, an ordinary verse and the longest thing a service is likely
+/// to put on the wall. The last one is where designs break, and it was the one
+/// nobody ever previewed.
+class _SampleLengths extends StatelessWidget {
+  const _SampleLengths({required this.onPick});
+
+  final void Function(String content, String reference) onPick;
+
+  static const _samples = <String, (String, String)>{
+    'Corto': ('Aleluya', 'Coro'),
+    'Normal': (
+      '"Porque de tal manera amó Dios al mundo,\nque ha dado a su Hijo unigénito"',
+      'Juan 3:16',
+    ),
+    'Largo': (
+      '"Jehová es mi pastor; nada me faltará. En lugares de delicados pastos me hará '
+          'descansar; junto a aguas de reposo me pastoreará; confortará mi alma; me '
+          'guiará por sendas de justicia por amor de su nombre."',
+      'Salmos 23:1-3',
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text('Probar con:', style: AppText.rowSubtitle),
+        const SizedBox(width: AppSpace.sm),
+        for (final entry in _samples.entries) ...[
+          GestureDetector(
+            onTap: () => onPick(entry.value.$1, entry.value.$2),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                margin: const EdgeInsets.only(right: AppSpace.xs + 1),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceControl,
+                  borderRadius: AppRadius.all(AppRadius.sm),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(entry.key, style: AppText.rowSubtitle),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1760,13 +1806,36 @@ class _FontFamilyPicker extends StatelessWidget {
             value: current,
             isExpanded: true,
             isDense: true,
+            // The name was already drawn in its own font, but a family name at
+            // twelve points says almost nothing about how a verse will look in
+            // it. Each row carries a phrase at a size worth judging.
             items: _fonts
                 .map(
                   (f) => DropdownMenuItem<String?>(
                     value: f,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Aleluya',
+                            style: TextStyle(fontFamily: f, fontSize: 16),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+                        Text(f ?? 'Sistema', style: AppText.rowSubtitle),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+            selectedItemBuilder: (_) => _fonts
+                .map(
+                  (f) => Align(
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       f ?? 'Sistema',
-                      style: TextStyle(fontFamily: f, fontSize: 12),
+                      style: TextStyle(fontFamily: f, fontSize: 13),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

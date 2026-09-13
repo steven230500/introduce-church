@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
+import 'fit_text.dart';
 import '../models/slide_layer.dart';
 import '../models/slide_template.dart';
 import '../../core/theme/app_colors.dart';
@@ -136,9 +137,10 @@ class _LayerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (layer) {
     TextSlideLayer l => SizedBox.expand(
-      child: Text(
-        content,
+      child: FitText(
+        text: content,
         textAlign: l.textAlign,
+        minFontSize: 10 * scale,
         style: TextStyle(
           fontFamily: l.fontFamily,
           color: Color(l.textColor),
@@ -257,8 +259,10 @@ class _BodyText extends StatelessWidget {
           horizontal: template.paddingH * scale,
           vertical: template.paddingV * scale,
         ),
-        child: Text(
-          content,
+        // The design's size is a ceiling, not a fixed value: a long verse
+        // gives way rather than running off the bottom of the screen.
+        child: FitText(
+          text: content,
           textAlign: template.textAlign,
           style: TextStyle(
             color: Color(template.textColor),
@@ -271,6 +275,7 @@ class _BodyText extends StatelessWidget {
                 ? const [Shadow(color: Color(0x88000000), blurRadius: 12, offset: Offset(1, 2))]
                 : null,
           ),
+          minFontSize: 10 * scale,
         ),
       ),
     );
