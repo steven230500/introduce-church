@@ -15,6 +15,9 @@ class TemplateEditorState extends Equatable {
     this.palette = const [],
     this.photoPalette = const [],
     this.photoAverage,
+    this.canUndo = false,
+    this.canRedo = false,
+    this.dirty = false,
   });
 
   final SlideTemplate template;
@@ -29,6 +32,14 @@ class TemplateEditorState extends Equatable {
 
   /// The one colour that stands for that photo, used to judge readability.
   final int? photoAverage;
+
+  /// Whether there is a step to go back to, and one to come forward to.
+  final bool canUndo;
+  final bool canRedo;
+
+  /// Whether anything has been changed since the editor opened. Closing on a
+  /// design in this state throws work away, so it is worth one question.
+  final bool dirty;
 
   SlideLayer? get selectedLayer =>
       template.layers.where((l) => l.id == selectedLayerId).firstOrNull;
@@ -51,6 +62,9 @@ class TemplateEditorState extends Equatable {
     List<int>? palette,
     List<int>? photoPalette,
     Object? photoAverage = _unset,
+    bool? canUndo,
+    bool? canRedo,
+    bool? dirty,
   }) => TemplateEditorState(
     template: template ?? this.template,
     saving: saving ?? this.saving,
@@ -58,6 +72,9 @@ class TemplateEditorState extends Equatable {
     palette: palette ?? this.palette,
     photoPalette: photoPalette ?? this.photoPalette,
     photoAverage: photoAverage == _unset ? this.photoAverage : photoAverage as int?,
+    canUndo: canUndo ?? this.canUndo,
+    canRedo: canRedo ?? this.canRedo,
+    dirty: dirty ?? this.dirty,
   );
 
   static const _unset = Object();
@@ -70,15 +87,108 @@ class TemplateEditorState extends Equatable {
     palette,
     photoPalette,
     photoAverage,
+    canUndo,
+    canRedo,
+    dirty,
   ];
 }
 
 class TemplateEditorCubit extends Cubit<TemplateEditorState> {
   TemplateEditorCubit(this._repo, this._orgRepo, SlideTemplate initial)
-    : super(TemplateEditorState(template: initial));
+    : _opened = _fingerprint(initial),
+      super(TemplateEditorState(template: initial));
 
   final TemplateRepository _repo;
   final OrganizationRepository _orgRepo;
+
+  // ── History ──────────────────────────────────────────────────────────────
+  //
+  // Designing is trying things. Without a way back, an operator who nudges a
+  // slider and does not like it has to remember the number it was on, and one
+  // that they cannot remember means starting the design again.
+
+  /// The design as the editor opened it, so undoing all the way back is known
+  /// to be back and not merely earlier.
+  final String _opened;
+
+  final _past = <SlideTemplate>[];
+  final _future = <SlideTemplate>[];
+
+  /// Deep enough to cover an evening's fiddling, shallow enough that a hundred
+  /// copies of a design never sit in memory.
+  static const _depth = 60;
+
+  String? _lastTag;
+  var _lastAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static String _fingerprint(SlideTemplate t) => t.toJson().toString();
+
+  /// Keeps the current design so the change about to be made can be taken back.
+  ///
+  /// [tag] says what kind of change it is. Two changes of the same kind, close
+  /// together, are one step: a slider dragged across the panel is one thing the
+  /// operator did, not forty presses of undo.
+  void _remember(String tag) {
+    final now = DateTime.now();
+    final continuing =
+        tag == _lastTag && now.difference(_lastAt) < const Duration(milliseconds: 700);
+    _lastTag = tag;
+    _lastAt = now;
+    _future.clear();
+    if (continuing && _past.isNotEmpty) return;
+    _past.add(state.template);
+    if (_past.length > _depth) _past.removeAt(0);
+  }
+
+  void undo() {
+    if (_past.isEmpty) return;
+    _future.add(state.template);
+    _restore(_past.removeLast());
+  }
+
+  void redo() {
+    if (_future.isEmpty) return;
+    _past.add(state.template);
+    _restore(_future.removeLast());
+  }
+
+  void _restore(SlideTemplate t) {
+    // The next change starts a new step even if it is the same kind as the one
+    // just undone.
+    _lastTag = null;
+    // A layer that the step being restored does not have cannot stay selected.
+    final selected = t.layers.any((l) => l.id == state.selectedLayerId)
+        ? state.selectedLayerId
+        : null;
+    emit(
+      state.copyWith(
+        template: t,
+        selectedLayerId: selected,
+        canUndo: _past.isNotEmpty,
+        canRedo: _future.isNotEmpty,
+        dirty: _fingerprint(t) != _opened,
+      ),
+    );
+    readPhoto(t.bgImagePath);
+  }
+
+  /// Emits a change that undo can take back.
+  void _change(SlideTemplate next, String tag, {Object? select = _keep}) {
+    _remember(tag);
+    emit(
+      state.copyWith(
+        template: next,
+        selectedLayerId: select == _keep ? _keep : select as String?,
+        canUndo: true,
+        canRedo: false,
+        dirty: _fingerprint(next) != _opened,
+      ),
+    );
+  }
+
+  /// Passed through to copyWith's own sentinel so "leave the selection alone"
+  /// stays different from "clear it".
+  static const _keep = TemplateEditorState._unset;
 
   /// Reads the church's colours. A church that cannot be reached simply gets
   /// the built-in swatches, so this never blocks the editor.
@@ -134,24 +244,32 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
   // ── Flat template update ──────────────────────────────────────────────────
 
   void update(SlideTemplate t) {
-    emit(state.copyWith(template: t));
+    _change(t, _whatChanged(state.template, t));
     readPhoto(t.bgImagePath);
+  }
+
+  /// Which fields differ, as a tag. Dragging one slider reports the same tag
+  /// every frame, which is what lets those frames collapse into one step.
+  static String _whatChanged(SlideTemplate before, SlideTemplate after) {
+    final a = before.toJson();
+    final b = after.toJson();
+    final keys = {...a.keys, ...b.keys}.where((k) => '${a[k]}' != '${b[k]}').toList()..sort();
+    return keys.join(',');
   }
 
   // ── Layers: activation ───────────────────────────────────────────────────
 
   void enableLayers() {
     final layers = SlideLayer.defaultLayers();
-    emit(
-      state.copyWith(
-        template: state.template.copyWith(layers: layers),
-        selectedLayerId: layers.first.id,
-      ),
+    _change(
+      state.template.copyWith(layers: layers),
+      'mode',
+      select: layers.first.id,
     );
   }
 
   void disableLayers() {
-    emit(state.copyWith(template: state.template.copyWith(layers: []), selectedLayerId: null));
+    _change(state.template.copyWith(layers: []), 'mode', select: null);
   }
 
   // ── Layers: selection ────────────────────────────────────────────────────
@@ -178,12 +296,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
       textShadow: true,
     );
     layers.add(layer);
-    emit(
-      state.copyWith(
-        template: state.template.copyWith(layers: layers),
-        selectedLayerId: layer.id,
-      ),
-    );
+    _change(state.template.copyWith(layers: layers), 'add:${layer.id}', select: layer.id);
   }
 
   void addReferenceLayer() {
@@ -200,19 +313,14 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
       textAlign: TextAlign.right,
     );
     layers.add(layer);
-    emit(
-      state.copyWith(
-        template: state.template.copyWith(layers: layers),
-        selectedLayerId: layer.id,
-      ),
-    );
+    _change(state.template.copyWith(layers: layers), 'add:${layer.id}', select: layer.id);
   }
 
   // ── Layers: update ───────────────────────────────────────────────────────
 
   void updateLayer(SlideLayer layer) {
     final layers = state.template.layers.map((l) => l.id == layer.id ? layer : l).toList();
-    emit(state.copyWith(template: state.template.copyWith(layers: layers)));
+    _change(state.template.copyWith(layers: layers), 'layer:${layer.id}');
   }
 
   // ── Layers: remove ───────────────────────────────────────────────────────
@@ -220,12 +328,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
   void removeLayer(String id) {
     final layers = state.template.layers.where((l) => l.id != id).toList();
     final newSelected = state.selectedLayerId == id ? null : state.selectedLayerId;
-    emit(
-      state.copyWith(
-        template: state.template.copyWith(layers: layers),
-        selectedLayerId: newSelected ?? _sentinel,
-      ),
-    );
+    _change(state.template.copyWith(layers: layers), 'remove:$id', select: newSelected);
   }
 
   // ── Layers: reorder (swap zIndex) ────────────────────────────────────────
@@ -236,7 +339,7 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
     final moved = layers.removeAt(oldIndex);
     layers.insert(newIndex, moved);
     final reindexed = layers.asMap().entries.map((e) => e.value.copyWithZIndex(e.key)).toList();
-    emit(state.copyWith(template: state.template.copyWith(layers: reindexed)));
+    _change(state.template.copyWith(layers: reindexed), 'reorder');
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────

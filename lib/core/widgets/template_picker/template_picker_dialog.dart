@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../models/media_item.dart';
@@ -8,6 +9,7 @@ import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
+import '../app_dialog.dart';
 import '../media_library/media_library_dialog.dart';
 import 'canvas_snap.dart';
 import 'color_field.dart';
@@ -290,6 +292,9 @@ Future<SlideTemplate?> showTemplateEditor(
 }) {
   return showDialog<SlideTemplate>(
     context: context,
+    // Closing is a decision now, because closing can throw away a design. The
+    // barrier used to take one stray click as that decision.
+    barrierDismissible: false,
     builder: (_) => BlocProvider(
       create: (_) =>
           TemplateEditorCubit(repo, Modular.get<OrganizationRepository>(), initial)..loadPalette(),
@@ -311,6 +316,10 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
   late TextEditingController _sampleCtrl;
   late TextEditingController _sampleRefCtrl;
 
+  /// The name the editor opened with, so a renamed design counts as changed
+  /// even when nothing else was touched.
+  late String _openedName;
+
   @override
   void initState() {
     super.initState();
@@ -320,6 +329,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
     // is what happens when it is not.
     final fromPreset = SlideTemplate.findPreset(t.id) != null;
     final suggested = fromPreset ? '${t.name} (mío)' : t.name;
+    _openedName = suggested;
     _nameCtrl = TextEditingController(text: suggested)
       ..selection = TextSelection(baseOffset: 0, extentOffset: suggested.length);
     _sampleCtrl = TextEditingController(
@@ -341,8 +351,75 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
     if (mounted && saved != null) Navigator.pop(context, saved);
   }
 
+  /// Whether the operator is in a text field, where the system's own undo is
+  /// the one they mean.
+  bool get _typing {
+    final focused = FocusManager.instance.primaryFocus?.context;
+    return focused != null && focused.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final keys = HardwareKeyboard.instance;
+
+    if (event.logicalKey == LogicalKeyboardKey.escape && !_typing) {
+      _close();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey != LogicalKeyboardKey.keyZ) return KeyEventResult.ignored;
+    if (!keys.isMetaPressed && !keys.isControlPressed) return KeyEventResult.ignored;
+    // Inside a field, ⌘Z belongs to the field.
+    if (_typing) return KeyEventResult.ignored;
+
+    final cubit = context.read<TemplateEditorCubit>();
+    keys.isShiftPressed ? cubit.redo() : cubit.undo();
+    return KeyEventResult.handled;
+  }
+
+  /// Leaves the editor, asking first when leaving would lose something.
+  Future<void> _close() async {
+    final changed =
+        context.read<TemplateEditorCubit>().state.dirty || _nameCtrl.text.trim() != _openedName;
+    if (!changed) {
+      Navigator.pop(context);
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AppDialog(
+        title: '¿Descartar el diseño?',
+        icon: Icons.warning_amber_rounded,
+        width: 380,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Seguir editando'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+        child: const Text('Los cambios de este diseño se pierden.', style: AppText.rowSubtitle),
+      ),
+    );
+    if (discard == true && mounted) Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Sits above the panels rather than on any one of them, so ⌘Z works
+    // wherever the operator happens to have clicked last.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: _onKey,
+      child: _editor(context),
+    );
+  }
+
+  Widget _editor(BuildContext context) {
     return BlocBuilder<TemplateEditorCubit, TemplateEditorState>(
       builder: (context, state) {
         final t = state.template;
@@ -427,6 +504,13 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               // Up here, where it can be found. The two buttons this replaces
               // sat at the bottom of a scrolling panel, so the mode an editor
               // is in was both invisible and hard to change.
+              _HistoryButtons(
+                canUndo: state.canUndo,
+                canRedo: state.canRedo,
+                onUndo: cubit.undo,
+                onRedo: cubit.redo,
+              ),
+              const SizedBox(width: AppSpace.sm),
               _ModeToggle(
                 inLayers: isLayersMode,
                 onSimple: cubit.disableLayers,
@@ -436,7 +520,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 visualDensity: VisualDensity.compact,
-                onPressed: () => Navigator.pop(context),
+                onPressed: _close,
               ),
             ],
           ),
@@ -447,7 +531,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+              TextButton(onPressed: _close, child: const Text('Cancelar')),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: state.saving ? null : _save,
@@ -679,194 +763,204 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           child: SizedBox(
             width: 900,
             height: 600,
-            child: Row(
+            // Header across the whole dialog, as in layers mode. A 340px column
+            // cannot hold a title, undo, redo, the mode switch and a close
+            // button at once, and the mode an editor is in belongs above both
+            // panels anyway.
+            child: Column(
               children: [
-                // Left: controls (340px)
-                SizedBox(
-                  width: 340,
-                  child: Column(
+                dialogHeader(),
+                const Divider(height: 1),
+                Expanded(
+                  child: Row(
                     children: [
-                      dialogHeader(),
-                      const Divider(height: 1),
+                      // Left: controls (340px)
+                      SizedBox(
+                        width: 340,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TextField(
+                                      controller: _nameCtrl,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Nombre',
+                                        border: OutlineInputBorder(),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    bgControls(),
+                                    const SizedBox(height: 20),
+                                    _SectionLabel('Texto'),
+                                    _SliderRow(
+                                      label: 'Tamaño',
+                                      value: t.fontSize,
+                                      min: 24,
+                                      max: 120,
+                                      onChanged: (v) => update(t.copyWith(fontSize: v)),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    _SliderRow(
+                                      label: 'Interlineado',
+                                      value: t.lineHeight,
+                                      min: 1.0,
+                                      max: 2.5,
+                                      decimals: 1,
+                                      onChanged: (v) => update(t.copyWith(lineHeight: v)),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _FontWeightPicker(t, update),
+                                    const SizedBox(height: 8),
+                                    _FontFamilyPicker(
+                                      value: t.fontFamily,
+                                      onChanged: (f) => update(t.copyWith(fontFamily: f)),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ColorField(
+                                      label: 'Color texto',
+                                      value: t.textColor,
+                                      saved: state.palette,
+                                      fromPhoto: state.photoPalette,
+                                      onSave: cubit.saveColor,
+                                      onForget: cubit.forgetColor,
+                                      against: backdrop,
+                                      onChanged: (v) => update(t.copyWith(textColor: v)),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _TextAlignPicker(t, update),
+                                    const SizedBox(height: 8),
+                                    _ValignPicker(t, update),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const Text('Sombra', style: TextStyle(fontSize: 12)),
+                                        const Spacer(),
+                                        Switch(
+                                          value: t.textShadow,
+                                          onChanged: (v) => update(t.copyWith(textShadow: v)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _SectionLabel('Márgenes'),
+                                    _SliderRow(
+                                      label: 'Horizontal',
+                                      value: t.paddingH,
+                                      min: 0,
+                                      max: 200,
+                                      onChanged: (v) => update(t.copyWith(paddingH: v)),
+                                    ),
+                                    _SliderRow(
+                                      label: 'Vertical',
+                                      value: t.paddingV,
+                                      min: 0,
+                                      max: 200,
+                                      onChanged: (v) => update(t.copyWith(paddingV: v)),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _SectionLabel('Referencia'),
+                                    Row(
+                                      children: [
+                                        const Text('Mostrar', style: TextStyle(fontSize: 12)),
+                                        const Spacer(),
+                                        Switch(
+                                          value: t.showReference,
+                                          onChanged: (v) => update(t.copyWith(showReference: v)),
+                                        ),
+                                      ],
+                                    ),
+                                    if (t.showReference) ...[
+                                      const SizedBox(height: 8),
+                                      _SliderRow(
+                                        label: 'Tamaño ref.',
+                                        value: t.referenceFontSize,
+                                        min: 8,
+                                        max: 36,
+                                        onChanged: (v) => update(t.copyWith(referenceFontSize: v)),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ColorField(
+                                        label: 'Color ref.',
+                                        value: t.referenceColor,
+                                        saved: state.palette,
+                                        fromPhoto: state.photoPalette,
+                                        onSave: cubit.saveColor,
+                                        onForget: cubit.forgetColor,
+                                        against: backdrop,
+                                        onChanged: (v) => update(t.copyWith(referenceColor: v)),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _RefPositionPicker(t, update),
+                                    ],
+                                    const SizedBox(height: 20),
+                                    _SectionLabel('Transición'),
+                                    _TransitionPicker(
+                                      value: t.transitionType,
+                                      onChanged: (v) => update(t.copyWith(transitionType: v)),
+                                    ),
+                                    if (t.transitionType != SlideTransitionType.cut) ...[
+                                      const SizedBox(height: 4),
+                                      _SliderRow(
+                                        label: 'Duración (ms)',
+                                        value: t.transitionDurationMs.toDouble(),
+                                        min: 100,
+                                        max: 1000,
+                                        onChanged: (v) =>
+                                            update(t.copyWith(transitionDurationMs: v.round())),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 20),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            dialogFooter(),
+                          ],
+                        ),
+                      ),
+
+                      const VerticalDivider(width: 1),
+
+                      // Right: live preview
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
+                        child: Container(
+                          color: AppColors.background,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TextField(
-                                controller: _nameCtrl,
-                                decoration: const InputDecoration(
-                                  labelText: 'Nombre',
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              bgControls(),
-                              const SizedBox(height: 20),
-                              _SectionLabel('Texto'),
-                              _SliderRow(
-                                label: 'Tamaño',
-                                value: t.fontSize,
-                                min: 24,
-                                max: 120,
-                                onChanged: (v) => update(t.copyWith(fontSize: v)),
-                              ),
-                              const SizedBox(height: 4),
-                              _SliderRow(
-                                label: 'Interlineado',
-                                value: t.lineHeight,
-                                min: 1.0,
-                                max: 2.5,
-                                decimals: 1,
-                                onChanged: (v) => update(t.copyWith(lineHeight: v)),
-                              ),
-                              const SizedBox(height: 8),
-                              _FontWeightPicker(t, update),
-                              const SizedBox(height: 8),
-                              _FontFamilyPicker(
-                                value: t.fontFamily,
-                                onChanged: (f) => update(t.copyWith(fontFamily: f)),
-                              ),
-                              const SizedBox(height: 8),
-                              ColorField(
-                                label: 'Color texto',
-                                value: t.textColor,
-                                saved: state.palette,
-                                fromPhoto: state.photoPalette,
-                                onSave: cubit.saveColor,
-                                onForget: cubit.forgetColor,
-                                against: backdrop,
-                                onChanged: (v) => update(t.copyWith(textColor: v)),
-                              ),
-                              const SizedBox(height: 8),
-                              _TextAlignPicker(t, update),
-                              const SizedBox(height: 8),
-                              _ValignPicker(t, update),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Text('Sombra', style: TextStyle(fontSize: 12)),
-                                  const Spacer(),
-                                  Switch(
-                                    value: t.textShadow,
-                                    onChanged: (v) => update(t.copyWith(textShadow: v)),
+                              // The same row the canvas uses. It was a second copy
+                              // here, so the lengths only reached one of the modes.
+                              sampleFields(),
+                              Expanded(
+                                child: Center(
+                                  child: AspectRatio(
+                                    aspectRatio: 16 / 9,
+                                    child: Container(
+                                      margin: const EdgeInsets.all(20),
+                                      clipBehavior: Clip.hardEdge,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppColors.surfaceControl),
+                                      ),
+                                      child: SlideView(
+                                        content: _sampleCtrl.text,
+                                        reference: _sampleRefCtrl.text,
+                                        template: t,
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              _SectionLabel('Márgenes'),
-                              _SliderRow(
-                                label: 'Horizontal',
-                                value: t.paddingH,
-                                min: 0,
-                                max: 200,
-                                onChanged: (v) => update(t.copyWith(paddingH: v)),
-                              ),
-                              _SliderRow(
-                                label: 'Vertical',
-                                value: t.paddingV,
-                                min: 0,
-                                max: 200,
-                                onChanged: (v) => update(t.copyWith(paddingV: v)),
-                              ),
-                              const SizedBox(height: 20),
-                              _SectionLabel('Referencia'),
-                              Row(
-                                children: [
-                                  const Text('Mostrar', style: TextStyle(fontSize: 12)),
-                                  const Spacer(),
-                                  Switch(
-                                    value: t.showReference,
-                                    onChanged: (v) => update(t.copyWith(showReference: v)),
-                                  ),
-                                ],
-                              ),
-                              if (t.showReference) ...[
-                                const SizedBox(height: 8),
-                                _SliderRow(
-                                  label: 'Tamaño ref.',
-                                  value: t.referenceFontSize,
-                                  min: 8,
-                                  max: 36,
-                                  onChanged: (v) => update(t.copyWith(referenceFontSize: v)),
                                 ),
-                                const SizedBox(height: 8),
-                                ColorField(
-                                  label: 'Color ref.',
-                                  value: t.referenceColor,
-                                  saved: state.palette,
-                                  fromPhoto: state.photoPalette,
-                                  onSave: cubit.saveColor,
-                                  onForget: cubit.forgetColor,
-                                  against: backdrop,
-                                  onChanged: (v) => update(t.copyWith(referenceColor: v)),
-                                ),
-                                const SizedBox(height: 8),
-                                _RefPositionPicker(t, update),
-                              ],
-                              const SizedBox(height: 20),
-                              _SectionLabel('Transición'),
-                              _TransitionPicker(
-                                value: t.transitionType,
-                                onChanged: (v) => update(t.copyWith(transitionType: v)),
                               ),
-                              if (t.transitionType != SlideTransitionType.cut) ...[
-                                const SizedBox(height: 4),
-                                _SliderRow(
-                                  label: 'Duración (ms)',
-                                  value: t.transitionDurationMs.toDouble(),
-                                  min: 100,
-                                  max: 1000,
-                                  onChanged: (v) =>
-                                      update(t.copyWith(transitionDurationMs: v.round())),
-                                ),
-                              ],
-                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
                       ),
-                      const Divider(height: 1),
-                      dialogFooter(),
                     ],
-                  ),
-                ),
-
-                const VerticalDivider(width: 1),
-
-                // Right: live preview
-                Expanded(
-                  child: Container(
-                    color: AppColors.background,
-                    child: Column(
-                      children: [
-                        // The same row the canvas uses. It was a second copy
-                        // here, so the lengths only reached one of the modes.
-                        sampleFields(),
-                        Expanded(
-                          child: Center(
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: Container(
-                                margin: const EdgeInsets.all(20),
-                                clipBehavior: Clip.hardEdge,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.surfaceControl),
-                                ),
-                                child: SlideView(
-                                  content: _sampleCtrl.text,
-                                  reference: _sampleRefCtrl.text,
-                                  template: t,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
@@ -882,6 +976,43 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
 ///
 /// Deliberately says what each mode is rather than what pressing it does, so
 /// the editor always shows which of the two you are in.
+/// Back a step, forward a step.
+///
+/// Designing is trying things, and an operator who nudges a slider and does not
+/// like where it landed should not have to remember the number it was on.
+class _HistoryButtons extends StatelessWidget {
+  const _HistoryButtons({
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+  });
+
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      IconButton(
+        icon: const Icon(Icons.undo_rounded, size: 17),
+        visualDensity: VisualDensity.compact,
+        tooltip: 'Deshacer  ⌘Z',
+        onPressed: canUndo ? onUndo : null,
+      ),
+      IconButton(
+        icon: const Icon(Icons.redo_rounded, size: 17),
+        visualDensity: VisualDensity.compact,
+        tooltip: 'Rehacer  ⇧⌘Z',
+        onPressed: canRedo ? onRedo : null,
+      ),
+    ],
+  );
+}
+
 class _ModeToggle extends StatelessWidget {
   const _ModeToggle({required this.inLayers, required this.onSimple, required this.onLayers});
 
@@ -1588,7 +1719,6 @@ class _LayerInspector extends StatelessWidget {
 
   final SlideLayer layer;
   final TemplateEditorCubit cubit;
-
 
   @override
   Widget build(BuildContext context) {
