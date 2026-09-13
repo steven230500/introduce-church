@@ -352,10 +352,10 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
 
         // ── Shared sub-builders ─────────────────────────────────────────────
 
-        // What text will sit on, when that can be known. A photo background
-        // has no single colour, so no verdict is offered rather than a wrong
-        // one.
-        final int? backdrop = t.bgType == BackgroundType.image ? null : t.bgColor;
+        // What text will sit on. For a photo this is its average seen through
+        // the darkening layer, which is what makes a verdict possible at all
+        // on an image background.
+        final backdrop = state.backdrop;
 
         Widget bgControls() => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,6 +734,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                 label: 'Color texto',
                                 value: t.textColor,
                                 saved: state.palette,
+                                fromPhoto: state.photoPalette,
                                 onSave: cubit.saveColor,
                                 onForget: cubit.forgetColor,
                                 against: backdrop,
@@ -796,6 +797,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                   label: 'Color ref.',
                                   value: t.referenceColor,
                                   saved: state.palette,
+                                  fromPhoto: state.photoPalette,
                                   onSave: cubit.saveColor,
                                   onForget: cubit.forgetColor,
                                   against: backdrop,
@@ -1587,24 +1589,6 @@ class _LayerInspector extends StatelessWidget {
   final SlideLayer layer;
   final TemplateEditorCubit cubit;
 
-  static const _palette = [
-    0xFFFFFFFF,
-    0xFFEEEEEE,
-    0xFFBBBBBB,
-    0xFF888888,
-    0xFF444444,
-    0xFF222222,
-    0xFF000000,
-    0xFF0A84FF,
-    0xFF34C759,
-    0xFFFF9500,
-    0xFFFF3B30,
-    0xFFFF2D55,
-    0xFFBF5AF2,
-    0xFF5AC8FA,
-    0xFFFFCC00,
-    0xFF8E8E93,
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -1661,11 +1645,14 @@ class _LayerInspector extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        const Text('Color', style: TextStyle(fontSize: 12)),
-        const SizedBox(height: 4),
-        _LayerColorPicker(
+        ColorField(
+          label: 'Color',
           value: l.textColor,
-          palette: _palette,
+          saved: cubit.state.palette,
+          fromPhoto: cubit.state.photoPalette,
+          against: cubit.state.backdrop,
+          onSave: cubit.saveColor,
+          onForget: cubit.forgetColor,
           onChanged: (v) => cubit.updateLayer(l.copyWith(textColor: v)),
         ),
       ],
@@ -1694,11 +1681,14 @@ class _LayerInspector extends StatelessWidget {
           onChanged: (v) => cubit.updateLayer(l.copyWith(textAlign: v)),
         ),
         const SizedBox(height: 8),
-        const Text('Color', style: TextStyle(fontSize: 12)),
-        const SizedBox(height: 4),
-        _LayerColorPicker(
+        ColorField(
+          label: 'Color',
           value: l.textColor,
-          palette: _palette,
+          saved: cubit.state.palette,
+          fromPhoto: cubit.state.photoPalette,
+          against: cubit.state.backdrop,
+          onSave: cubit.saveColor,
+          onForget: cubit.forgetColor,
           onChanged: (v) => cubit.updateLayer(l.copyWith(textColor: v)),
         ),
       ],
@@ -1874,37 +1864,6 @@ class _LayerAlignRow extends StatelessWidget {
           onPressed: () => onChanged(align),
         ),
     ],
-  );
-}
-
-class _LayerColorPicker extends StatelessWidget {
-  const _LayerColorPicker({required this.value, required this.palette, required this.onChanged});
-  final int value;
-  final List<int> palette;
-  final void Function(int) onChanged;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 4,
-    runSpacing: 4,
-    children: palette.map((c) {
-      final sel = c == value;
-      return GestureDetector(
-        onTap: () => onChanged(c),
-        child: Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Color(c),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: sel ? AppColors.accent : Colors.white24, width: sel ? 2 : 1),
-          ),
-          child: sel
-              ? Icon(Icons.check, size: 13, color: c == 0xFFFFFFFF ? Colors.black : Colors.white)
-              : null,
-        ),
-      );
-    }).toList(),
   );
 }
 

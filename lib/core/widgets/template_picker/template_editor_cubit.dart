@@ -5,6 +5,7 @@ import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/organization_repository.dart';
 import '../../repositories/template_repository.dart';
+import '../../utils/image_palette.dart';
 
 class TemplateEditorState extends Equatable {
   const TemplateEditorState({
@@ -12,6 +13,8 @@ class TemplateEditorState extends Equatable {
     this.saving = false,
     this.selectedLayerId,
     this.palette = const [],
+    this.photoPalette = const [],
+    this.photoAverage,
   });
 
   final SlideTemplate template;
@@ -21,25 +24,53 @@ class TemplateEditorState extends Equatable {
   /// The colours this church has saved, offered before the built-in swatches.
   final List<int> palette;
 
+  /// The colours the background photo is made of, when there is one.
+  final List<int> photoPalette;
+
+  /// The one colour that stands for that photo, used to judge readability.
+  final int? photoAverage;
+
   SlideLayer? get selectedLayer =>
       template.layers.where((l) => l.id == selectedLayerId).firstOrNull;
+
+  /// What text on this design will actually sit on.
+  ///
+  /// A photo has no single colour, but it has an average, and under the
+  /// darkening layer that average is close enough to tell an operator whether
+  /// their grey text is going to disappear.
+  int? get backdrop => switch (template.bgType) {
+    BackgroundType.image =>
+      photoAverage == null ? null : backdropUnderOverlay(photoAverage!, template.bgOverlayOpacity),
+    _ => template.bgColor,
+  };
 
   TemplateEditorState copyWith({
     SlideTemplate? template,
     bool? saving,
     Object? selectedLayerId = _unset,
     List<int>? palette,
+    List<int>? photoPalette,
+    Object? photoAverage = _unset,
   }) => TemplateEditorState(
     template: template ?? this.template,
     saving: saving ?? this.saving,
     selectedLayerId: selectedLayerId == _unset ? this.selectedLayerId : selectedLayerId as String?,
     palette: palette ?? this.palette,
+    photoPalette: photoPalette ?? this.photoPalette,
+    photoAverage: photoAverage == _unset ? this.photoAverage : photoAverage as int?,
   );
 
   static const _unset = Object();
 
   @override
-  List<Object?> get props => [template, saving, selectedLayerId, palette];
+  List<Object?> get props => [
+    template,
+    saving,
+    selectedLayerId,
+    palette,
+    photoPalette,
+    photoAverage,
+  ];
 }
 
 class TemplateEditorCubit extends Cubit<TemplateEditorState> {
@@ -52,9 +83,36 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
   /// Reads the church's colours. A church that cannot be reached simply gets
   /// the built-in swatches, so this never blocks the editor.
   Future<void> loadPalette() async {
+    readPhoto(state.template.bgImagePath);
     final colors = await _orgRepo.getPalette();
     if (isClosed || colors.isEmpty) return;
     emit(state.copyWith(palette: colors));
+  }
+
+  /// The path whose colours are in the state, so a photo is read once and a
+  /// slider drag does not decode it on every frame.
+  String? _photoFor;
+
+  /// Pulls the colours out of the background photo.
+  ///
+  /// Nothing waits on this: the swatches appear when the file has been read,
+  /// and a photo that cannot be read costs the extra swatches and nothing else.
+  Future<void> readPhoto(String? path) async {
+    if (path == _photoFor) return;
+    _photoFor = path;
+    if (path == null || path.isEmpty) {
+      emit(state.copyWith(photoPalette: const [], photoAverage: null));
+      return;
+    }
+    final colors = await readPhotoColors(path);
+    // A second photo may have been chosen while this one was being read.
+    if (isClosed || _photoFor != path) return;
+    emit(
+      state.copyWith(
+        photoPalette: colors?.palette ?? const [],
+        photoAverage: colors?.average,
+      ),
+    );
   }
 
   /// Keeps a colour for the whole church, so the next design can reach it.
@@ -75,7 +133,10 @@ class TemplateEditorCubit extends Cubit<TemplateEditorState> {
 
   // ── Flat template update ──────────────────────────────────────────────────
 
-  void update(SlideTemplate t) => emit(state.copyWith(template: t));
+  void update(SlideTemplate t) {
+    emit(state.copyWith(template: t));
+    readPhoto(t.bgImagePath);
+  }
 
   // ── Layers: activation ───────────────────────────────────────────────────
 

@@ -20,6 +20,7 @@ class ColorField extends StatefulWidget {
     required this.onChanged,
     this.palette = defaultPalette,
     this.saved = const [],
+    this.fromPhoto = const [],
     this.against,
     this.onSave,
     this.onForget,
@@ -36,9 +37,16 @@ class ColorField extends StatefulWidget {
   /// The church's own colours, offered on their own row.
   final List<int> saved;
 
+  /// The colours of the background photo, offered on their own row.
+  ///
+  /// Matching text to something already in the picture is what makes a design
+  /// look deliberate, and hunting for that exact orange in a grid of twenty
+  /// generic swatches is how people give up and use white.
+  final List<int> fromPhoto;
+
   /// What this colour will be seen against, when that is known. Drives the
-  /// readability note; a photo background has no single answer, so callers
-  /// pass null and no note is shown.
+  /// readability note. Callers that cannot say pass null and no note is shown,
+  /// which is better than a confident wrong verdict.
   final int? against;
 
   /// Keeps the current colour for the whole church. Absent when there is
@@ -117,17 +125,18 @@ class _ColorFieldState extends State<ColorField> {
       children: [
         Text(widget.label, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: AppSpace.sm - 2),
-        if (widget.saved.isNotEmpty) ...[
-          const Text(
-            'DE LA IGLESIA',
-            style: TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
-            ),
+        if (widget.fromPhoto.isNotEmpty) ...[
+          const _RowLabel('DE LA FOTO'),
+          _Swatches(
+            colors: widget.fromPhoto,
+            value: widget.value,
+            size: widget.swatchSize,
+            onPick: widget.onChanged,
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: AppSpace.sm - 2),
+        ],
+        if (widget.saved.isNotEmpty) ...[
+          const _RowLabel('DE LA IGLESIA'),
           _Swatches(
             colors: widget.saved,
             value: widget.value,
@@ -144,7 +153,13 @@ class _ColorFieldState extends State<ColorField> {
           onPick: widget.onChanged,
         ),
         const SizedBox(height: AppSpace.sm),
-        Row(
+        // A Wrap, not a Row: in the 280px inspector the readability note would
+        // otherwise be squeezed to "No se va a ...", which is the one place it
+        // must not be. Here it drops to its own line and says the whole thing.
+        Wrap(
+          spacing: AppSpace.sm,
+          runSpacing: AppSpace.sm - 2,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Container(
               width: 26,
@@ -155,7 +170,6 @@ class _ColorFieldState extends State<ColorField> {
                 border: Border.all(color: AppColors.border),
               ),
             ),
-            const SizedBox(width: AppSpace.sm),
             SizedBox(
               width: 96,
               child: TextField(
@@ -180,8 +194,7 @@ class _ColorFieldState extends State<ColorField> {
                 },
               ),
             ),
-            if (widget.onSave != null && !widget.saved.contains(widget.value)) ...[
-              const SizedBox(width: AppSpace.sm - 2),
+            if (widget.onSave != null && !widget.saved.contains(widget.value))
               Tooltip(
                 message: 'Guardar en los colores de la iglesia',
                 child: GestureDetector(
@@ -201,18 +214,34 @@ class _ColorFieldState extends State<ColorField> {
                   ),
                 ),
               ),
-            ],
-            if (widget.against != null) ...[
-              const SizedBox(width: AppSpace.sm),
-              Flexible(
-                child: _ContrastNote(colour: widget.value, against: widget.against!),
-              ),
-            ],
+            if (widget.against != null)
+              _ContrastNote(colour: widget.value, against: widget.against!),
           ],
         ),
       ],
     );
   }
+}
+
+/// Says where a row of swatches came from, quietly.
+class _RowLabel extends StatelessWidget {
+  const _RowLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 3),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textTertiary,
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
+      ),
+    ),
+  );
 }
 
 class _Swatches extends StatelessWidget {

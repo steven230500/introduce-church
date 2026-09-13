@@ -9,6 +9,7 @@ void main() {
     required ValueChanged<int> onChanged,
     int? against,
     List<int> saved = const [],
+    List<int> fromPhoto = const [],
     ValueChanged<int>? onSave,
     ValueChanged<int>? onForget,
   }) async {
@@ -22,6 +23,7 @@ void main() {
               value: value,
               against: against,
               saved: saved,
+              fromPhoto: fromPhoto,
               onSave: onSave,
               onForget: onForget,
               onChanged: onChanged,
@@ -76,7 +78,7 @@ void main() {
     expect(find.text('Se lee bien'), findsOneWidget);
   });
 
-  testWidgets('a photo background gets no verdict, because there is no answer', (tester) async {
+  testWidgets('with nothing known to sit on, no verdict is offered', (tester) async {
     await pump(tester, value: 0xFFFFFFFF, onChanged: (_) {});
 
     for (final label in ['Se lee bien', 'Justo', 'No se va a leer']) {
@@ -105,5 +107,30 @@ void main() {
 
     expect(find.byIcon(Icons.add), findsNothing);
     expect(find.text('DE LA IGLESIA'), findsOneWidget);
+  });
+
+  testWidgets('the colours of the background photo are offered', (tester) async {
+    // Matching the text to something already in the picture is what makes a
+    // design look deliberate, and it should not mean eyeballing a hex code.
+    var picked = 0;
+    await pump(
+      tester,
+      value: 0xFFFFFFFF,
+      fromPhoto: const [0xFFE67828, 0xFF141420],
+      onChanged: (c) => picked = c,
+    );
+
+    expect(find.text('DE LA FOTO'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('#E67828'));
+    await tester.pumpAndSettle();
+
+    expect(picked, 0xFFE67828);
+  });
+
+  testWidgets('a design with no photo says nothing about one', (tester) async {
+    await pump(tester, value: 0xFFFFFFFF, onChanged: (_) {});
+
+    expect(find.text('DE LA FOTO'), findsNothing);
   });
 }
