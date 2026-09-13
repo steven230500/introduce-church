@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/models/song.dart';
+import '../../../../../core/services/lyric_import_service.dart';
 import 'cubit/cubit.dart';
 import 'widgets/paste_lyrics_dialog.dart';
 import '../../../../../core/theme/app_colors.dart';

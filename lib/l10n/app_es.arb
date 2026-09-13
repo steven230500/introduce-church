@@ -508,5 +508,128 @@
   "bgTypeColor": "Color",
   "bgTypeGradient": "Degradado",
   "bgTypePicture": "Fondo",
-  "bgDarkness": "Oscuridad"
+  "bgDarkness": "Oscuridad",
+  "importTitle": "Importar canciones",
+  "importTooltip": "Importar canciones de otros programas",
+  "importIntro": "Trae la biblioteca de otro programa. Revisas todo antes de que se agregue nada.",
+  "importWherePro7": "Documentos › ProPresenter › Libraries",
+  "importWherePro6": "Documentos › ProPresenter6",
+  "importWhereOpenLyrics": "OpenLP: Archivo › Exportar › Canciones",
+  "importWhereSongSelect": "Letras descargadas de SongSelect",
+  "importWhereChordPro": "Letras con acordes",
+  "importWhereText": "Una canción por archivo",
+  "formatText": "Texto",
+  "importPickFiles": "Elegir archivos",
+  "importPickFolder": "Elegir carpeta",
+  "importReading": "Leyendo {done} de {total} archivos…",
+  "@importReading": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "importFound": "{count, plural, one{1 canción encontrada} other{{count} canciones encontradas}}",
+  "@importFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFresh": "{count, plural, one{1 nueva} other{{count} nuevas}}",
+  "@importFresh": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importInLibrary": "{count, plural, one{1 ya está en la biblioteca} other{{count} ya están en la biblioteca}}",
+  "@importInLibrary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importRepeated": "{count, plural, one{1 repetida} other{{count} repetidas}}",
+  "@importRepeated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importIncludeExisting": "Importar también las que ya están",
+  "importStatusInLibrary": "Ya está",
+  "importStatusRepeated": "Repetida",
+  "importSlides": "{count, plural, one{1 diapositiva} other{{count} diapositivas}}",
+  "@importSlides": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFailures": "{count, plural, one{1 archivo no se pudo leer} other{{count} archivos no se pudieron leer}}",
+  "@importFailures": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importProblemUnsupported": "No es un formato de canción",
+  "importProblemUnreadable": "Está dañado o no es lo que dice su nombre",
+  "importProblemEmpty": "No tiene letra",
+  "importNothing": "No se encontraron canciones en lo que elegiste.",
+  "importPickOther": "Elegir otros",
+  "importAction": "{count, plural, =0{Importar} one{Importar 1 canción} other{Importar {count} canciones}}",
+  "@importAction": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importSaving": "Agregando {done} de {total} canciones…",
+  "@importSaving": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "importDone": "{count, plural, =0{No se agregó ninguna canción} one{Se agregó 1 canción a la biblioteca} other{Se agregaron {count} canciones a la biblioteca}}",
+  "@importDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importStopped": "Se detuvo: {message}. Importa los mismos archivos otra vez: las que ya entraron aparecerán como «Ya está».",
+  "@importStopped": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "importDoneAction": "Listo",
+  "importCcli": "CCLI {number}",
+  "@importCcli": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  }
 }

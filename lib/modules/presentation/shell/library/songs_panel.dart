@@ -13,6 +13,8 @@ import '../../../../core/widgets/ui/empty_state.dart';
 import '../../../songs/children/song_form/presenter/cubit/cubit.dart';
 import '../../../songs/children/song_form/presenter/page.dart';
 import '../../../songs/children/songs_list/presenter/cubit/cubit.dart';
+import '../../../songs/import/song_import_dialog.dart';
+import '../../../../l10n/l10n.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import 'library_dock.dart';
 
@@ -45,6 +47,17 @@ class _SongsPanelView extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpace.sm),
+          AppIconButton(
+            icon: Icons.library_add_outlined,
+            tooltip: L10n.of(context).importTooltip,
+            iconSize: 17,
+            size: 30,
+            onTap: () async {
+              final list = context.read<SongsListCubit>();
+              final added = await showSongImportDialog(context);
+              if (added > 0) await list.load();
+            },
+          ),
           AppIconButton(
             icon: Icons.add_rounded,
             tooltip: 'Nueva canción',

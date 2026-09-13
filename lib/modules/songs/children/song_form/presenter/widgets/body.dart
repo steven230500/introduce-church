@@ -29,18 +29,39 @@ class _Form extends StatefulWidget {
 class _FormState extends State<_Form> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _authorCtrl;
+  late final TextEditingController _copyrightCtrl;
+  late final TextEditingController _ccliCtrl;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.model.title);
     _authorCtrl = TextEditingController(text: widget.model.author);
+    _copyrightCtrl = TextEditingController(text: widget.model.copyright);
+    _ccliCtrl = TextEditingController(text: widget.model.ccliNumber);
+  }
+
+  @override
+  void didUpdateWidget(_Form oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Importing a file fills these in from the file. Typing keeps each field
+    // and the model equal, so a difference only ever comes from outside.
+    void sync(TextEditingController controller, String value) {
+      if (controller.text != value) controller.text = value;
+    }
+
+    sync(_titleCtrl, widget.model.title);
+    sync(_authorCtrl, widget.model.author);
+    sync(_copyrightCtrl, widget.model.copyright);
+    sync(_ccliCtrl, widget.model.ccliNumber);
   }
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _authorCtrl.dispose();
+    _copyrightCtrl.dispose();
+    _ccliCtrl.dispose();
     super.dispose();
   }
 
@@ -70,7 +91,7 @@ class _FormState extends State<_Form> {
   Future<void> _import(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['docx', 'pdf', 'xml', 'cho', 'chordpro', 'chopro'],
+      allowedExtensions: LyricImportService.extensions,
       allowMultiple: false,
     );
     if (result == null || result.files.isEmpty) return;
@@ -111,6 +132,27 @@ class _FormState extends State<_Form> {
                 controller: _authorCtrl,
                 label: 'Autor',
                 onChanged: cubit.updateAuthor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _DarkField(
+                controller: _copyrightCtrl,
+                label: 'Copyright',
+                onChanged: cubit.updateCopyright,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _DarkField(
+                controller: _ccliCtrl,
+                label: 'Número CCLI',
+                onChanged: cubit.updateCcliNumber,
               ),
             ),
           ],

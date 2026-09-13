@@ -22,6 +22,8 @@ class SongFormCubit extends Cubit<SongFormState> {
           id: existing.id,
           title: existing.title,
           author: existing.author ?? '',
+          copyright: existing.copyright ?? '',
+          ccliNumber: existing.ccliNumber ?? '',
           verses: existing.verses
               .map((v) => SongFormVerse(type: v.type, content: v.content, chords: v.chords))
               .toList(),
@@ -36,6 +38,8 @@ class SongFormCubit extends Cubit<SongFormState> {
 
   void updateTitle(String v) => _update((m) => m.copyWith(title: v));
   void updateAuthor(String v) => _update((m) => m.copyWith(author: v));
+  void updateCopyright(String v) => _update((m) => m.copyWith(copyright: v));
+  void updateCcliNumber(String v) => _update((m) => m.copyWith(ccliNumber: v));
 
   void addVerse() {
     _update((m) {
@@ -99,6 +103,12 @@ class SongFormCubit extends Cubit<SongFormState> {
           isImporting: false,
           title: (result.title?.isNotEmpty == true && m.title.isEmpty) ? result.title : null,
           author: (result.author?.isNotEmpty == true && m.author.isEmpty) ? result.author : null,
+          copyright: (result.copyright?.isNotEmpty == true && m.copyright.isEmpty)
+              ? result.copyright
+              : null,
+          ccliNumber: (result.ccliNumber?.isNotEmpty == true && m.ccliNumber.isEmpty)
+              ? result.ccliNumber
+              : null,
         ),
       );
       return verses.length;
@@ -120,6 +130,8 @@ class SongFormCubit extends Cubit<SongFormState> {
         id: model.id,
         title: model.title.trim(),
         author: model.author.trim().isEmpty ? null : model.author.trim(),
+        copyright: model.copyright.trim().isEmpty ? null : model.copyright.trim(),
+        ccliNumber: model.ccliNumber.trim().isEmpty ? null : model.ccliNumber.trim(),
         verses: [
           for (final verse in model.verses)
             (

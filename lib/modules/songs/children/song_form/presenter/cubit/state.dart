@@ -12,6 +12,8 @@ class SongFormModel extends Equatable {
     this.id,
     this.title = '',
     this.author = '',
+    this.copyright = '',
+    this.ccliNumber = '',
     this.verses = const [],
     this.isSaving = false,
     this.isImporting = false,
@@ -20,6 +22,12 @@ class SongFormModel extends Equatable {
   final String? id;
   final String title;
   final String author;
+
+  /// Kept with the song for the licence report. A form that did not carry
+  /// them wiped both every time a song was edited.
+  final String copyright;
+  final String ccliNumber;
+
   final List<SongFormVerse> verses;
   final bool isSaving;
   final bool isImporting;
@@ -31,6 +39,8 @@ class SongFormModel extends Equatable {
     String? id,
     String? title,
     String? author,
+    String? copyright,
+    String? ccliNumber,
     List<SongFormVerse>? verses,
     bool? isSaving,
     bool? isImporting,
@@ -39,6 +49,8 @@ class SongFormModel extends Equatable {
       id: id ?? this.id,
       title: title ?? this.title,
       author: author ?? this.author,
+      copyright: copyright ?? this.copyright,
+      ccliNumber: ccliNumber ?? this.ccliNumber,
       verses: verses ?? this.verses,
       isSaving: isSaving ?? this.isSaving,
       isImporting: isImporting ?? this.isImporting,
@@ -46,7 +58,16 @@ class SongFormModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, author, verses, isSaving, isImporting];
+  List<Object?> get props => [
+    id,
+    title,
+    author,
+    copyright,
+    ccliNumber,
+    verses,
+    isSaving,
+    isImporting,
+  ];
 }
 
 sealed class SongFormState extends Equatable {

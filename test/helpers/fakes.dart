@@ -14,6 +14,8 @@ import 'package:introduce_church/core/models/slide_template.dart';
 import 'package:introduce_church/core/models/saved_notice.dart';
 import 'package:introduce_church/core/models/song.dart';
 import 'package:introduce_church/core/repositories/media_repository.dart';
+import 'package:introduce_church/core/song_import/imported_song.dart';
+import 'package:introduce_church/modules/songs/children/songs_list/repository/repository.dart';
 import 'package:introduce_church/core/repositories/organization_repository.dart';
 import 'package:introduce_church/core/repositories/template_repository.dart';
 import 'package:introduce_church/core/services/app_prefs_service.dart';
@@ -498,4 +500,55 @@ class FakeBackgroundProbe extends BackgroundProbe {
 
   @override
   Future<File?> poster(String videoPath) async => still;
+}
+
+/// The song library, in memory.
+class FakeSongsRepository extends SongsListRepository {
+  FakeSongsRepository({List<Song>? songs}) : songs = songs ?? [], super(fakeApiClient());
+
+  List<Song> songs;
+
+  /// Every import request, as the songs it carried.
+  final requests = <List<ImportedSong>>[];
+
+  /// The saves the song form made.
+  final saved = <Map<String, Object?>>[];
+
+  /// Fails the import request with this number (1-based), after the ones
+  /// before it went through.
+  int? failOnRequest;
+
+  @override
+  Future<List<Song>> getSongs({String? search}) async => songs;
+
+  @override
+  Future<int> importSongs(List<ImportedSong> songs, {void Function(int done)? onProgress}) async {
+    var done = 0;
+    for (var start = 0; start < songs.length; start += SongsListRepository.importChunk) {
+      if (failOnRequest == requests.length + 1) {
+        throw const ApiException('sin conexión');
+      }
+      final piece = songs.sublist(
+        start,
+        (start + SongsListRepository.importChunk).clamp(0, songs.length),
+      );
+      requests.add(piece);
+      done += piece.length;
+      onProgress?.call(done);
+    }
+    return done;
+  }
+
+  @override
+  Future<Song> saveSong({
+    String? id,
+    required String title,
+    String? author,
+    String? copyright,
+    String? ccliNumber,
+    required List<({String type, String content, String? chords})> verses,
+  }) async {
+    saved.add({'id': id, 'title': title, 'copyright': copyright, 'ccli': ccliNumber});
+    return Song(id: id ?? 'new', title: title, copyright: copyright, ccliNumber: ccliNumber);
+  }
 }

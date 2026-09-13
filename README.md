@@ -22,6 +22,23 @@ duplica el domingo pasado para armar el siguiente.
 que la congregación está viendo. Se manda a pantalla cuando está listo. El
 panel *A continuación* muestra lo que sigue para no navegar a ciegas.
 
+**Trae tu biblioteca de otro programa.** Se elige una carpeta —la biblioteca
+entera de ProPresenter, una exportación de OpenLP— o archivos sueltos, y antes
+de agregar nada se revisa canción por canción con la letra al lado. Lo que ya
+está en la biblioteca (por título o por número CCLI) y las copias repetidas
+quedan sin marcar; de varias copias de la misma canción se marca la más
+completa. El copyright y el número CCLI vienen con la canción, para el reporte
+de licencias.
+
+| Programa | Archivos |
+|---|---|
+| ProPresenter 7 | `.pro` (con los grupos y el arreglo elegido) |
+| ProPresenter 4, 5 y 6 | `.pro4`, `.pro5`, `.pro6` |
+| OpenLP y otros con OpenLyrics | `.xml` |
+| SongSelect de CCLI | `.usr`, `.bin`, `.txt` |
+| ChordPro | `.cho`, `.chordpro`, `.chopro`, `.crd` |
+| Texto | `.txt`, una canción por archivo |
+
 **Biblia offline.** Reina-Valera 1960 completa dentro de la app, sin internet.
 Búsqueda por libro o escribiendo la referencia directo: `jn 3:16`, `sal 23`.
 
