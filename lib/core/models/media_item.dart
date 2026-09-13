@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../utils/bytes.dart';
+
 enum MediaType { image, video }
 
 extension MediaTypeX on MediaType {
@@ -44,11 +46,7 @@ class MediaItem extends Equatable {
     createdAt: j['created_at'] != null ? DateTime.parse(j['created_at'] as String) : null,
   );
 
-  String get sizeLabel {
-    if (sizeBytes == null) return '';
-    final mb = sizeBytes! / (1024 * 1024);
-    return mb >= 1 ? '${mb.toStringAsFixed(1)} MB' : '${(sizeBytes! / 1024).toStringAsFixed(0)} KB';
-  }
+  String get sizeLabel => sizeBytes == null ? '' : humanBytes(sizeBytes!);
 
   @override
   List<Object?> get props => [id, name, url, mediaType];

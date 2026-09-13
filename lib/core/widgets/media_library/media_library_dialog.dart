@@ -3,7 +3,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import '../../models/media_item.dart';
+import '../../models/storage_usage.dart';
 import '../../repositories/media_repository.dart';
+import '../../utils/bytes.dart';
 import '../app_dialog.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -25,6 +27,7 @@ class _MediaLibraryDialog extends StatefulWidget {
 class _MediaLibraryDialogState extends State<_MediaLibraryDialog> {
   late final MediaRepository _repo;
   List<MediaItem> _items = [];
+  StorageUsage? _usage;
   bool _loading = true;
   bool _uploading = false;
   String? _error;
@@ -44,9 +47,18 @@ class _MediaLibraryDialogState extends State<_MediaLibraryDialog> {
     });
     try {
       final items = await _repo.listMedia();
+      // The bar is a courtesy, not the point of the dialog: a server that does
+      // not answer it yet simply shows no bar.
+      StorageUsage? usage;
+      try {
+        usage = await _repo.usage();
+      } catch (_) {
+        usage = null;
+      }
       if (mounted) {
         setState(() {
           _items = items;
+          _usage = usage;
           _loading = false;
         });
       }
@@ -68,22 +80,59 @@ class _MediaLibraryDialogState extends State<_MediaLibraryDialog> {
     );
     if (result == null || result.files.isEmpty) return;
 
-    setState(() => _uploading = true);
+    final files = [
+      for (final pf in result.files)
+        if (pf.path != null) File(pf.path!),
+    ];
+    if (files.isEmpty) return;
+
+    // Refused here rather than after the bytes have gone up the wire. The
+    // server checks the same thing, but by then the operator has waited.
+    final refusal = _whyItWillNotFit(files);
+    if (refusal != null) {
+      setState(() => _error = refusal);
+      return;
+    }
+
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
     try {
-      for (final pf in result.files) {
-        if (pf.path == null) continue;
-        await _repo.upload(File(pf.path!));
+      for (final file in files) {
+        await _repo.upload(file);
       }
       await _load();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Error al subir: $e';
-        });
-      }
+      // ApiException prints the server's own Spanish sentence, which already
+      // says what to do about it.
+      if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  /// The reason this batch cannot be uploaded, or null when it can.
+  String? _whyItWillNotFit(List<File> files) {
+    final usage = _usage;
+    if (usage == null) return null;
+
+    var total = 0;
+    for (final file in files) {
+      final size = file.lengthSync();
+      total += size;
+      if (usage.maxUploadBytes > 0 && size > usage.maxUploadBytes) {
+        return '"${file.uri.pathSegments.last}" pesa ${humanBytes(size)}. '
+            'En el plan ${usage.label} cada archivo puede pesar hasta '
+            '${humanBytes(usage.maxUploadBytes)}.';
+      }
+    }
+    if (total > usage.freeBytes) {
+      return 'Faltan ${humanBytes(total - usage.freeBytes)}. '
+          'El plan ${usage.label} tiene ${humanBytes(usage.totalBytes)} y quedan '
+          '${humanBytes(usage.freeBytes)}. Borra algo de la biblioteca o pasa a un plan más grande.';
+    }
+    return null;
   }
 
   Future<void> _delete(MediaItem item) async {
@@ -124,6 +173,7 @@ class _MediaLibraryDialogState extends State<_MediaLibraryDialog> {
               onUpload: _upload,
               onClose: () => Navigator.pop(context),
             ),
+            if (_usage != null) _UsageBar(usage: _usage!),
             if (_error != null)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -430,6 +480,73 @@ class _VideoIcon extends StatelessWidget {
     return const ColoredBox(
       color: AppColors.border,
       child: Center(child: Icon(Icons.play_circle_outline, size: 36, color: AppColors.textMuted)),
+    );
+  }
+}
+
+/// How much of the plan is gone, above the library it is counting.
+///
+/// A church finds out it is out of room when an upload fails, which is always
+/// the Saturday night somebody is preparing Sunday. This says it before then.
+class _UsageBar extends StatelessWidget {
+  const _UsageBar({required this.usage});
+
+  final StorageUsage usage;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = usage.full
+        ? AppColors.danger
+        : usage.nearlyFull
+        ? AppColors.warning
+        : AppColors.accent;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                usage.label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                usage.summary,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: usage.nearlyFull ? tone : AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: usage.fraction,
+              minHeight: 4,
+              backgroundColor: AppColors.surfaceControl,
+              valueColor: AlwaysStoppedAnimation(tone),
+            ),
+          ),
+          if (usage.nearlyFull) ...[
+            const SizedBox(height: 5),
+            Text(
+              usage.full
+                  ? 'No queda espacio. Borra algo o pasa a un plan más grande.'
+                  : 'Queda poco espacio: ${humanBytes(usage.freeBytes)}.',
+              style: TextStyle(fontSize: 11, color: tone),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
