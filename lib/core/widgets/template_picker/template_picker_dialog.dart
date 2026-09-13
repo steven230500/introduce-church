@@ -7,6 +7,7 @@ import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/template_repository.dart';
 import '../media_library/media_library_dialog.dart';
+import 'canvas_snap.dart';
 import '../slide_view.dart';
 import 'template_editor_cubit.dart';
 import 'template_picker_cubit.dart';
@@ -1729,7 +1730,13 @@ class _LayerColorPicker extends StatelessWidget {
 
 // ── Layer canvas (drag-and-drop center panel) ─────────────────────────────────
 
-class _LayerCanvas extends StatelessWidget {
+/// Where the layers of a design are arranged by hand.
+///
+/// It draws the safe area, and while a layer is being moved it pulls the layer
+/// onto the lines it is nearly on and shows which ones those are. Before this
+/// everything was placed by eye, which is how text ends up a few pixels off
+/// centre on a wall three metres wide.
+class _LayerCanvas extends StatefulWidget {
   const _LayerCanvas({
     required this.template,
     required this.sampleContent,
@@ -1745,33 +1752,103 @@ class _LayerCanvas extends StatelessWidget {
   final TemplateEditorCubit cubit;
 
   @override
+  State<_LayerCanvas> createState() => _LayerCanvasState();
+}
+
+class _LayerCanvasState extends State<_LayerCanvas> {
+  List<double> _vertical = const [];
+  List<double> _horizontal = const [];
+  Size _canvas = Size.zero;
+
+  static Rect _rectOf(SlideLayer l) => Rect.fromLTWH(l.x, l.y, l.width, l.height);
+
+  /// Within six pixels on screen, whatever the canvas happens to measure.
+  Offset get _tolerance => Offset(
+    6 / (_canvas.width == 0 ? 1 : _canvas.width),
+    6 / (_canvas.height == 0 ? 1 : _canvas.height),
+  );
+
+  void _apply(
+    SlideLayer layer,
+    Rect proposed, {
+    required bool moving,
+    bool left = false,
+    bool top = false,
+    bool right = false,
+    bool bottom = false,
+  }) {
+    final lines = SnapLines.around([
+      for (final other in widget.template.layers)
+        if (other.id != layer.id) _rectOf(other),
+    ]);
+
+    final snapped = moving
+        ? snapMove(proposed, lines, _tolerance)
+        : snapResize(
+            proposed,
+            lines,
+            _tolerance,
+            left: left,
+            top: top,
+            right: right,
+            bottom: bottom,
+          );
+
+    if (snapped.vertical != _vertical || snapped.horizontal != _horizontal) {
+      setState(() {
+        _vertical = snapped.vertical;
+        _horizontal = snapped.horizontal;
+      });
+    }
+
+    final r = snapped.rect;
+    widget.cubit.updateLayer(
+      layer.copyWithGeometry(x: r.left, y: r.top, width: r.width, height: r.height),
+    );
+  }
+
+  void _release() {
+    if (_vertical.isEmpty && _horizontal.isEmpty) return;
+    setState(() {
+      _vertical = const [];
+      _horizontal = const [];
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sorted = [...template.layers]..sort((a, b) => a.zIndex.compareTo(b.zIndex));
+    final sorted = [...widget.template.layers]..sort((a, b) => a.zIndex.compareTo(b.zIndex));
 
     return LayoutBuilder(
       builder: (_, constraints) {
-        final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+        _canvas = Size(constraints.maxWidth, constraints.maxHeight);
         return GestureDetector(
-          onTap: () => cubit.selectLayer(null),
+          onTap: () => widget.cubit.selectLayer(null),
           child: Stack(
             children: [
-              // Background
               Positioned.fill(
                 child: SlideView(
                   content: '',
                   reference: '',
-                  template: template.copyWith(layers: []),
+                  template: widget.template.copyWith(layers: []),
                 ),
               ),
-              // Layers
+              const Positioned.fill(child: IgnorePointer(child: _SafeAreaFrame())),
               ...sorted.map(
                 (layer) => _CanvasLayer(
                   layer: layer,
-                  isSelected: layer.id == selectedLayerId,
-                  canvasSize: canvasSize,
-                  sampleContent: sampleContent,
-                  sampleReference: sampleReference,
-                  cubit: cubit,
+                  isSelected: layer.id == widget.selectedLayerId,
+                  canvasSize: _canvas,
+                  sampleContent: widget.sampleContent,
+                  sampleReference: widget.sampleReference,
+                  cubit: widget.cubit,
+                  onGeometry: _apply,
+                  onRelease: _release,
+                ),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _SnapGuides(vertical: _vertical, horizontal: _horizontal),
                 ),
               ),
             ],
@@ -1782,6 +1859,96 @@ class _LayerCanvas extends StatelessWidget {
   }
 }
 
+/// The area a projector can be trusted to show.
+class _SafeAreaFrame extends StatelessWidget {
+  const _SafeAreaFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (_, constraints) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: constraints.maxWidth * kSlideSafeInset,
+          vertical: constraints.maxHeight * kSlideSafeInset,
+        ),
+        // A label rather than a tooltip: this sits under an IgnorePointer so
+        // the canvas stays draggable, and nothing under one can be hovered.
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 3,
+              top: 2,
+              child: Text(
+                'ÁREA SEGURA',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The lines a layer has just landed on.
+class _SnapGuides extends StatelessWidget {
+  const _SnapGuides({required this.vertical, required this.horizontal});
+
+  final List<double> vertical;
+  final List<double> horizontal;
+
+  @override
+  Widget build(BuildContext context) {
+    if (vertical.isEmpty && horizontal.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (_, constraints) => Stack(
+        children: [
+          for (final x in vertical)
+            Positioned(
+              left: x * constraints.maxWidth - 0.5,
+              top: 0,
+              bottom: 0,
+              width: 1,
+              child: const ColoredBox(color: AppColors.accent),
+            ),
+          for (final y in horizontal)
+            Positioned(
+              top: y * constraints.maxHeight - 0.5,
+              left: 0,
+              right: 0,
+              height: 1,
+              child: const ColoredBox(color: AppColors.accent),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How the canvas is told a layer wants to move or change size.
+typedef _GeometryChange =
+    void Function(
+      SlideLayer layer,
+      Rect proposed, {
+      required bool moving,
+      bool left,
+      bool top,
+      bool right,
+      bool bottom,
+    });
+
 class _CanvasLayer extends StatelessWidget {
   const _CanvasLayer({
     required this.layer,
@@ -1790,6 +1957,8 @@ class _CanvasLayer extends StatelessWidget {
     required this.sampleContent,
     required this.sampleReference,
     required this.cubit,
+    required this.onGeometry,
+    required this.onRelease,
   });
 
   final SlideLayer layer;
@@ -1798,6 +1967,8 @@ class _CanvasLayer extends StatelessWidget {
   final String sampleContent;
   final String sampleReference;
   final TemplateEditorCubit cubit;
+  final _GeometryChange onGeometry;
+  final VoidCallback onRelease;
 
   @override
   Widget build(BuildContext context) {
@@ -1815,34 +1986,37 @@ class _CanvasLayer extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Draggable content
           GestureDetector(
             onTap: () => cubit.selectLayer(layer.id),
             onPanUpdate: (d) {
               final dx = d.delta.dx / canvasSize.width;
               final dy = d.delta.dy / canvasSize.height;
-              cubit.updateLayer(
-                layer.copyWithGeometry(
-                  x: (layer.x + dx).clamp(0.0, 1.0 - layer.width),
-                  y: (layer.y + dy).clamp(0.0, 1.0 - layer.height),
+              onGeometry(
+                layer,
+                Rect.fromLTWH(
+                  (layer.x + dx).clamp(0.0, 1.0 - layer.width),
+                  (layer.y + dy).clamp(0.0, 1.0 - layer.height),
+                  layer.width,
+                  layer.height,
                 ),
+                moving: true,
               );
             },
+            onPanEnd: (_) => onRelease(),
+            onPanCancel: onRelease,
             child: MouseRegion(cursor: SystemMouseCursors.move, child: _layerContent(scale)),
           ),
-          // Selection border
           if (isSelected)
             IgnorePointer(
               child: Container(
                 decoration: BoxDecoration(border: Border.all(color: AppColors.accent, width: 1.5)),
               ),
             ),
-          // Resize handles
           if (isSelected) ...[
-            _ResizeHandle(_HandlePos.tl, layer, canvasSize, cubit),
-            _ResizeHandle(_HandlePos.tr, layer, canvasSize, cubit),
-            _ResizeHandle(_HandlePos.bl, layer, canvasSize, cubit),
-            _ResizeHandle(_HandlePos.br, layer, canvasSize, cubit),
+            _ResizeHandle(_HandlePos.tl, layer, canvasSize, onGeometry, onRelease),
+            _ResizeHandle(_HandlePos.tr, layer, canvasSize, onGeometry, onRelease),
+            _ResizeHandle(_HandlePos.bl, layer, canvasSize, onGeometry, onRelease),
+            _ResizeHandle(_HandlePos.br, layer, canvasSize, onGeometry, onRelease),
           ],
         ],
       ),
@@ -1897,12 +2071,13 @@ class _CanvasLayer extends StatelessWidget {
 enum _HandlePos { tl, tr, bl, br }
 
 class _ResizeHandle extends StatelessWidget {
-  const _ResizeHandle(this.pos, this.layer, this.canvasSize, this.cubit);
+  const _ResizeHandle(this.pos, this.layer, this.canvasSize, this.onGeometry, this.onRelease);
 
   final _HandlePos pos;
   final SlideLayer layer;
   final Size canvasSize;
-  final TemplateEditorCubit cubit;
+  final _GeometryChange onGeometry;
+  final VoidCallback onRelease;
 
   static const _sz = 10.0;
 
@@ -1952,7 +2127,18 @@ class _ResizeHandle extends StatelessWidget {
         nw = (w + dx).clamp(minW, 1.0 - x);
         nh = (h + dy).clamp(minH, 1.0 - y);
     }
-    cubit.updateLayer(layer.copyWithGeometry(x: nx, y: ny, width: nw, height: nh));
+
+    // Only the corner under the hand looks for a line. Snapping the far edge
+    // too would change the box at both ends while one of them is being held.
+    onGeometry(
+      layer,
+      Rect.fromLTWH(nx, ny, nw, nh),
+      moving: false,
+      left: pos == _HandlePos.tl || pos == _HandlePos.bl,
+      top: pos == _HandlePos.tl || pos == _HandlePos.tr,
+      right: pos == _HandlePos.tr || pos == _HandlePos.br,
+      bottom: pos == _HandlePos.bl || pos == _HandlePos.br,
+    );
   }
 
   @override
@@ -1964,6 +2150,8 @@ class _ResizeHandle extends StatelessWidget {
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanUpdate: _onPan,
+      onPanEnd: (_) => onRelease(),
+      onPanCancel: onRelease,
       child: MouseRegion(
         cursor: _cursor,
         child: Container(
