@@ -79,8 +79,7 @@ jobs:
           name: macos
           path: Introduce-macOS-*.zip
 
-  # A beta until someone has run it on a real Windows computer; the release
-  # notes say so. The Mac release does not wait for it to succeed.
+  # Published as a beta. The Mac release does not wait for it to succeed.
   windows:
     runs-on: windows-latest
     steps:
@@ -160,8 +159,7 @@ jobs:
 
           ## Windows (beta)
 
-          Todavía no se ha probado en una computadora real. Si la pruebas,
-          cuéntanos cómo te fue en
+          Si algo no funciona, cuéntanos en
           [Issues](https://github.com/steven230500/introduce-church/issues).
 
           1. Descargar `Introduce-Windows-….zip` y descomprimirlo.
@@ -186,7 +184,7 @@ jobs:
           if ls dist/Introduce-Windows-*.zip >/dev/null 2>&1; then
             cat >> NOTES.md <<'NOTES'
 
-          **Windows (beta, not yet tried on real hardware):** unzip and run
+          **Windows (beta):** unzip and run
           `Introduce.exe` inside the `Introduce` folder. If Windows says it
           protected your PC, click **More info → Run anyway**.
           NOTES
