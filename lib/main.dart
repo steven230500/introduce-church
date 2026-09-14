@@ -14,6 +14,8 @@ import 'core/services/window_bounds_store.dart';
 import 'module.dart';
 import 'modules/display/display_app.dart';
 import 'modules/stage/stage_app.dart';
+import 'modules/stream/stream_app.dart';
+import 'core/stream/stream_style.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,6 +122,24 @@ Future<void> _runDisplayWindow(String argStr) async {
   final windowArgs = jsonDecode(argStr) as Map<String, dynamic>;
   final windowType = windowArgs['type'] as String? ?? 'display';
   final screenData = windowArgs['screen'] as Map<String, dynamic>?;
+
+  if (windowType == 'stream') {
+    // A normal window with a title, sized like a 720p frame: streaming
+    // programs capture a window by its name, and a person has to be able to
+    // find it, move it off the way and resize it.
+    const windowOptions = WindowOptions(
+      size: Size(1280, 720),
+      center: true,
+      backgroundColor: Colors.black,
+      title: 'Introduce · Transmisión',
+      titleBarStyle: TitleBarStyle.normal,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+    });
+    runApp(StreamApp(initial: StreamStyle.fromJson(windowArgs['style'])));
+    return;
+  }
 
   if (windowType == 'stage') {
     const windowOptions = WindowOptions(

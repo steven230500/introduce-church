@@ -72,6 +72,16 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<Map<String, dynamic>?> loadWaiting() async => waiting;
 
+  Map<String, dynamic>? streamStyle;
+
+  @override
+  Future<Map<String, dynamic>?> loadStreamStyle() async => streamStyle;
+
+  @override
+  Future<void> saveStreamStyle(Map<String, dynamic> style) async {
+    streamStyle = style;
+  }
+
   @override
   Future<void> saveWaiting(Map<String, dynamic> config) async {
     waiting = config;

@@ -10,6 +10,8 @@ import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../shell_cubit.dart';
 import 'notices_dialog.dart';
+import '../../../../core/widgets/ui/folding_row.dart';
+import 'stream_dialog.dart';
 import 'waiting_dialog.dart';
 import 'projector_picker_dialog.dart';
 
@@ -31,32 +33,132 @@ class LiveBar extends StatelessWidget {
         final enabled = model != null;
         final cubit = context.read<ControlCubit>();
 
+        // What the room sees, the extra windows and the follow toggle, spelled
+        // out as far as the width allows. Labels fold in a fixed order: the
+        // stream output first (the cast icon is one people already know), then
+        // the follow toggle (its icon and warning colour say what it is), then
+        // the offline mark shrinks to its icon and count, then the extra
+        // windows lose their names - opened once before a service, not
+        // reached for during it - and the buttons that change what the room
+        // sees go last, only somewhere narrower than a window can be.
+        Widget controls({
+          required bool labelStream,
+          required bool labelFollow,
+          required bool offlineFull,
+          required bool labelOutputs,
+          required bool labelState,
+        }) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (model?.offline == true) ...[
+              _OfflineChip(waiting: model?.pendingWrites ?? 0, compact: !offlineFull),
+              const SizedBox(width: AppSpace.md),
+            ],
+
+            // ── What the congregation sees ────────────────────────────
+            AppButtonGroup(
+              children: [
+                AppIconButton(
+                  icon: Icons.timer_outlined,
+                  label: labelState ? t.barCountdown : null,
+                  tooltip: model?.countdownActive == true ? t.tipCountdownStop : t.tipCountdownShow,
+                  active: model?.countdownActive ?? false,
+                  activeColor: AppColors.warning,
+                  onTap: !enabled
+                      ? null
+                      : () {
+                          if (model.countdownActive) {
+                            cubit.stopCountdown();
+                          } else {
+                            showCountdownDialog(context, cubit);
+                          }
+                        },
+                ),
+                AppIconButton(
+                  icon: Icons.campaign_outlined,
+                  label: labelState ? t.barNotices : null,
+                  tooltip: t.tipNotices,
+                  active:
+                      (model?.overlayVisible ?? false) || (model?.stageMessage ?? '').isNotEmpty,
+                  activeColor: AppColors.success,
+                  onTap: !enabled ? null : () => showNoticesDialog(context),
+                ),
+                AppIconButton(
+                  icon: Icons.visibility_off_outlined,
+                  label: labelState ? t.barBlank : null,
+                  tooltip: t.tipBlank,
+                  active: model?.blankScreen ?? false,
+                  activeColor: AppColors.textMuted,
+                  onTap: enabled ? cubit.toggleBlank : null,
+                ),
+                // Opens the picker rather than toggling: which scene and what it
+                // says are choices, and W is the quick way to put the last one
+                // back up.
+                AppIconButton(
+                  icon: Icons.auto_awesome_outlined,
+                  label: labelState ? t.barWaiting : null,
+                  tooltip: (model?.waiting.active ?? false) ? t.tipWaitingOff : t.tipWaiting,
+                  active: model?.waiting.active ?? false,
+                  onTap: enabled ? () => showWaitingDialog(context) : null,
+                ),
+              ],
+            ),
+
+            const AppVerticalDivider(),
+
+            // ── Extra windows ─────────────────────────────────────────
+            AppButtonGroup(
+              children: [
+                _ProjectorButton(labelled: labelOutputs, enabled: enabled),
+                AppIconButton(
+                  icon: Icons.co_present_outlined,
+                  label: labelOutputs ? t.barStage : null,
+                  tooltip: t.tipStage,
+                  onTap: enabled ? cubit.openStageMonitor : null,
+                ),
+                AppIconButton(
+                  icon: Icons.cast_outlined,
+                  label: labelStream ? t.barStream : null,
+                  tooltip: t.tipStream,
+                  onTap: enabled ? () => showStreamDialog(context) : null,
+                ),
+              ],
+            ),
+
+            const AppVerticalDivider(),
+
+            // ── Whether the screen follows the operator ───────────────
+            AppIconButton(
+              icon: model?.followCursor == false ? Icons.link_off_rounded : Icons.link_rounded,
+              label: labelFollow ? (model?.followCursor == false ? t.barHeld : t.barFollow) : null,
+              tooltip: model?.followCursor == false ? t.tipFollowOff : t.tipFollowOn,
+              active: model?.followCursor == false,
+              activeColor: AppColors.warning,
+              onTap: enabled ? cubit.toggleFollowCursor : null,
+            ),
+
+            const AppVerticalDivider(),
+
+            const _DockToggle(),
+            const SizedBox(width: AppSpace.md),
+            // Only there when it means something. A send button that is always
+            // present is one an operator learns to ignore.
+            if (model?.isHolding == true) ...[
+              _TakeButton(onTap: cubit.take),
+              const SizedBox(width: AppSpace.sm),
+            ],
+            _LiveButton(isLive: model?.isLive ?? false, onTap: enabled ? cubit.toggleLive : null),
+          ],
+        );
+
         return LayoutBuilder(
           builder: (context, constraints) {
-            // Label budget, spent where confusion is worst.
-            //
-            // The two output buttons are always labelled: they open different
-            // windows for different audiences, and no pair of icons makes that
-            // difference readable. The screen-state trio earns labels once the
-            // window is wide enough to hold them; its icons carry meaning on
-            // their own. The library toggle never gets one, because a split
-            // panel glyph already looks like the panel it opens.
-            //
-            // Both thresholds sit below the minimum window width, so in
-            // practice every button is labelled. They only bite if a future
-            // layout puts the bar somewhere narrower. The old state threshold
-            // was 1180 against a window that opened at 1152, so the three
-            // buttons an operator most needs to read were the three that never
-            // said anything.
-            final width = constraints.maxWidth;
-            final labelOutputs = width >= 960;
-            final labelState = width >= 1100;
-            // The follow toggle gives its label up first. Its link icon and the
-            // warning colour it turns when held already say what it is, and
-            // the label is what makes room for the waiting screen at the
-            // narrowest window, where every button that changes what the room
-            // sees has to stay named.
-            final labelFollow = width >= 1500;
+            // The controls may take everything but the room the window's own
+            // buttons need on the left; the readout gives way to them.
+            // Bar padding, the traffic lights, the gap, and the readout's own
+            // left margin, which does not give way.
+            const leftReserve = AppSpace.lg * 2 + 88 + 20 + AppSpace.md + AppSpace.lg;
+            final available = (constraints.maxWidth - leftReserve).clamp(0.0, double.infinity);
 
             return Container(
               height: AppSizes.liveBarHeight,
@@ -74,15 +176,11 @@ class LiveBar extends StatelessWidget {
                         children: [
                           // Room for the macOS traffic-light buttons.
                           const SizedBox(width: 88),
-                          // Flexible, so the name gives way before the bar
-                          // overflows. The controls on the right grow with the
-                          // features; the word "Introduce" is the one thing
+                          const _AppGlyph(),
+                          // Flexible, so the name gives way before the
+                          // controls do; the word "Introduce" is the one thing
                           // here nobody needs to read twice.
-                          const Flexible(child: _AppMark()),
-                          // The gap lives inside the flexible readout rather than
-                          // beside it, so it gives way with the readout instead of
-                          // being the sixteen pixels that push the bar over when
-                          // the offline mark appears on a narrow window.
+                          const Flexible(child: _AppName()),
                           Expanded(
                             flex: 4,
                             child: Padding(
@@ -95,108 +193,54 @@ class LiveBar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpace.md),
-
-                  if (model?.offline == true) ...[
-                    _OfflineChip(waiting: model?.pendingWrites ?? 0),
-                    const SizedBox(width: AppSpace.md),
-                  ],
-
-                  // ── What the congregation sees ────────────────────────────
-                  AppButtonGroup(
-                    children: [
-                      AppIconButton(
-                        icon: Icons.timer_outlined,
-                        label: labelState ? t.barCountdown : null,
-                        tooltip: model?.countdownActive == true
-                            ? t.tipCountdownStop
-                            : t.tipCountdownShow,
-                        active: model?.countdownActive ?? false,
-                        activeColor: AppColors.warning,
-                        onTap: !enabled
-                            ? null
-                            : () {
-                                if (model.countdownActive) {
-                                  cubit.stopCountdown();
-                                } else {
-                                  showCountdownDialog(context, cubit);
-                                }
-                              },
-                      ),
-                      AppIconButton(
-                        icon: Icons.campaign_outlined,
-                        label: labelState ? t.barNotices : null,
-                        tooltip: t.tipNotices,
-                        active:
-                            (model?.overlayVisible ?? false) ||
-                            (model?.stageMessage ?? '').isNotEmpty,
-                        activeColor: AppColors.success,
-                        onTap: !enabled ? null : () => showNoticesDialog(context),
-                      ),
-                      AppIconButton(
-                        icon: Icons.visibility_off_outlined,
-                        label: labelState ? t.barBlank : null,
-                        tooltip: t.tipBlank,
-                        active: model?.blankScreen ?? false,
-                        activeColor: AppColors.textMuted,
-                        onTap: enabled ? cubit.toggleBlank : null,
-                      ),
-                      // Opens the picker rather than toggling: which scene and
-                      // what it says are choices, and W is the quick way to put
-                      // the last one back up.
-                      AppIconButton(
-                        icon: Icons.auto_awesome_outlined,
-                        label: labelState ? t.barWaiting : null,
-                        tooltip: (model?.waiting.active ?? false) ? t.tipWaitingOff : t.tipWaiting,
-                        active: model?.waiting.active ?? false,
-                        onTap: enabled ? () => showWaitingDialog(context) : null,
-                      ),
-                    ],
-                  ),
-
-                  const AppVerticalDivider(),
-
-                  // ── Extra windows ─────────────────────────────────────────
-                  AppButtonGroup(
-                    children: [
-                      _ProjectorButton(labelled: labelOutputs, enabled: enabled),
-                      AppIconButton(
-                        icon: Icons.co_present_outlined,
-                        label: labelOutputs ? t.barStage : null,
-                        tooltip: t.tipStage,
-                        onTap: enabled ? cubit.openStageMonitor : null,
-                      ),
-                    ],
-                  ),
-
-                  const AppVerticalDivider(),
-
-                  // ── Whether the screen follows the operator ───────────────
-                  AppIconButton(
-                    icon: model?.followCursor == false
-                        ? Icons.link_off_rounded
-                        : Icons.link_rounded,
-                    label: labelFollow
-                        ? (model?.followCursor == false ? t.barHeld : t.barFollow)
-                        : null,
-                    tooltip: model?.followCursor == false ? t.tipFollowOff : t.tipFollowOn,
-                    active: model?.followCursor == false,
-                    activeColor: AppColors.warning,
-                    onTap: enabled ? cubit.toggleFollowCursor : null,
-                  ),
-
-                  const AppVerticalDivider(),
-
-                  const _DockToggle(),
-                  const SizedBox(width: AppSpace.md),
-                  // Only there when it means something. A send button that is
-                  // always present is one an operator learns to ignore.
-                  if (model?.isHolding == true) ...[
-                    _TakeButton(onTap: cubit.take),
-                    const SizedBox(width: AppSpace.sm),
-                  ],
-                  _LiveButton(
-                    isLive: model?.isLive ?? false,
-                    onTap: enabled ? cubit.toggleLive : null,
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: available),
+                    child: FoldingRow(
+                      variants: [
+                        controls(
+                          labelStream: true,
+                          labelFollow: true,
+                          offlineFull: true,
+                          labelOutputs: true,
+                          labelState: true,
+                        ),
+                        controls(
+                          labelStream: false,
+                          labelFollow: true,
+                          offlineFull: true,
+                          labelOutputs: true,
+                          labelState: true,
+                        ),
+                        controls(
+                          labelStream: false,
+                          labelFollow: false,
+                          offlineFull: true,
+                          labelOutputs: true,
+                          labelState: true,
+                        ),
+                        controls(
+                          labelStream: false,
+                          labelFollow: false,
+                          offlineFull: false,
+                          labelOutputs: true,
+                          labelState: true,
+                        ),
+                        controls(
+                          labelStream: false,
+                          labelFollow: false,
+                          offlineFull: false,
+                          labelOutputs: false,
+                          labelState: true,
+                        ),
+                        controls(
+                          labelStream: false,
+                          labelFollow: false,
+                          offlineFull: false,
+                          labelOutputs: false,
+                          labelState: false,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -210,42 +254,40 @@ class LiveBar extends StatelessWidget {
 
 // ── App mark ──────────────────────────────────────────────────────────────────
 
-class _AppMark extends StatelessWidget {
-  const _AppMark();
+/// The app's glyph. Fixed in size and reserved for, so squeezing the bar never
+/// crushes it into a sliver.
+class _AppGlyph extends StatelessWidget {
+  const _AppGlyph();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: AppColors.accent,
-            borderRadius: AppRadius.all(AppRadius.xs + 1),
-          ),
-          child: const Icon(Icons.church_rounded, size: 13, color: Colors.white),
-        ),
-        // The gap belongs to the name, so it goes when the name does. Left
-        // outside, the glyph plus a fixed gap was still wider than the room
-        // this is given at the tightest width.
-        const Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(left: AppSpace.sm),
-            child: Text(
-              'Introduce',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: AppColors.accent,
+        borderRadius: AppRadius.all(AppRadius.xs + 1),
+      ),
+      child: const Icon(Icons.church_rounded, size: 13, color: Colors.white),
+    );
+  }
+}
+
+/// The app's name, which is the first thing to give way.
+class _AppName extends StatelessWidget {
+  const _AppName();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(left: AppSpace.sm),
+      child: Text(
+        'Introduce',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -397,10 +439,13 @@ class _ProjectorButton extends StatelessWidget {
 /// an operator who removes an item and sees nothing happen has no other way to
 /// find out why.
 class _OfflineChip extends StatelessWidget {
-  const _OfflineChip({required this.waiting});
+  const _OfflineChip({required this.waiting, this.compact = false});
 
   /// Changes made offline that have not reached the server yet.
   final int waiting;
+
+  /// The icon and the count only, for a narrow window.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -408,7 +453,9 @@ class _OfflineChip extends StatelessWidget {
     // The plural is the .arb's job, not a ternary here: languages do not all
     // have two forms, and the ones that do not are exactly the ones a hand
     // written ternary gets wrong.
-    final label = waiting == 0 ? t.offline : t.offlineWithChanges(waiting);
+    final label = compact
+        ? (waiting == 0 ? null : '$waiting')
+        : (waiting == 0 ? t.offline : t.offlineWithChanges(waiting));
 
     return Tooltip(
       message: waiting == 0 ? t.offlineTip : t.offlineTipWithChanges,
@@ -423,15 +470,17 @@ class _OfflineChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.cloud_off_rounded, size: 13, color: AppColors.warning),
-            const SizedBox(width: AppSpace.sm - 2),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.warning,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+            if (label != null) ...[
+              const SizedBox(width: AppSpace.sm - 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.warning,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

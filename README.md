@@ -99,6 +99,14 @@ guardan y quedan a un clic.
 **Pantalla de escenario.** Ventana aparte para el predicador o el músico: lo
 que está en pantalla, lo que sigue, y los mensajes del equipo.
 
+**Salida para la transmisión.** Una ventana aparte con solo la letra sobre un
+color plano —verde, azul, magenta o negro— para capturarla en OBS y ponerla
+encima de la cámara con un filtro Chroma Key (o Luma Key, con negro). Sigue al
+proyector sin internet, pero muestra solo palabras: fotos, videos, la pantalla
+de espera o el negro dejan ver la cámara. La letra va abajo o arriba, con barra
+oscura sólida o con contorno (sin sombras difusas, que el keyer convierte en un
+halo verde), y el tamaño se ajusta con la vista previa en el mismo diálogo.
+
 **Ensayo y tiempos.** Cada elemento del servicio puede tener una duración
 planeada. Durante el culto, la salida del operador y la pantalla de escenario
 cuentan cuánto lleva el elemento en pantalla contra ese plan: normal, ámbar al

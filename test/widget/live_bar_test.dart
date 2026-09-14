@@ -111,6 +111,67 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('on a wide window every button is named, the stream output too', (tester) async {
+    await pumpBar(tester, width: 1920);
+
+    for (final label in [
+      'Cuenta',
+      'Avisos',
+      'Negro',
+      'Espera',
+      'Proyector',
+      'Escenario',
+      'Transmisión',
+      'Sigue',
+    ]) {
+      expect(find.text(label), findsOneWidget, reason: '$label must be readable');
+    }
+  });
+
+  testWidgets('at its busiest the bar gives labels up in order instead of overflowing', (
+    tester,
+  ) async {
+    // Offline, holding the screen with a send button: the stream output's
+    // label goes first, and nothing runs off the edge.
+    await pumpBar(tester, width: 1600);
+    await openCollection(tester);
+    repo.failWith = Exception('Failed host lookup: api.introduce.test');
+    await control.load();
+    control.setFollowCursor(false);
+    control.nextSlide();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Enviar'), findsOneWidget);
+    expect(find.text('Transmisión'), findsNothing);
+    expect(find.byIcon(Icons.cast_outlined), findsOneWidget, reason: 'still there, by its icon');
+    for (final label in ['Cuenta', 'Avisos', 'Negro', 'Espera', 'Proyector', 'Escenario']) {
+      expect(find.text(label), findsOneWidget, reason: '$label must stay readable');
+    }
+  });
+
+  testWidgets('offline and holding at the narrowest window, nothing overflows', (tester) async {
+    // It did before the stream output existed: the offline mark alone pushed
+    // the bar twelve pixels past a laptop's window.
+    await pumpBar(tester, width: kMinWindowSize.width);
+    await openCollection(tester);
+    repo.failWith = Exception('Failed host lookup: api.introduce.test');
+    await control.load();
+    control.setFollowCursor(false);
+    control.nextSlide();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+    // What changes what the room sees keeps its name; the extra windows,
+    // opened once before a service, give theirs up and keep their icons.
+    for (final label in ['Cuenta', 'Avisos', 'Negro', 'Espera']) {
+      expect(find.text(label), findsOneWidget, reason: '$label must stay readable');
+    }
+    expect(find.byIcon(Icons.present_to_all_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.co_present_outlined), findsOneWidget);
+  });
+
   testWidgets('folds labels away rather than overflow if put somewhere narrow', (tester) async {
     await pumpBar(tester, width: 900);
 
@@ -148,7 +209,7 @@ void main() {
   testWidgets('says when the machine cannot reach the server', (tester) async {
     // Not an error: the plan and the designs are on this disk and the service
     // runs from them. What it warns about is that edits are going nowhere.
-    await pumpBar(tester);
+    await pumpBar(tester, width: 1600);
     await openCollection(tester);
     expect(find.text('Sin conexión'), findsNothing);
 

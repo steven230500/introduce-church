@@ -99,6 +99,19 @@ class AppPrefsService {
   ///
   /// A church wires the same room the same way every week, and the app used to
   /// take the second display it was handed and hope.
+  /// How the words look in the streaming window, on this computer.
+  Future<Map<String, dynamic>?> loadStreamStyle() async {
+    final d = await _read();
+    final raw = d['stream_style'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : null;
+  }
+
+  Future<void> saveStreamStyle(Map<String, dynamic> style) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['stream_style'] = style;
+    await _write(d);
+  }
+
   /// The waiting screen chosen last, so the picker opens on it.
   Future<Map<String, dynamic>?> loadWaiting() async {
     final d = await _read();

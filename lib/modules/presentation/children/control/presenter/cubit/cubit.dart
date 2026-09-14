@@ -17,6 +17,7 @@ import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
 import '../../../../../../core/motion/motion_scenes.dart';
+import '../../../../../../core/stream/stream_style.dart';
 import '../../../../../../core/timing/service_clock.dart';
 import '../../../../../../core/waiting/waiting_screen.dart';
 import '../../../../../../core/services/service_file.dart';
@@ -1381,6 +1382,44 @@ class ControlCubit extends Cubit<ControlState> {
     _syncState();
   }
 
+  // ── Stream output ─────────────────────────────────────────────────────────
+
+  StreamStyle? _streamStyle;
+  WindowController? _streamController;
+
+  /// The look of the streaming window on this computer.
+  Future<StreamStyle> streamStyle() async =>
+      _streamStyle ??= StreamStyle.fromJson(await _prefs.loadStreamStyle());
+
+  /// Keeps [style] and applies it to the streaming window straight away.
+  Future<void> setStreamStyle(StreamStyle style) async {
+    _streamStyle = style;
+    _syncState();
+    await _prefs.saveStreamStyle(style.toJson());
+  }
+
+  /// Opens the window a streaming program captures, or brings it back.
+  Future<void> openStreamWindow() async {
+    if (_streamController != null) {
+      try {
+        await _streamController!.show();
+        return;
+      } catch (_) {
+        // Closed from its own title bar since.
+        _streamController = null;
+      }
+    }
+    _streamController = await WindowController.create(
+      WindowConfiguration(
+        hiddenAtLaunch: true,
+        arguments: jsonEncode({'type': 'stream', 'style': (await streamStyle()).toJson()}),
+      ),
+    );
+    await _streamController!.show();
+    // It opens knowing its style but not the service; this tells it both.
+    _syncState();
+  }
+
   Future<void> openStageMonitor() async {
     // The window reads the stored session itself, so it only needs to be told
     // which kind of window to be.
@@ -1708,6 +1747,7 @@ class ControlCubit extends Cubit<ControlState> {
       WindowLink.broadcast({
         ...position,
         'collection': ?_rawCollection(model.activeCollection?.id),
+        'stream_style': ?_streamStyle?.toJson(),
         'templates': [
           for (final template in model.userTemplates)
             {'id': template.id, 'name': template.name, 'config': template.toJson()},

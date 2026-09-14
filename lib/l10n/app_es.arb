@@ -693,5 +693,36 @@
       }
     }
   },
-  "plannedMenu": "Duración"
+  "plannedMenu": "Duración",
+  "barStream": "Transmisión",
+  "tipStream": "Letra para la transmisión en vivo (OBS)",
+  "streamTitle": "Transmisión",
+  "streamIntro": "Una ventana con solo la letra sobre un color de fondo, para capturarla en OBS u otro programa y ponerla encima de la cámara.",
+  "streamKey": "Fondo",
+  "streamKeyGreen": "Verde",
+  "streamKeyBlue": "Azul",
+  "streamKeyMagenta": "Magenta",
+  "streamKeyBlack": "Negro",
+  "streamPosition": "Posición",
+  "streamBottom": "Abajo",
+  "streamTop": "Arriba",
+  "streamBar": "Barra oscura detrás de la letra",
+  "streamBarNote": "Sin barra, la letra lleva contorno para leerse sobre cualquier toma.",
+  "streamSize": "Tamaño",
+  "streamReference": "Mostrar la referencia",
+  "streamHowTitle": "En OBS",
+  "streamHowWindow": "Agrega una fuente «Captura de ventana» y elige «Introduce · Transmisión».",
+  "streamHowChroma": "Agrégale el filtro «Chroma Key» con el color {color}.",
+  "@streamHowChroma": {
+    "placeholders": {
+      "color": {
+        "type": "String"
+      }
+    }
+  },
+  "streamHowLuma": "Agrégale el filtro «Luma Key» para quitar el negro.",
+  "streamOpen": "Abrir ventana de transmisión",
+  "streamSample": "Cuán grande es Él",
+  "streamSampleReference": "Stuart K. Hine",
+  "close": "Cerrar"
 }
