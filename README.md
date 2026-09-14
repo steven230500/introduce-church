@@ -99,6 +99,14 @@ guardan y quedan a un clic.
 **Pantalla de escenario.** Ventana aparte para el predicador o el músico: lo
 que está en pantalla, lo que sigue, y los mensajes del equipo.
 
+**Control desde el teléfono.** Cualquier teléfono en la misma red Wi-Fi pasa
+slides, pone en vivo o en negro y salta a otro elemento, viendo lo que está en
+pantalla y lo que sigue. No hace falta internet ni instalar nada: la
+computadora sirve la página y el teléfono la abre escaneando un QR. Está
+apagado hasta que se activa; se empareja con un PIN de seis dígitos (varios
+intentos fallidos bloquean esa dirección un minuto), el teléfono queda
+recordado para el domingo siguiente, y cambiar el PIN desconecta a todos.
+
 **Salida para la transmisión.** Una ventana aparte con solo la letra sobre un
 color plano —verde, azul, magenta o negro— para capturarla en OBS y ponerla
 encima de la cámara con un filtro Chroma Key (o Luma Key, con negro). Sigue al

@@ -7,6 +7,9 @@
 	<false/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- Phones on the local network control the presenter through a server in the app -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 	<key>com.apple.security.files.downloads.read-write</key>

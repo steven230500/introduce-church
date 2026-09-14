@@ -99,6 +99,20 @@ class AppPrefsService {
   ///
   /// A church wires the same room the same way every week, and the app used to
   /// take the second display it was handed and hope.
+  /// Whether phones may control this computer, the PIN, and the phones that
+  /// have paired, so a phone paired last Sunday reconnects this one.
+  Future<Map<String, dynamic>?> loadRemote() async {
+    final d = await _read();
+    final raw = d['remote'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : null;
+  }
+
+  Future<void> saveRemote(Map<String, dynamic> remote) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['remote'] = remote;
+    await _write(d);
+  }
+
   /// How the words look in the streaming window, on this computer.
   Future<Map<String, dynamic>?> loadStreamStyle() async {
     final d = await _read();

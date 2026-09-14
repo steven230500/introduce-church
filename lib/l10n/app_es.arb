@@ -724,5 +724,27 @@
   "streamOpen": "Abrir ventana de transmisión",
   "streamSample": "Cuán grande es Él",
   "streamSampleReference": "Stuart K. Hine",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "sideRemote": "Control desde el teléfono",
+  "remoteTitle": "Control desde el teléfono",
+  "remoteIntro": "Pasa slides, pon en vivo o en negro desde un teléfono en la misma red Wi-Fi. No necesita internet.",
+  "remoteEnable": "Permitir control desde teléfonos",
+  "remoteEnableNote": "Apagado, nadie puede conectarse.",
+  "remoteScan": "Escanea con la cámara del teléfono",
+  "remoteOrOpen": "o abre esta dirección y escribe el PIN:",
+  "remotePin": "PIN",
+  "remoteDevices": "{count, plural, =0{Ningún teléfono conectado} one{1 teléfono conectado} other{{count} teléfonos conectados}}",
+  "@remoteDevices": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "remoteRenew": "Cambiar PIN",
+  "remoteNoNetwork": "Esta computadora no está conectada a ninguna red. Conéctala al mismo Wi-Fi que el teléfono.",
+  "remoteFailed": "No se pudo abrir el control remoto: el puerto está ocupado por otro programa.",
+  "remoteSameWifi": "El teléfono tiene que estar en la misma red Wi-Fi que esta computadora. Si la red de la iglesia aísla los dispositivos, usa el punto de acceso del teléfono.",
+  "remoteFirewall": "La primera vez, macOS pregunta si permite conexiones entrantes: elige Permitir.",
+  "remoteRenewNote": "Cambiar el PIN desconecta a todos los teléfonos emparejados."
 }

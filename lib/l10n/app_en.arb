@@ -443,5 +443,20 @@
   "streamOpen": "Open stream window",
   "streamSample": "How great thou art",
   "streamSampleReference": "Stuart K. Hine",
-  "close": "Close"
+  "close": "Close",
+  "sideRemote": "Control from a phone",
+  "remoteTitle": "Control from a phone",
+  "remoteIntro": "Move slides, go live or black from a phone on the same Wi-Fi network. No internet needed.",
+  "remoteEnable": "Allow control from phones",
+  "remoteEnableNote": "While off, nobody can connect.",
+  "remoteScan": "Scan with the phone's camera",
+  "remoteOrOpen": "or open this address and type the PIN:",
+  "remotePin": "PIN",
+  "remoteDevices": "{count, plural, =0{No phones connected} one{1 phone connected} other{{count} phones connected}}",
+  "remoteRenew": "Change PIN",
+  "remoteNoNetwork": "This computer isn't on any network. Connect it to the same Wi-Fi as the phone.",
+  "remoteFailed": "The remote couldn't start: its port is taken by another program.",
+  "remoteSameWifi": "The phone must be on the same Wi-Fi as this computer. If the church network isolates devices, use the phone's hotspot.",
+  "remoteFirewall": "The first time, macOS asks whether to accept incoming connections: choose Allow.",
+  "remoteRenewNote": "Changing the PIN disconnects every paired phone."
 }

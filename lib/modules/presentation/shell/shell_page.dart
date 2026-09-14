@@ -16,6 +16,7 @@ import 'history_page.dart';
 import 'library/library_dock.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/history/projection_recorder.dart';
+import '../../../core/remote/remote_control.dart';
 import '../../../core/services/app_prefs_service.dart';
 import '../../../core/services/locale_controller.dart';
 import '../../../l10n/l10n.dart';
@@ -26,6 +27,7 @@ import 'shell_cubit.dart';
 import 'widgets/change_password_dialog.dart';
 import 'widgets/command_palette.dart';
 import 'widgets/live_bar.dart';
+import 'widgets/remote_dialog.dart';
 import 'widgets/quick_verse_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
 
@@ -69,11 +71,19 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     Modular.get<ProjectionOutbox>(),
   )..start();
 
+  /// Phones on this network, when the operator has allowed them. Lives as
+  /// long as the presenter, like the recorder.
+  late final RemoteControl _remote = RemoteControl(
+    context.read<ControlCubit>(),
+    Modular.get<AppPrefsService>(),
+  );
+
   /// Quitting the app with a song still on the screen must still record that
   /// song, and dispose() is not guaranteed to run on the way out.
   late final AppLifecycleListener _lifecycle = AppLifecycleListener(
     onExitRequested: () async {
       await _recorder.stop();
+      await _remote.dispose();
       return AppExitResponse.exit;
     },
   );
@@ -84,11 +94,13 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     // Touching both starts them.
     _recorder;
     _lifecycle;
+    unawaited(_remote.restore());
   }
 
   @override
   void dispose() {
     unawaited(_recorder.stop());
+    unawaited(_remote.dispose());
     _lifecycle.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -209,7 +221,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 
                   return Row(
                     children: [
-                      _Sidebar(current: shell.section),
+                      _Sidebar(current: shell.section, remote: _remote),
                       const VerticalDivider(width: 1, color: AppColors.divider),
                       Expanded(child: _body(context, shell.section)),
                       if (showDock)
@@ -263,9 +275,10 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.current});
+  const _Sidebar({required this.current, required this.remote});
 
   final ShellSection current;
+  final RemoteControl remote;
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +314,17 @@ class _Sidebar extends StatelessWidget {
             onTap: () => shell.goTo(ShellSection.history),
           ),
           const Spacer(),
+          // Lit while phones are allowed in, so a remote left on is never
+          // forgotten.
+          ValueListenableBuilder<RemoteStatus>(
+            valueListenable: remote.status,
+            builder: (context, status, _) => _SideButton(
+              icon: Icons.phonelink_ring_outlined,
+              label: L10n.of(context).sideRemote,
+              active: status.enabled,
+              onTap: () => showRemoteDialog(context, remote),
+            ),
+          ),
           _SideButton(
             icon: Icons.keyboard_outlined,
             label: 'Atajos de teclado',
