@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/locale_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
+import '../../../../core/widgets/ui/flag.dart';
 import '../../../../core/widgets/ui/hover_builder.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -34,7 +35,7 @@ class LanguagePage extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpace.xl),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: const BoxConstraints(maxWidth: 560),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -54,18 +55,18 @@ class LanguagePage extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: AppSpace.xl),
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: AppSpace.lg,
+                  runSpacing: AppSpace.lg,
                   children: [
-                    for (final (index, (locale, strings)) in languages.indexed) ...[
-                      if (index > 0) const SizedBox(width: AppSpace.md),
-                      Expanded(
-                        child: _LanguageCard(
-                          name: strings.languageName,
-                          caption: strings.languagePickCaption,
-                          onTap: () => _choose(locale),
-                        ),
+                    for (final (locale, strings) in languages)
+                      _LanguageCard(
+                        flag: Flag.forLanguage(locale.languageCode),
+                        name: strings.languageName,
+                        caption: strings.languagePickCaption,
+                        onTap: () => _choose(locale),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: AppSpace.xl),
@@ -89,8 +90,14 @@ class LanguagePage extends StatelessWidget {
 }
 
 class _LanguageCard extends StatelessWidget {
-  const _LanguageCard({required this.name, required this.caption, required this.onTap});
+  const _LanguageCard({
+    required this.flag,
+    required this.name,
+    required this.caption,
+    required this.onTap,
+  });
 
+  final String flag;
   final String name;
   final String caption;
   final VoidCallback onTap;
@@ -99,21 +106,36 @@ class _LanguageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return HoverBuilder(
       cursor: SystemMouseCursors.click,
-      builder: (context, hovering) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.all(AppRadius.lg),
+      builder: (context, hovering) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedScale(
+          scale: hovering ? 1.03 : 1,
+          duration: AppMotion.normal,
+          curve: Curves.easeOut,
           child: AnimatedContainer(
-            duration: AppMotion.fast,
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.xl, horizontal: AppSpace.lg),
+            duration: AppMotion.normal,
+            width: 220,
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxl, AppSpace.lg, AppSpace.xl),
             decoration: BoxDecoration(
               color: hovering ? AppColors.surfaceRaised : AppColors.surface,
-              borderRadius: AppRadius.all(AppRadius.lg),
-              border: Border.all(color: hovering ? AppColors.accent : AppColors.border),
+              borderRadius: AppRadius.all(AppRadius.xl),
+              border: Border.all(
+                color: hovering ? AppColors.accent : AppColors.border,
+                width: hovering ? 1.5 : 1,
+              ),
+              boxShadow: [
+                if (hovering)
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.18),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+              ],
             ),
             child: Column(
               children: [
+                Flag(country: flag, width: 96, radius: 8),
+                const SizedBox(height: AppSpace.xl),
                 Text(
                   name,
                   style: const TextStyle(
@@ -126,7 +148,7 @@ class _LanguageCard extends StatelessWidget {
                 Text(
                   caption,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
                 ),
               ],
             ),

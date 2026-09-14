@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../core/widgets/ui/flag.dart';
 import '../../../../core/widgets/ui/hover_builder.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../auth/utils/navigator.dart';
@@ -147,6 +148,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     // Each language by its own name, so somebody looking for
                     // theirs finds it whatever the app is in now.
                     label: lookupL10n(option).languageName,
+                    flag: Flag.forLanguage(option.languageCode),
                     selected: chosen?.languageCode == option.languageCode,
                     onTap: () => widget.locale.choose(option),
                   ),
@@ -198,9 +200,10 @@ class _Section extends StatelessWidget {
 }
 
 class _Choice extends StatelessWidget {
-  const _Choice({required this.label, required this.selected, required this.onTap});
+  const _Choice({required this.label, required this.selected, required this.onTap, this.flag});
 
   final String label;
+  final String? flag;
   final bool selected;
   final VoidCallback onTap;
 
@@ -223,7 +226,10 @@ class _Choice extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (selected) ...[
+              if (flag != null) ...[
+                Flag(country: flag!, width: 20, radius: 3),
+                const SizedBox(width: AppSpace.sm),
+              ] else if (selected) ...[
                 const Icon(Icons.check_rounded, size: 14, color: AppColors.accentLight),
                 const SizedBox(width: AppSpace.xs),
               ],
