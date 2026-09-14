@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_dimens.dart';
 import '../../utils/color_contrast.dart';
 import '../ui/hover_builder.dart';
+import '../../../l10n/l10n.dart';
 
 /// Picking a colour, including one that is not on the list.
 ///
@@ -126,7 +127,7 @@ class _ColorFieldState extends State<ColorField> {
         Text(widget.label, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: AppSpace.sm - 2),
         if (widget.fromPhoto.isNotEmpty) ...[
-          const _RowLabel('DE LA FOTO'),
+          _RowLabel(L10n.of(context).colorFromPhoto),
           _Swatches(
             colors: widget.fromPhoto,
             value: widget.value,
@@ -136,7 +137,7 @@ class _ColorFieldState extends State<ColorField> {
           const SizedBox(height: AppSpace.sm - 2),
         ],
         if (widget.saved.isNotEmpty) ...[
-          const _RowLabel('DE LA IGLESIA'),
+          _RowLabel(L10n.of(context).colorFromChurch),
           _Swatches(
             colors: widget.saved,
             value: widget.value,
@@ -196,7 +197,7 @@ class _ColorFieldState extends State<ColorField> {
             ),
             if (widget.onSave != null && !widget.saved.contains(widget.value))
               Tooltip(
-                message: 'Guardar en los colores de la iglesia',
+                message: L10n.of(context).colorSaveToChurch,
                 child: GestureDetector(
                   onTap: () => widget.onSave!(widget.value),
                   child: MouseRegion(
@@ -363,7 +364,7 @@ class _SavedSwatch extends StatelessWidget {
                 child: GestureDetector(
                   onTap: onForget,
                   child: Tooltip(
-                    message: 'Quitar de los colores de la iglesia',
+                    message: L10n.of(context).colorRemoveFromChurch,
                     child: Container(
                       width: 14,
                       height: 14,
@@ -401,7 +402,7 @@ class _ContrastNote extends StatelessWidget {
     };
 
     return Tooltip(
-      message: 'Contraste ${ratio.toStringAsFixed(1)} a 1 contra el fondo',
+      message: L10n.of(context).colorContrast(ratio.toStringAsFixed(1)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -415,7 +416,7 @@ class _ContrastNote extends StatelessWidget {
           const SizedBox(width: 3),
           Flexible(
             child: Text(
-              verdict.label,
+              verdict.labelIn(L10n.of(context)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: tone, fontSize: 10, fontWeight: FontWeight.w600),

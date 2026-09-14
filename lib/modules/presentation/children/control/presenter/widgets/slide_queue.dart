@@ -18,16 +18,16 @@ class _SlideQueue extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PanelHeader(
-            title: item?.displayTitle ?? 'Slides',
+            title: item?.titleIn(L10n.of(context)) ?? L10n.of(context).slidesHeader,
             leading: item == null ? null : _TypeChip(item.type),
           ),
           Expanded(
             child: item == null
-                ? const EmptyState(
+                ? EmptyState(
                     compact: true,
                     icon: Icons.list_alt_rounded,
-                    title: 'Sin elemento activo',
-                    message: 'Elige uno del set list.',
+                    title: L10n.of(context).noActiveItem,
+                    message: L10n.of(context).pickFromSetList,
                   )
                 : _SlideList(model: model, item: item),
           ),
@@ -70,7 +70,7 @@ class _TypeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: type.label,
+      message: type.labelIn(L10n.of(context)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
         decoration: BoxDecoration(
@@ -132,11 +132,15 @@ class _SlideListState extends State<_SlideList> {
     final slides = item.slides;
 
     if (slides.isEmpty) {
-      return const EmptyState(compact: true, icon: Icons.hide_image_outlined, title: 'Sin slides');
+      return EmptyState(
+        compact: true,
+        icon: Icons.hide_image_outlined,
+        title: L10n.of(context).noSlides,
+      );
     }
 
     final refs = item.slideReferences;
-    final labels = item.slideLabels;
+    final labels = item.slideLabelsIn(L10n.of(context));
 
     return ListView.builder(
       controller: _controller,
@@ -234,7 +238,7 @@ class _SlideTile extends StatelessWidget {
                 _Badge(text: label, isActive: isActive, outlined: false),
                 const SizedBox(height: AppSpace.xs),
               ],
-              _content(),
+              _content(L10n.of(context)),
               if (ref.isNotEmpty) ...[
                 const SizedBox(height: AppSpace.xs),
                 _Badge(text: ref, isActive: isActive, outlined: true),
@@ -246,12 +250,12 @@ class _SlideTile extends StatelessWidget {
     );
   }
 
-  Widget _content() {
+  Widget _content(L10n t) {
     switch (item.type) {
       case CollectionItemType.videoSlide:
-        return _IconLine(icon: Icons.videocam_outlined, text: item.displayTitle);
+        return _IconLine(icon: Icons.videocam_outlined, text: item.titleIn(t));
       case CollectionItemType.imageSlide:
-        return _IconLine(icon: Icons.image_outlined, text: 'Slide ${index + 1}');
+        return _IconLine(icon: Icons.image_outlined, text: t.slideNumber(index + 1));
       default:
         return Text(
           slide,

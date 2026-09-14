@@ -73,8 +73,8 @@ class TemplatePickerCubit extends Cubit<TemplatePickerState> {
     }
   }
 
-  Future<void> duplicate(SlideTemplate source) async {
-    final copy = source.copyWith(id: '', name: '${source.name} (copia)');
+  Future<void> duplicate(SlideTemplate source, {String? name}) async {
+    final copy = source.copyWith(id: '', name: name ?? '${source.name} (copia)');
     final saved = await _repo.saveTemplate(copy);
     if (state is TemplatePickerLoadedState) {
       final s = state as TemplatePickerLoadedState;

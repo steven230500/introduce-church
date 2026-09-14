@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/widgets/template_picker/color_field.dart';
 
+import '../helpers/builders.dart';
+
 void main() {
   Future<void> pump(
     WidgetTester tester, {
@@ -14,20 +16,18 @@ void main() {
     ValueChanged<int>? onForget,
   }) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 420,
-            child: ColorField(
-              label: 'Color texto',
-              value: value,
-              against: against,
-              saved: saved,
-              fromPhoto: fromPhoto,
-              onSave: onSave,
-              onForget: onForget,
-              onChanged: onChanged,
-            ),
+      localizedApp(
+        SizedBox(
+          width: 420,
+          child: ColorField(
+            label: 'Color texto',
+            value: value,
+            against: against,
+            saved: saved,
+            fromPhoto: fromPhoto,
+            onSave: onSave,
+            onForget: onForget,
+            onChanged: onChanged,
           ),
         ),
       ),

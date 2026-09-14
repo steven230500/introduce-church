@@ -14,6 +14,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../../core/models/collection.dart';
 import '../../../../../core/models/collection_item_type.dart';
+import '../../../../../core/models/labels.dart';
 import '../../../../../core/models/slide_template.dart';
 import '../../../../../core/repositories/template_repository.dart';
 import '../../../../../core/services/pptx_import_service.dart';

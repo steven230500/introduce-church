@@ -458,5 +458,399 @@
   "remoteFailed": "The remote couldn't start: its port is taken by another program.",
   "remoteSameWifi": "The phone must be on the same Wi-Fi as this computer. If the church network isolates devices, use the phone's hotspot.",
   "remoteFirewall": "The first time, macOS asks whether to accept incoming connections: choose Allow.",
-  "remoteRenewNote": "Changing the PIN disconnects every paired phone."
+  "remoteRenewNote": "Changing the PIN disconnects every paired phone.",
+  "edit": "Edit",
+  "moreActions": "More actions",
+  "back": "Back",
+  "confirmDeleteNamed": "Delete \"{name}\"? This cannot be undone.",
+  "@confirmDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDeleteDesign": "Delete \"{name}\"?",
+  "@confirmDeleteDesign": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addedToSetList": "{label} added to the running order",
+  "@addedToSetList": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "sampleVerse": "\"For God so loved the world\"",
+  "sampleVerseLong": "\"For God so loved the world,\nthat he gave his only begotten Son\"",
+  "sampleVerseRef": "John 3:16",
+  "songsSearchHint": "Search songs...",
+  "songsNew": "New song",
+  "songsEmptyTitle": "No songs yet",
+  "songsNoMatch": "Nothing matches",
+  "songsEmptyMessage": "Add the first one to start building a service.",
+  "songsVerseCount": "{count, plural, =1{1 verse} other{{count} verses}}",
+  "@songsVerseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "songsDeleteTitle": "Delete song",
+  "bibleNoVersionsTitle": "No versions",
+  "bibleNoVersionsMessage": "Download a version to use the Bible.",
+  "bibleVersions": "Versions",
+  "bibleBooks": "Books",
+  "bibleManageVersions": "Manage versions",
+  "bibleSearchBook": "Search books...",
+  "bibleNoBookMatches": "No book matches",
+  "bibleTapVerse": "Tap a verse. Tap another to choose a passage.",
+  "bibleAddPassage": "{count, plural, =1{Add verse} other{Add passage ({count} verses)}}",
+  "@bibleAddPassage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mediaDeleteTitle": "Delete file",
+  "mediaFilterAll": "All",
+  "mediaFilterImages": "Images",
+  "mediaFilterVideos": "Videos",
+  "mediaUploadFiles": "Upload files",
+  "mediaEmptyTitle": "No files",
+  "mediaEmptyMessage": "Upload images or videos to use them in a service.",
+  "mediaUpload": "Upload",
+  "mediaDeleteFromLibrary": "Delete from the library",
+  "designsSectionCollection": "Design for this service",
+  "designsNew": "New design",
+  "designsDeleteTitle": "Delete design",
+  "designsApplyToCollection": "Use for this service",
+  "designsInUse": "IN USE",
+  "itemTypeSong": "Song",
+  "itemTypeVerse": "Verse",
+  "itemTypeSermon": "Sermon",
+  "itemTypeFreeSlide": "Text slide",
+  "itemTypePresentation": "Presentation",
+  "itemTypeVideo": "Video",
+  "itemTypeAnnouncement": "Announcement",
+  "verseTypeVerse": "Verse",
+  "verseTypeChorus": "Chorus",
+  "verseTypeBridge": "Bridge",
+  "verseTypePreChorus": "Pre-chorus",
+  "verseTypeTag": "Tag",
+  "verseTypeIntro": "Intro",
+  "verseTypeOutro": "Outro",
+  "sermonPointCount": "{count, plural, =1{1 point} other{{count} points}}",
+  "@sermonPointCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "announcementWithCountdown": "With a countdown",
+  "sermonTitleSlide": "Title",
+  "sermonPoint": "Point {number}",
+  "@sermonPoint": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "slideCount": "{count, plural, =1{1 slide} other{{count} slides}}",
+  "@slideCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "repeatOf": "{seen} of {total}",
+  "@repeatOf": {
+    "placeholders": {
+      "seen": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "slideOf": "{current} of {total}",
+  "@slideOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "liveBadge": "● LIVE",
+  "upNext": "UP NEXT",
+  "endOfSetList": "End of the running order",
+  "slidesHeader": "Slides",
+  "noActiveItem": "No item selected",
+  "pickFromSetList": "Pick one from the running order.",
+  "resizeHint": "Drag to change the width. Double-click to go back to the original.",
+  "nothingOnScreen": "Nothing on screen",
+  "collectionExplainer": "A service is the plan for a gathering: the songs, readings and media in the order they go.",
+  "openCollectionToStart": "Open a service to begin.",
+  "seeAll": "See all",
+  "addItem": "Add item",
+  "addFromLibrary": "From the library",
+  "addQuickVerse": "Quick verse",
+  "addSearchBible": "Search the Bible",
+  "addImageOrVideo": "Image or video",
+  "addCreate": "Create",
+  "addTextSlide": "Text slide",
+  "addImportFile": "Import a file",
+  "addPptxText": "text",
+  "addPptxImages": "images",
+  "addWholeFolder": "Whole folder",
+  "add": "Add",
+  "sermonNew": "New sermon",
+  "sermonTitleHint": "Sermon title",
+  "sermonPoints": "POINTS",
+  "sermonRemovePoint": "Remove point",
+  "sermonAddFirstPoint": "Add the first point",
+  "announcementTitle": "Announcement slide",
+  "announcementHint": "Welcome to church...",
+  "announcementMessage": "Message",
+  "announcementShowCountdown": "Show a countdown",
+  "announcementPickTime": "Choose the start time",
+  "freeSlideTitle": "Text slide",
+  "freeSlideTitleHint": "Title (optional)",
+  "freeSlideContentHint": "What the slide says...",
+  "freeSlideNote": "It will use the service's current design",
+  "importPickPptx": "Choose a .pptx file",
+  "importPptxNoText": "No text was found in the file",
+  "importPptxDone": "{count, plural, =1{1 slide imported} other{{count} slides imported}}",
+  "@importPptxDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxImagesDone": "{count, plural, =1{1 slide imported as an image} other{{count} slides imported as images}}",
+  "@importPptxImagesDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxConverting": "Importing PPTX",
+  "importPptxConvertingBody": "Turning the PPTX into images...",
+  "importPptxImagesFailed": "Error: LibreOffice not found, or the PPTX is empty",
+  "errorWith": "Error: {error}",
+  "@errorWith": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importPptxTitle": "Import PPTX",
+  "importPptxAction": "{count, plural, =1{Import 1 slide} other{Import {count} slides}}",
+  "@importPptxAction": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxFound": "{count, plural, =1{1 slide found.} other{{count} slides found.}}",
+  "@importPptxFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxDesign": "Design for the imported slides",
+  "importPptxUseCollectionDesign": "Use the service's design",
+  "videoAdded": "Video added",
+  "folderNothingFound": "No images or videos in that folder",
+  "folderImages": "{count, plural, =1{1 image} other{{count} images}}",
+  "@folderImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "folderVideos": "{count, plural, =1{1 video} other{{count} videos}}",
+  "@folderVideos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "folderImported": "Imported: {parts}",
+  "@folderImported": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "folderImportTitle": "Import folder",
+  "import": "Import",
+  "folderAsPresentation": "as one presentation",
+  "folderSeparateItems": "{count, plural, =1{1 item} other{{count} separate items}}",
+  "@folderSeparateItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "designPickerTitle": "Choose a design",
+  "apply": "Apply",
+  "designSampleText": "Sample text",
+  "designMineSuffix": "{name} (mine)",
+  "@designMineSuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designCopySuffix": "{name} (copy)",
+  "@designCopySuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designUntitled": "My design",
+  "designDiscardTitle": "Discard this design?",
+  "designKeepEditing": "Keep editing",
+  "designDiscard": "Discard",
+  "designDiscardBody": "The changes to this design will be lost.",
+  "designBackground": "Background",
+  "designColorStart": "Start colour",
+  "designColor": "Colour",
+  "designColorEnd": "End colour",
+  "designAngle": "Angle",
+  "designEdit": "Edit design",
+  "designSampleHint": "Sample text",
+  "designReference": "Reference",
+  "designName": "Name",
+  "designProperties": "Properties",
+  "designSelectLayer": "Select a layer",
+  "designText": "Text",
+  "designSize": "Size",
+  "designLineHeight": "Line spacing",
+  "designTextColor": "Text colour",
+  "designShadow": "Shadow",
+  "designMargins": "Margins",
+  "designHorizontal": "Horizontal",
+  "designVertical": "Vertical",
+  "designShow": "Show",
+  "designRefSize": "Reference size",
+  "designRefColor": "Reference colour",
+  "designTransition": "Transition",
+  "designDurationMs": "Length (ms)",
+  "designUndo": "Undo  ⌘Z",
+  "designRedo": "Redo  ⇧⌘Z",
+  "designModeSimple": "Simple",
+  "designModeLayers": "Layers",
+  "designTryWith": "Try with:",
+  "designSampleShort": "Short",
+  "designSampleNormal": "Normal",
+  "designSampleLong": "Long",
+  "designSampleShortText": "Hallelujah",
+  "designSampleLongText": "\"The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.\"",
+  "designSampleLongRef": "Psalm 23:1-3",
+  "designWeight": "Weight",
+  "designWeightLight": "Light",
+  "designWeightRegular": "Regular",
+  "designWeightSemibold": "Semibold",
+  "designWeightBold": "Bold",
+  "designAlignment": "Alignment",
+  "designPosition": "Position",
+  "designRefBottomLeft": "Bottom left",
+  "designRefBottomCenter": "Bottom centre",
+  "designRefBottomRight": "Bottom right",
+  "designRefPosition": "Reference position",
+  "designLayers": "Layers",
+  "designAddText": "Add text",
+  "designAddReference": "Add reference",
+  "designNoLayers": "No layers yet — add one.",
+  "designFont": "Font",
+  "designFontSystem": "System",
+  "designSafeArea": "SAFE AREA",
+  "designTextPlaceholder": "Text...",
+  "designReferencePlaceholder": "Reference...",
+  "designTransitionCut": "Straight cut",
+  "designTransitionFade": "Fade",
+  "designTransitionSlideLeft": "Slide →",
+  "designTransitionSlideRight": "Slide ←",
+  "designTransitionZoom": "Zoom in",
+  "designTransitionType": "Type",
+  "colorFromPhoto": "FROM THE PHOTO",
+  "colorFromChurch": "THE CHURCH'S",
+  "colorSaveToChurch": "Save to the church's colours",
+  "colorRemoveFromChurch": "Remove from the church's colours",
+  "colorContrast": "Contrast {ratio} to 1 against the background",
+  "@colorContrast": {
+    "placeholders": {
+      "ratio": {
+        "type": "String"
+      }
+    }
+  },
+  "contrastGood": "Easy to read",
+  "contrastTight": "Borderline",
+  "contrastPoor": "Won't be readable",
+  "printChords": "Chords: {chords}",
+  "@printChords": {
+    "placeholders": {
+      "chords": {
+        "type": "String"
+      }
+    }
+  },
+  "printTotal": "{count, plural, =1{Total: 1 item} other{Total: {count} items}}",
+  "@printTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "printExported": "Exported: {file}",
+  "@printExported": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "printExportFailed": "Couldn't export: {error}",
+  "@printExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "presetDarkClassic": "Classic dark",
+  "presetBlueNight": "Night blue",
+  "presetLowerThird": "Lower third",
+  "presetLight": "Light"
 }

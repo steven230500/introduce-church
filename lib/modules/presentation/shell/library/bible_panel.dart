@@ -13,6 +13,7 @@ import '../../../../core/widgets/ui/empty_state.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../bible_versions_dialog.dart';
 import 'library_dock.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Bible library: book, then chapter, then verse, with the add action pinned
 /// to the bottom so the selection and the button are never far apart.
@@ -44,9 +45,9 @@ class _BiblePanelView extends StatelessWidget {
                 return EmptyState(
                   compact: true,
                   icon: Icons.menu_book_outlined,
-                  title: 'Sin versiones',
-                  message: 'Descarga una versión para usar la Biblia.',
-                  actionLabel: 'Versiones',
+                  title: L10n.of(context).bibleNoVersionsTitle,
+                  message: L10n.of(context).bibleNoVersionsMessage,
+                  actionLabel: L10n.of(context).bibleVersions,
                   onAction: () => showBibleVersionsDialog(context),
                 );
               }
@@ -90,7 +91,7 @@ class _BibleToolbar extends StatelessWidget {
                   if (state.view != BibleBrowserView.books)
                     AppIconButton(
                       icon: Icons.arrow_back_rounded,
-                      tooltip: 'Atrás',
+                      tooltip: L10n.of(context).back,
                       size: 26,
                       iconSize: 15,
                       onTap: cubit.goBack,
@@ -100,7 +101,7 @@ class _BibleToolbar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                       child: Text(
                         switch (state.view) {
-                          BibleBrowserView.books => 'Libros',
+                          BibleBrowserView.books => L10n.of(context).bibleBooks,
                           BibleBrowserView.chapters => state.selectedBook?.displayName ?? '',
                           BibleBrowserView.verses =>
                             '${state.selectedBook?.displayName ?? ''} ${state.selectedChapter ?? ''}',
@@ -113,7 +114,7 @@ class _BibleToolbar extends StatelessWidget {
                   if (state.versions.isNotEmpty) _VersionPicker(state: state),
                   AppIconButton(
                     icon: Icons.cloud_download_outlined,
-                    tooltip: 'Administrar versiones',
+                    tooltip: L10n.of(context).bibleManageVersions,
                     size: 26,
                     iconSize: 15,
                     onTap: () => showBibleVersionsDialog(context),
@@ -124,7 +125,7 @@ class _BibleToolbar extends StatelessWidget {
                 const SizedBox(height: AppSpace.sm),
                 AppSearchField(
                   dense: true,
-                  hintText: 'Buscar libro...',
+                  hintText: L10n.of(context).bibleSearchBook,
                   debounce: const Duration(milliseconds: 120),
                   onChanged: cubit.filterBooks,
                 ),
@@ -184,10 +185,10 @@ class _BooksList extends StatelessWidget {
       buildWhen: (a, b) => a.filteredBooks != b.filteredBooks,
       builder: (context, state) {
         if (state.filteredBooks.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             compact: true,
             icon: Icons.search_off_rounded,
-            title: 'Ningún libro coincide',
+            title: L10n.of(context).bibleNoBookMatches,
           );
         }
         return ListView.builder(
@@ -357,10 +358,10 @@ class _BibleAddBar extends StatelessWidget {
           a.selectedVerseEnd != b.selectedVerseEnd,
       builder: (context, state) {
         if (!state.canConfirm) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.all(AppSpace.md),
             child: Text(
-              'Toca un versículo. Toca otro para elegir un pasaje.',
+              L10n.of(context).bibleTapVerse,
               style: AppText.rowSubtitle,
               textAlign: TextAlign.center,
             ),
@@ -416,7 +417,7 @@ class _AddPassageButton extends StatelessWidget {
                 },
           icon: const Icon(Icons.playlist_add_rounded, size: 16),
           label: Text(
-            count > 1 ? 'Agregar pasaje ($count versículos)' : 'Agregar versículo',
+            L10n.of(context).bibleAddPassage(count),
             style: const TextStyle(fontSize: 12),
           ),
         );

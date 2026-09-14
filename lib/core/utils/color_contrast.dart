@@ -2,6 +2,7 @@
 library;
 
 import 'dart:ui';
+import '../../l10n/l10n.dart';
 
 /// Reads a colour someone typed.
 ///
@@ -44,10 +45,10 @@ double contrastRatio(int a, int b) {
 enum ContrastVerdict { good, tight, poor }
 
 extension ContrastVerdictX on ContrastVerdict {
-  String get label => switch (this) {
-    ContrastVerdict.good => 'Se lee bien',
-    ContrastVerdict.tight => 'Justo',
-    ContrastVerdict.poor => 'No se va a leer',
+  String labelIn(L10n t) => switch (this) {
+    ContrastVerdict.good => t.contrastGood,
+    ContrastVerdict.tight => t.contrastTight,
+    ContrastVerdict.poor => t.contrastPoor,
   };
 }
 

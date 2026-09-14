@@ -280,7 +280,7 @@ class AddToSetListButton extends StatelessWidget {
 void showAddedToast(BuildContext context, String label) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text('$label agregado al set list'),
+      content: Text(L10n.of(context).addedToSetList(label)),
       duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
       width: 360,

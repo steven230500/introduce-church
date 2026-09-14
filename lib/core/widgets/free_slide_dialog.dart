@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
+import '../../l10n/l10n.dart';
 
 class FreeSlideResult {
   const FreeSlideResult({required this.text, this.title});
@@ -47,15 +48,15 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Slide libre',
+      title: L10n.of(context).freeSlideTitle,
       icon: Icons.text_fields_rounded,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
         const SizedBox(width: 8),
         FilledButton(
           onPressed: _canSubmit ? _submit : null,
           style: FilledButton.styleFrom(disabledBackgroundColor: kDialogBorder),
-          child: const Text('Agregar'),
+          child: Text(L10n.of(context).add),
         ),
       ],
       child: Column(
@@ -64,7 +65,7 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
         children: [
           AppTextField(
             controller: _titleCtrl,
-            hintText: 'Título (opcional)',
+            hintText: L10n.of(context).freeSlideTitleHint,
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => _textFocus.requestFocus(),
           ),
@@ -72,16 +73,13 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
           AppTextField(
             controller: _textCtrl,
             focusNode: _textFocus,
-            hintText: 'Contenido del slide...',
+            hintText: L10n.of(context).freeSlideContentHint,
             maxLines: 5,
             autofocus: true,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Se proyectará con el template activo de la colección',
-            style: TextStyle(color: kTextMuted, fontSize: 11),
-          ),
+          Text(L10n.of(context).freeSlideNote, style: TextStyle(color: kTextMuted, fontSize: 11)),
         ],
       ),
     );

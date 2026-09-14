@@ -11,6 +11,7 @@ import '../../../../core/repositories/media_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/utils/fuzzy_match.dart';
+import '../../../../core/models/labels.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../songs/children/songs_list/repository/repository.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
@@ -175,13 +176,13 @@ class _CommandPaletteState extends State<CommandPalette> {
 
     final designs = [...SlideTemplate.presets, ...?model?.userTemplates];
     results.addAll(
-      rankByMatch(query, designs, (design) => design.name)
+      rankByMatch(query, designs, (design) => design.nameIn(t))
           .take(5)
           .map(
             (design) => PaletteResult(
               kind: ResultKind.design,
               icon: Icons.palette_outlined,
-              title: design.name,
+              title: design.nameIn(t),
               subtitle: t.searchApplyDesign,
               enabled: _hasService,
               run: (_) => control.setCollectionTemplate(model!.activeCollection!.id, design.id),

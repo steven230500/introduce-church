@@ -14,6 +14,7 @@ import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../../../core/widgets/ui/empty_state.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import 'library_dock.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Image and video library, backed by the organization's storage bucket.
 class MediaPanel extends StatefulWidget {
@@ -85,9 +86,9 @@ class _MediaPanelState extends State<MediaPanel> {
   Future<void> _delete(MediaItem item) async {
     final ok = await showAppConfirmDialog(
       context,
-      title: 'Eliminar archivo',
-      message: '¿Eliminar "${item.name}"? No se puede deshacer.',
-      confirmLabel: 'Eliminar',
+      title: L10n.of(context).mediaDeleteTitle,
+      message: L10n.of(context).confirmDeleteNamed(item.name),
+      confirmLabel: L10n.of(context).delete,
       destructive: true,
       icon: Icons.delete_outline,
     );
@@ -124,19 +125,19 @@ class _MediaPanelState extends State<MediaPanel> {
                 child: Row(
                   children: [
                     _Filter(
-                      label: 'Todo',
+                      label: L10n.of(context).mediaFilterAll,
                       active: _filter == null,
                       onTap: () => setState(() => _filter = null),
                     ),
                     const SizedBox(width: AppSpace.xs),
                     _Filter(
-                      label: 'Imágenes',
+                      label: L10n.of(context).mediaFilterImages,
                       active: _filter == MediaType.image,
                       onTap: () => setState(() => _filter = MediaType.image),
                     ),
                     const SizedBox(width: AppSpace.xs),
                     _Filter(
-                      label: 'Videos',
+                      label: L10n.of(context).mediaFilterVideos,
                       active: _filter == MediaType.video,
                       onTap: () => setState(() => _filter = MediaType.video),
                     ),
@@ -152,7 +153,7 @@ class _MediaPanelState extends State<MediaPanel> {
               else
                 AppIconButton(
                   icon: Icons.upload_rounded,
-                  tooltip: 'Subir archivos',
+                  tooltip: L10n.of(context).mediaUploadFiles,
                   size: 28,
                   iconSize: 16,
                   onTap: _upload,
@@ -185,9 +186,9 @@ class _MediaPanelState extends State<MediaPanel> {
           ? EmptyState(
               compact: true,
               icon: Icons.perm_media_outlined,
-              title: 'Sin archivos',
-              message: 'Sube imágenes o videos para usarlos en un servicio.',
-              actionLabel: 'Subir',
+              title: L10n.of(context).mediaEmptyTitle,
+              message: L10n.of(context).mediaEmptyMessage,
+              actionLabel: L10n.of(context).mediaUpload,
               onAction: _upload,
             )
           : GridView.builder(
@@ -326,7 +327,7 @@ class _MediaTileState extends State<_MediaTile> {
                     top: AppSpace.xs,
                     right: AppSpace.xs,
                     child: Tooltip(
-                      message: 'Eliminar de la biblioteca',
+                      message: L10n.of(context).mediaDeleteFromLibrary,
                       child: GestureDetector(
                         onTap: widget.onDelete,
                         child: Container(

@@ -185,7 +185,7 @@ class _SetListTile extends StatelessWidget {
                         const SizedBox(width: AppSpace.xs + 1),
                         Expanded(
                           child: Text(
-                            item.displayTitle,
+                            item.titleIn(L10n.of(context)),
                             style: TextStyle(
                               color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
                               fontSize: 13,
@@ -202,7 +202,7 @@ class _SetListTile extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(left: 16),
                       child: Text(
-                        _subtitle(model, item),
+                        _subtitle(L10n.of(context), model, item),
                         style: AppText.rowSubtitle,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -224,12 +224,12 @@ class _SetListTile extends StatelessWidget {
   /// The slide count used to be a bare number wedged between the title and the
   /// kebab, where it read as part of the title and ate the width that made
   /// titles fit in the first place.
-  static String _subtitle(ControlModel model, CollectionItem item) {
+  static String _subtitle(L10n t, ControlModel model, CollectionItem item) {
     final count = item.slides.length;
     final parts = [
-      ?_repeat(model, item),
-      if (item.displaySubtitle.isNotEmpty) item.displaySubtitle,
-      '$count slide${count == 1 ? '' : 's'}',
+      ?_repeat(t, model, item),
+      if (item.subtitleIn(t).isNotEmpty) item.subtitleIn(t),
+      t.slideCount(count),
     ];
     return parts.join('  ·  ');
   }
@@ -239,7 +239,7 @@ class _SetListTile extends StatelessWidget {
   /// A song that comes back as a reprise is normal, and three rows all reading
   /// "NADA ES IMPOSIBLE" tell the operator nothing about which one they are
   /// looking at. Numbering the repeats beats pretending they are distinct.
-  static String? _repeat(ControlModel model, CollectionItem item) {
+  static String? _repeat(L10n t, ControlModel model, CollectionItem item) {
     final items = model.activeCollection?.items ?? const <CollectionItem>[];
     final total = items.where((i) => i.displayTitle == item.displayTitle).length;
     if (total < 2) return null;
@@ -249,7 +249,7 @@ class _SetListTile extends StatelessWidget {
       if (other.displayTitle == item.displayTitle) seen++;
       if (other.id == item.id) break;
     }
-    return '$seenª de $total';
+    return t.repeatOf(seen, total);
   }
 
   static IconData _typeIcon(CollectionItemType type) => switch (type) {
@@ -323,7 +323,9 @@ class _TileFlags extends StatelessWidget {
       if (item.templateId != null)
         _Flag(
           icon: Icons.palette_outlined,
-          label: model.findTemplate(item.templateId!)?.name ?? 'Diseño',
+          label:
+              model.findTemplate(item.templateId!)?.nameIn(L10n.of(context)) ??
+              L10n.of(context).design,
           color: AppColors.accent,
         ),
       if (item.autoAdvanceSecs != null)

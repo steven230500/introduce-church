@@ -1,7 +1,5 @@
 part of '../page.dart';
 
-const _resizeHint = 'Arrastra para cambiar el ancho. Doble clic para volver al original.';
-
 /// Three columns: the plan, the output, and what comes next.
 class _Body extends StatelessWidget {
   const _Body();
@@ -32,13 +30,13 @@ class _Body extends StatelessWidget {
               children: [
                 _SetListPanel(model: model, width: shell.widthOf(ShellPanel.setList)),
                 PanelResizer(
-                  tooltip: _resizeHint,
+                  tooltip: L10n.of(context).resizeHint,
                   onDrag: (dx) => layout.resizePanel(ShellPanel.setList, dx),
                   onReset: () => layout.resetPanel(ShellPanel.setList),
                 ),
                 Expanded(child: _SlidePreview(model: model)),
                 PanelResizer(
-                  tooltip: _resizeHint,
+                  tooltip: L10n.of(context).resizeHint,
                   // This edge is on the panel's left, so dragging left is what
                   // makes it wider.
                   onDrag: (dx) => layout.resizePanel(ShellPanel.queue, -dx),
@@ -92,8 +90,8 @@ class _NoCollection extends StatelessWidget {
             children: [
               const Icon(Icons.slideshow_outlined, size: 44, color: AppColors.textDisabled),
               const SizedBox(height: AppSpace.lg),
-              const Text(
-                'Nada en pantalla',
+              Text(
+                L10n.of(context).nothingOnScreen,
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
@@ -103,9 +101,8 @@ class _NoCollection extends StatelessWidget {
               const SizedBox(height: AppSpace.sm),
               Text(
                 recent.isEmpty
-                    ? 'Una colección es el plan de un servicio: las canciones, '
-                          'los versículos y la media en el orden en que van.'
-                    : 'Abre una colección para empezar.',
+                    ? L10n.of(context).collectionExplainer
+                    : L10n.of(context).openCollectionToStart,
                 textAlign: TextAlign.center,
                 style: AppText.rowSubtitle,
               ),
@@ -120,13 +117,13 @@ class _NoCollection extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () => _create(context),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Nueva colección'),
+                    label: Text(L10n.of(context).newCollection),
                   ),
                   if (model.collections.length > recent.length) ...[
                     const SizedBox(width: AppSpace.sm),
                     FilledButton.tonal(
                       onPressed: () => context.read<ShellCubit>().goTo(ShellSection.collections),
-                      child: const Text('Ver todas'),
+                      child: Text(L10n.of(context).seeAll),
                     ),
                   ],
                 ],
@@ -180,7 +177,7 @@ class _CollectionShortcut extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text('$count elemento${count == 1 ? '' : 's'}', style: AppText.rowSubtitle),
+                Text(L10n.of(context).itemCount(count), style: AppText.rowSubtitle),
                 const SizedBox(width: AppSpace.sm),
                 const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textDisabled),
               ],

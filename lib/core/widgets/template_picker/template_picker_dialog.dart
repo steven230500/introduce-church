@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
+import '../../models/labels.dart';
 import '../../models/slide_layer.dart';
 import '../../models/slide_template.dart';
 import '../../repositories/organization_repository.dart';
@@ -65,14 +66,14 @@ class _TemplatePickerDialog extends StatelessWidget {
                         opacity: const AlwaysStoppedAnimation(0.55),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Seleccionar template',
+                      Text(
+                        L10n.of(context).designPickerTitle,
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
                       TextButton.icon(
                         icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Nuevo template'),
+                        label: Text(L10n.of(context).designsNew),
                         onPressed: () async {
                           final result = await showTemplateEditor(
                             context,
@@ -127,7 +128,10 @@ class _TemplatePickerDialog extends StatelessWidget {
                                     }
                                   : null,
                               onDelete: isCustom ? () => cubit.deleteCustom(t.id) : null,
-                              onDuplicate: () => cubit.duplicate(t),
+                              onDuplicate: () => cubit.duplicate(
+                                t,
+                                name: L10n.of(context).designCopySuffix(t.name),
+                              ),
                             );
                           },
                         ),
@@ -142,14 +146,14 @@ class _TemplatePickerDialog extends StatelessWidget {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
+                        child: Text(L10n.of(context).cancel),
                       ),
                       const SizedBox(width: 8),
                       FilledButton(
                         onPressed: loaded == null
                             ? null
                             : () => Navigator.pop(context, loaded.selectedId),
-                        child: const Text('Aplicar'),
+                        child: Text(L10n.of(context).apply),
                       ),
                     ],
                   ),
@@ -206,8 +210,8 @@ class _TemplateTile extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: SlideView(
-                        content: 'Texto de ejemplo',
-                        reference: 'Juan 3:16',
+                        content: L10n.of(context).designSampleText,
+                        reference: L10n.of(context).sampleVerseRef,
                         template: template,
                       ),
                     ),
@@ -249,7 +253,7 @@ class _TemplateTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            template.name,
+            template.nameIn(L10n.of(context)),
             style: TextStyle(
               fontSize: 11,
               color: isSelected ? AppColors.accent : AppColors.textSecondary,
@@ -322,22 +326,25 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
   /// even when nothing else was touched.
   late String _openedName;
 
+  bool _controllersReady = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllersReady) return;
+    _controllersReady = true;
+    final l = L10n.of(context);
     final t = context.read<TemplateEditorCubit>().state.template;
     // Saving a built-in design creates a copy rather than changing it, so the
     // name is offered already distinct. Four designs called "Oscuro clásico"
     // is what happens when it is not.
     final fromPreset = SlideTemplate.findPreset(t.id) != null;
-    final suggested = fromPreset ? '${t.name} (mío)' : t.name;
+    final suggested = fromPreset ? l.designMineSuffix(t.nameIn(l)) : t.name;
     _openedName = suggested;
     _nameCtrl = TextEditingController(text: suggested)
       ..selection = TextSelection(baseOffset: 0, extentOffset: suggested.length);
-    _sampleCtrl = TextEditingController(
-      text: '"Porque de tal manera amó Dios al mundo,\nque ha dado a su Hijo unigénito"',
-    );
-    _sampleRefCtrl = TextEditingController(text: 'Juan 3:16');
+    _sampleCtrl = TextEditingController(text: l.sampleVerseLong);
+    _sampleRefCtrl = TextEditingController(text: l.sampleVerseRef);
   }
 
   @override
@@ -349,7 +356,10 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
   }
 
   Future<void> _save() async {
-    final saved = await context.read<TemplateEditorCubit>().save(_nameCtrl.text);
+    final name = _nameCtrl.text.trim();
+    final saved = await context.read<TemplateEditorCubit>().save(
+      name.isEmpty ? L10n.of(context).designUntitled : name,
+    );
     if (mounted && saved != null) Navigator.pop(context, saved);
   }
 
@@ -389,21 +399,21 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
     final discard = await showDialog<bool>(
       context: context,
       builder: (dialog) => AppDialog(
-        title: '¿Descartar el diseño?',
+        title: L10n.of(context).designDiscardTitle,
         icon: Icons.warning_amber_rounded,
         width: 380,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Seguir editando'),
+            child: Text(L10n.of(context).designKeepEditing),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Descartar'),
+            child: Text(L10n.of(context).designDiscard),
           ),
         ],
-        child: const Text('Los cambios de este diseño se pierden.', style: AppText.rowSubtitle),
+        child: Text(L10n.of(context).designDiscardBody, style: AppText.rowSubtitle),
       ),
     );
     if (discard == true && mounted) Navigator.pop(context);
@@ -447,7 +457,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
         Widget bgControls() => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionLabel('Fondo'),
+            _SectionLabel(L10n.of(context).designBackground),
             _BgTypeToggle(t, update, onPicture: chooseBackground),
             const SizedBox(height: 10),
             if (_isPicture(t.bgType)) ...[
@@ -465,7 +475,9 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               ),
             ] else ...[
               ColorField(
-                label: t.bgType == BackgroundType.gradient ? 'Color inicio' : 'Color',
+                label: t.bgType == BackgroundType.gradient
+                    ? L10n.of(context).designColorStart
+                    : L10n.of(context).designColor,
                 value: t.bgColor,
                 saved: state.palette,
                 onSave: cubit.saveColor,
@@ -475,7 +487,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               if (t.bgType == BackgroundType.gradient) ...[
                 const SizedBox(height: 8),
                 ColorField(
-                  label: 'Color fin',
+                  label: L10n.of(context).designColorEnd,
                   value: t.bgGradientEnd,
                   saved: state.palette,
                   onSave: cubit.saveColor,
@@ -484,7 +496,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                 ),
                 const SizedBox(height: 8),
                 _SliderRow(
-                  label: 'Ángulo',
+                  label: L10n.of(context).designAngle,
                   value: t.bgGradientAngle,
                   min: 0,
                   max: 360,
@@ -506,7 +518,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               ),
               const SizedBox(width: 10),
               Text(
-                widget.isNew ? 'Nuevo diseño' : 'Editar diseño',
+                widget.isNew ? L10n.of(context).designsNew : L10n.of(context).designEdit,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
@@ -540,7 +552,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: _close, child: const Text('Cancelar')),
+              TextButton(onPressed: _close, child: Text(L10n.of(context).cancel)),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: state.saving ? null : _save,
@@ -550,7 +562,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Guardar'),
+                    : Text(L10n.of(context).save),
               ),
             ],
           ),
@@ -566,7 +578,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                     flex: 3,
                     child: _DarkField(
                       controller: _sampleCtrl,
-                      hint: 'Texto de muestra',
+                      hint: L10n.of(context).designSampleHint,
                       maxLines: 2,
                       onChanged: (_) => setState(() {}),
                     ),
@@ -576,7 +588,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                     flex: 2,
                     child: _DarkField(
                       controller: _sampleRefCtrl,
-                      hint: 'Referencia',
+                      hint: L10n.of(context).designReference,
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -626,8 +638,8 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     children: [
                                       TextField(
                                         controller: _nameCtrl,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Nombre',
+                                        decoration: InputDecoration(
+                                          labelText: L10n.of(context).designName,
                                           border: OutlineInputBorder(),
                                           isDense: true,
                                         ),
@@ -697,8 +709,8 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                 padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
                                 child: Row(
                                   children: [
-                                    const Text(
-                                      'Propiedades',
+                                    Text(
+                                      L10n.of(context).designProperties,
                                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                     ),
                                     const Spacer(),
@@ -713,7 +725,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          state.selectedLayer!.typeName,
+                                          state.selectedLayer!.labelIn(L10n.of(context)),
                                           style: const TextStyle(
                                             fontSize: 10,
                                             color: AppColors.textTertiary,
@@ -726,7 +738,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                               const Divider(height: 1),
                               Expanded(
                                 child: state.selectedLayer == null
-                                    ? const Center(
+                                    ? Center(
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
@@ -737,7 +749,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                             ),
                                             SizedBox(height: 8),
                                             Text(
-                                              'Selecciona una capa',
+                                              L10n.of(context).designSelectLayer,
                                               style: TextStyle(
                                                 color: AppColors.textDisabled,
                                                 fontSize: 12,
@@ -796,8 +808,8 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                   children: [
                                     TextField(
                                       controller: _nameCtrl,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Nombre',
+                                      decoration: InputDecoration(
+                                        labelText: L10n.of(context).designName,
                                         border: OutlineInputBorder(),
                                         isDense: true,
                                       ),
@@ -805,9 +817,9 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     const SizedBox(height: 20),
                                     bgControls(),
                                     const SizedBox(height: 20),
-                                    _SectionLabel('Texto'),
+                                    _SectionLabel(L10n.of(context).designText),
                                     _SliderRow(
-                                      label: 'Tamaño',
+                                      label: L10n.of(context).designSize,
                                       value: t.fontSize,
                                       min: 24,
                                       max: 120,
@@ -815,7 +827,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     ),
                                     const SizedBox(height: 4),
                                     _SliderRow(
-                                      label: 'Interlineado',
+                                      label: L10n.of(context).designLineHeight,
                                       value: t.lineHeight,
                                       min: 1.0,
                                       max: 2.5,
@@ -831,7 +843,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     ),
                                     const SizedBox(height: 8),
                                     ColorField(
-                                      label: 'Color texto',
+                                      label: L10n.of(context).designTextColor,
                                       value: t.textColor,
                                       saved: state.palette,
                                       fromPhoto: state.photoPalette,
@@ -847,7 +859,10 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     const SizedBox(height: 8),
                                     Row(
                                       children: [
-                                        const Text('Sombra', style: TextStyle(fontSize: 12)),
+                                        Text(
+                                          L10n.of(context).designShadow,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
                                         const Spacer(),
                                         Switch(
                                           value: t.textShadow,
@@ -856,26 +871,29 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    _SectionLabel('Márgenes'),
+                                    _SectionLabel(L10n.of(context).designMargins),
                                     _SliderRow(
-                                      label: 'Horizontal',
+                                      label: L10n.of(context).designHorizontal,
                                       value: t.paddingH,
                                       min: 0,
                                       max: 200,
                                       onChanged: (v) => update(t.copyWith(paddingH: v)),
                                     ),
                                     _SliderRow(
-                                      label: 'Vertical',
+                                      label: L10n.of(context).designVertical,
                                       value: t.paddingV,
                                       min: 0,
                                       max: 200,
                                       onChanged: (v) => update(t.copyWith(paddingV: v)),
                                     ),
                                     const SizedBox(height: 20),
-                                    _SectionLabel('Referencia'),
+                                    _SectionLabel(L10n.of(context).designReference),
                                     Row(
                                       children: [
-                                        const Text('Mostrar', style: TextStyle(fontSize: 12)),
+                                        Text(
+                                          L10n.of(context).designShow,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
                                         const Spacer(),
                                         Switch(
                                           value: t.showReference,
@@ -886,7 +904,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     if (t.showReference) ...[
                                       const SizedBox(height: 8),
                                       _SliderRow(
-                                        label: 'Tamaño ref.',
+                                        label: L10n.of(context).designRefSize,
                                         value: t.referenceFontSize,
                                         min: 8,
                                         max: 36,
@@ -894,7 +912,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                       ),
                                       const SizedBox(height: 8),
                                       ColorField(
-                                        label: 'Color ref.',
+                                        label: L10n.of(context).designRefColor,
                                         value: t.referenceColor,
                                         saved: state.palette,
                                         fromPhoto: state.photoPalette,
@@ -907,7 +925,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                       _RefPositionPicker(t, update),
                                     ],
                                     const SizedBox(height: 20),
-                                    _SectionLabel('Transición'),
+                                    _SectionLabel(L10n.of(context).designTransition),
                                     _TransitionPicker(
                                       value: t.transitionType,
                                       onChanged: (v) => update(t.copyWith(transitionType: v)),
@@ -915,7 +933,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                     if (t.transitionType != SlideTransitionType.cut) ...[
                                       const SizedBox(height: 4),
                                       _SliderRow(
-                                        label: 'Duración (ms)',
+                                        label: L10n.of(context).designDurationMs,
                                         value: t.transitionDurationMs.toDouble(),
                                         min: 100,
                                         max: 1000,
@@ -1014,13 +1032,13 @@ class _HistoryButtons extends StatelessWidget {
       IconButton(
         icon: const Icon(Icons.undo_rounded, size: 17),
         visualDensity: VisualDensity.compact,
-        tooltip: 'Deshacer  ⌘Z',
+        tooltip: L10n.of(context).designUndo,
         onPressed: canUndo ? onUndo : null,
       ),
       IconButton(
         icon: const Icon(Icons.redo_rounded, size: 17),
         visualDensity: VisualDensity.compact,
-        tooltip: 'Rehacer  ⇧⌘Z',
+        tooltip: L10n.of(context).designRedo,
         onPressed: canRedo ? onRedo : null,
       ),
     ],
@@ -1047,13 +1065,13 @@ class _ModeToggle extends StatelessWidget {
         children: [
           _ModeButton(
             icon: Icons.tune,
-            label: 'Simple',
+            label: L10n.of(context).designModeSimple,
             active: !inLayers,
             onTap: inLayers ? onSimple : null,
           ),
           _ModeButton(
             icon: Icons.layers_outlined,
-            label: 'Capas',
+            label: L10n.of(context).designModeLayers,
             active: inLayers,
             onTap: inLayers ? null : onLayers,
           ),
@@ -1117,27 +1135,19 @@ class _SampleLengths extends StatelessWidget {
 
   final void Function(String content, String reference) onPick;
 
-  static const _samples = <String, (String, String)>{
-    'Corto': ('Aleluya', 'Coro'),
-    'Normal': (
-      '"Porque de tal manera amó Dios al mundo,\nque ha dado a su Hijo unigénito"',
-      'Juan 3:16',
-    ),
-    'Largo': (
-      '"Jehová es mi pastor; nada me faltará. En lugares de delicados pastos me hará '
-          'descansar; junto a aguas de reposo me pastoreará; confortará mi alma; me '
-          'guiará por sendas de justicia por amor de su nombre."',
-      'Salmos 23:1-3',
-    ),
-  };
-
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    final samples = <String, (String, String)>{
+      l.designSampleShort: (l.designSampleShortText, l.verseTypeChorus),
+      l.designSampleNormal: (l.sampleVerseLong, l.sampleVerseRef),
+      l.designSampleLong: (l.designSampleLongText, l.designSampleLongRef),
+    };
     return Row(
       children: [
-        const Text('Probar con:', style: AppText.rowSubtitle),
+        Text(l.designTryWith, style: AppText.rowSubtitle),
         const SizedBox(width: AppSpace.sm),
-        for (final entry in _samples.entries) ...[
+        for (final entry in samples.entries) ...[
           GestureDetector(
             onTap: () => onPick(entry.value.$1, entry.value.$2),
             child: MouseRegion(
@@ -1161,6 +1171,13 @@ class _SampleLengths extends StatelessWidget {
 }
 
 // ── Editor sub-widgets ────────────────────────────────────────────────────────
+
+String _weightLabel(L10n l, int weight) => switch (weight) {
+  300 => l.designWeightLight,
+  400 => l.designWeightRegular,
+  600 => l.designWeightSemibold,
+  _ => l.designWeightBold,
+};
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
@@ -1408,20 +1425,24 @@ class _FontWeightPicker extends StatelessWidget {
   final SlideTemplate t;
   final void Function(SlideTemplate) onUpdate;
 
-  static const _weights = [(300, 'Fino'), (400, 'Normal'), (600, 'Semi'), (700, 'Bold')];
+  static const _weights = [300, 400, 600, 700];
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('Peso', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designWeight, style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
         Expanded(
           child: DropdownButton<int>(
             value: t.fontWeight,
             isExpanded: true,
             isDense: true,
-            items: _weights.map((w) => DropdownMenuItem(value: w.$1, child: Text(w.$2))).toList(),
+            items: _weights
+                .map(
+                  (w) => DropdownMenuItem(value: w, child: Text(_weightLabel(L10n.of(context), w))),
+                )
+                .toList(),
             onChanged: (v) {
               if (v != null) onUpdate(t.copyWith(fontWeight: v));
             },
@@ -1441,7 +1462,7 @@ class _TextAlignPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('Alineación', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designAlignment, style: const TextStyle(fontSize: 12)),
         const Spacer(),
         _AlignBtn(Icons.format_align_left, TextAlign.left, t, onUpdate),
         _AlignBtn(Icons.format_align_center, TextAlign.center, t, onUpdate),
@@ -1478,7 +1499,7 @@ class _ValignPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('Posición', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designPosition, style: const TextStyle(fontSize: 12)),
         const Spacer(),
         _ValignBtn(Icons.vertical_align_top, TextVerticalAlign.top, t, onUpdate),
         _ValignBtn(Icons.vertical_align_center, TextVerticalAlign.center, t, onUpdate),
@@ -1512,23 +1533,31 @@ class _RefPositionPicker extends StatelessWidget {
   final void Function(SlideTemplate) onUpdate;
 
   static const _opts = [
-    (ReferencePosition.bottomLeft, 'Inf. izq.'),
-    (ReferencePosition.bottomCenter, 'Inf. centro'),
-    (ReferencePosition.bottomRight, 'Inf. der.'),
+    ReferencePosition.bottomLeft,
+    ReferencePosition.bottomCenter,
+    ReferencePosition.bottomRight,
   ];
+
+  static String _label(L10n l, ReferencePosition position) => switch (position) {
+    ReferencePosition.bottomLeft => l.designRefBottomLeft,
+    ReferencePosition.bottomCenter => l.designRefBottomCenter,
+    _ => l.designRefBottomRight,
+  };
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('Posición ref.', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designRefPosition, style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
         Expanded(
           child: DropdownButton<ReferencePosition>(
             value: t.referencePosition,
             isExpanded: true,
             isDense: true,
-            items: _opts.map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2))).toList(),
+            items: _opts
+                .map((o) => DropdownMenuItem(value: o, child: Text(_label(L10n.of(context), o))))
+                .toList(),
             onChanged: (v) {
               if (v != null) onUpdate(t.copyWith(referencePosition: v));
             },
@@ -1605,8 +1634,8 @@ class _LayersListSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Text(
-              'Capas',
+            Text(
+              L10n.of(context).designLayers,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -1616,7 +1645,7 @@ class _LayersListSection extends StatelessWidget {
             ),
             const Spacer(),
             Tooltip(
-              message: 'Agregar texto',
+              message: L10n.of(context).designAddText,
               child: IconButton(
                 icon: const Icon(Icons.text_fields, size: 16),
                 visualDensity: VisualDensity.compact,
@@ -1624,7 +1653,7 @@ class _LayersListSection extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Agregar referencia',
+              message: L10n.of(context).designAddReference,
               child: IconButton(
                 icon: const Icon(Icons.format_quote, size: 16),
                 visualDensity: VisualDensity.compact,
@@ -1635,10 +1664,10 @@ class _LayersListSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         if (sorted.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Sin capas — agrega una.',
+              L10n.of(context).designNoLayers,
               style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
           )
@@ -1682,7 +1711,7 @@ class _LayerListTile extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                layer.typeName,
+                layer.labelIn(L10n.of(context)),
                 style: TextStyle(fontSize: 12, color: isSelected ? AppColors.accent : Colors.white),
               ),
             ),
@@ -1708,17 +1737,17 @@ class _LayerInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (layer) {
-      TextSlideLayer l => _textInspector(l),
-      ReferenceSlideLayer l => _refInspector(l),
+      TextSlideLayer l => _textInspector(context, l),
+      ReferenceSlideLayer l => _refInspector(context, l),
     };
   }
 
-  Widget _textInspector(TextSlideLayer l) {
+  Widget _textInspector(BuildContext context, TextSlideLayer l) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _LayerSlider(
-          label: 'Tamaño',
+          label: L10n.of(context).designSize,
           value: l.fontSize,
           min: 20,
           max: 120,
@@ -1726,7 +1755,7 @@ class _LayerInspector extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         _LayerSlider(
-          label: 'Interlineado',
+          label: L10n.of(context).designLineHeight,
           value: l.lineHeight,
           min: 1.0,
           max: 2.5,
@@ -1751,7 +1780,7 @@ class _LayerInspector extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            const Text('Sombra', style: TextStyle(fontSize: 12)),
+            Text(L10n.of(context).designShadow, style: const TextStyle(fontSize: 12)),
             const Spacer(),
             Switch(
               value: l.textShadow,
@@ -1761,7 +1790,7 @@ class _LayerInspector extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ColorField(
-          label: 'Color',
+          label: L10n.of(context).designColor,
           value: l.textColor,
           saved: cubit.state.palette,
           fromPhoto: cubit.state.photoPalette,
@@ -1774,12 +1803,12 @@ class _LayerInspector extends StatelessWidget {
     );
   }
 
-  Widget _refInspector(ReferenceSlideLayer l) {
+  Widget _refInspector(BuildContext context, ReferenceSlideLayer l) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _LayerSlider(
-          label: 'Tamaño',
+          label: L10n.of(context).designSize,
           value: l.fontSize,
           min: 8,
           max: 48,
@@ -1797,7 +1826,7 @@ class _LayerInspector extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ColorField(
-          label: 'Color',
+          label: L10n.of(context).designColor,
           value: l.textColor,
           saved: cubit.state.palette,
           fromPhoto: cubit.state.photoPalette,
@@ -1854,19 +1883,23 @@ class _LayerWeightRow extends StatelessWidget {
   final int value;
   final void Function(int) onChanged;
 
-  static const _weights = [(300, 'Fino'), (400, 'Normal'), (600, 'Semi'), (700, 'Bold')];
+  static const _weights = [300, 400, 600, 700];
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const Text('Peso', style: TextStyle(fontSize: 12)),
+      Text(L10n.of(context).designWeight, style: const TextStyle(fontSize: 12)),
       const SizedBox(width: 8),
       Expanded(
         child: DropdownButton<int>(
           value: value,
           isExpanded: true,
           isDense: true,
-          items: _weights.map((w) => DropdownMenuItem(value: w.$1, child: Text(w.$2))).toList(),
+          items: _weights
+              .map(
+                (w) => DropdownMenuItem(value: w, child: Text(_weightLabel(L10n.of(context), w))),
+              )
+              .toList(),
           onChanged: (v) {
             if (v != null) onChanged(v);
           },
@@ -1904,7 +1937,7 @@ class _FontFamilyPicker extends StatelessWidget {
     final current = _fonts.contains(value) ? value : null;
     return Row(
       children: [
-        const Text('Fuente', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designFont, style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
         Expanded(
           child: DropdownButton<String?>(
@@ -1922,13 +1955,13 @@ class _FontFamilyPicker extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Aleluya',
+                            L10n.of(context).designSampleShortText,
                             style: TextStyle(fontFamily: f, fontSize: 16),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: AppSpace.sm),
-                        Text(f ?? 'Sistema', style: AppText.rowSubtitle),
+                        Text(f ?? L10n.of(context).designFontSystem, style: AppText.rowSubtitle),
                       ],
                     ),
                   ),
@@ -1939,7 +1972,7 @@ class _FontFamilyPicker extends StatelessWidget {
                   (f) => Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      f ?? 'Sistema',
+                      f ?? L10n.of(context).designFontSystem,
                       style: TextStyle(fontFamily: f, fontSize: 13),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1962,7 +1995,7 @@ class _LayerAlignRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const Text('Alineación', style: TextStyle(fontSize: 12)),
+      Text(L10n.of(context).designAlignment, style: const TextStyle(fontSize: 12)),
       const Spacer(),
       for (final (icon, align) in [
         (Icons.format_align_left, TextAlign.left),
@@ -2143,7 +2176,7 @@ class _SafeAreaFrame extends StatelessWidget {
               left: 3,
               top: 2,
               child: Text(
-                'ÁREA SEGURA',
+                L10n.of(context).designSafeArea,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.3),
                   fontSize: 8,
@@ -2261,7 +2294,10 @@ class _CanvasLayer extends StatelessWidget {
             },
             onPanEnd: (_) => onRelease(),
             onPanCancel: onRelease,
-            child: MouseRegion(cursor: SystemMouseCursors.move, child: _layerContent(scale)),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.move,
+              child: _layerContent(context, scale),
+            ),
           ),
           if (isSelected)
             IgnorePointer(
@@ -2280,12 +2316,12 @@ class _CanvasLayer extends StatelessWidget {
     );
   }
 
-  Widget _layerContent(double scale) => switch (layer) {
+  Widget _layerContent(BuildContext context, double scale) => switch (layer) {
     TextSlideLayer l => Container(
       color: const Color(0x12FFFFFF),
       alignment: _alignFor(l.textAlign),
       child: Text(
-        sampleContent.isEmpty ? 'Texto...' : sampleContent,
+        sampleContent.isEmpty ? L10n.of(context).designTextPlaceholder : sampleContent,
         textAlign: l.textAlign,
         style: TextStyle(
           fontFamily: l.fontFamily,
@@ -2305,7 +2341,7 @@ class _CanvasLayer extends StatelessWidget {
       color: const Color(0x08FFFFFF),
       alignment: _alignFor(l.textAlign),
       child: Text(
-        sampleReference.isEmpty ? 'Referencia...' : sampleReference,
+        sampleReference.isEmpty ? L10n.of(context).designReferencePlaceholder : sampleReference,
         textAlign: l.textAlign,
         style: TextStyle(
           fontFamily: l.fontFamily,
@@ -2431,19 +2467,21 @@ class _TransitionPicker extends StatelessWidget {
   final SlideTransitionType value;
   final void Function(SlideTransitionType) onChanged;
 
-  static const _options = <(SlideTransitionType, String)>[
-    (SlideTransitionType.cut, 'Corte directo'),
-    (SlideTransitionType.fade, 'Fade'),
-    (SlideTransitionType.slideLeft, 'Deslizar →'),
-    (SlideTransitionType.slideRight, 'Deslizar ←'),
-    (SlideTransitionType.zoomIn, 'Zoom in'),
-  ];
+  static const _options = SlideTransitionType.values;
+
+  static String _label(L10n l, SlideTransitionType type) => switch (type) {
+    SlideTransitionType.cut => l.designTransitionCut,
+    SlideTransitionType.fade => l.designTransitionFade,
+    SlideTransitionType.slideLeft => l.designTransitionSlideLeft,
+    SlideTransitionType.slideRight => l.designTransitionSlideRight,
+    SlideTransitionType.zoomIn => l.designTransitionZoom,
+  };
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('Tipo', style: TextStyle(fontSize: 12)),
+        Text(L10n.of(context).designTransitionType, style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 8),
         Expanded(
           child: DropdownButton<SlideTransitionType>(
@@ -2453,8 +2491,8 @@ class _TransitionPicker extends StatelessWidget {
             items: _options
                 .map(
                   (o) => DropdownMenuItem(
-                    value: o.$1,
-                    child: Text(o.$2, style: const TextStyle(fontSize: 12)),
+                    value: o,
+                    child: Text(_label(L10n.of(context), o), style: const TextStyle(fontSize: 12)),
                   ),
                 )
                 .toList(),

@@ -13,6 +13,8 @@ import '../../../../core/widgets/template_picker/template_picker_dialog.dart';
 import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../templates_library_cubit.dart';
+import '../../../../core/models/labels.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Slide designs. Applying one here sets the look of the active collection,
 /// which is the only thing an operator wants from this panel mid-service.
@@ -31,9 +33,6 @@ class TemplatesPanel extends StatelessWidget {
 class _TemplatesPanelView extends StatelessWidget {
   const _TemplatesPanelView();
 
-  static const _sampleContent = '"Porque de tal manera amó Dios al mundo"';
-  static const _sampleRef = 'Juan 3:16';
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<TemplatesLibraryCubit, TemplatesLibraryState>(
@@ -50,12 +49,15 @@ class _TemplatesPanelView extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpace.sm),
               child: Row(
                 children: [
-                  const Expanded(
-                    child: Text('Diseño de la colección', style: AppText.sectionLabel),
+                  Expanded(
+                    child: Text(
+                      L10n.of(context).designsSectionCollection,
+                      style: AppText.sectionLabel,
+                    ),
                   ),
                   AppIconButton(
                     icon: Icons.add_rounded,
-                    tooltip: 'Nuevo diseño',
+                    tooltip: L10n.of(context).designsNew,
                     size: 28,
                     iconSize: 16,
                     onTap: () => _create(context, cubit),
@@ -96,8 +98,8 @@ class _TemplatesPanelView extends StatelessWidget {
                           template: template,
                           selected: activeId == template.id,
                           isCustom: isCustom,
-                          sampleContent: _sampleContent,
-                          sampleRef: _sampleRef,
+                          sampleContent: L10n.of(context).sampleVerse,
+                          sampleRef: L10n.of(context).sampleVerseRef,
                           onApply: model?.activeCollection == null
                               ? null
                               : () => context.read<ControlCubit>().setCollectionTemplate(
@@ -151,9 +153,9 @@ class _TemplatesPanelView extends StatelessWidget {
   ) async {
     final ok = await showAppConfirmDialog(
       context,
-      title: 'Eliminar diseño',
-      message: '¿Eliminar "${template.name}"?',
-      confirmLabel: 'Eliminar',
+      title: L10n.of(context).designsDeleteTitle,
+      message: L10n.of(context).confirmDeleteDesign(template.name),
+      confirmLabel: L10n.of(context).delete,
       destructive: true,
       icon: Icons.delete_outline,
     );
@@ -202,7 +204,9 @@ class _TemplateTileState extends State<_TemplateTile> {
         children: [
           Expanded(
             child: Tooltip(
-              message: widget.onApply == null ? 'Sin colección activa' : 'Aplicar a la colección',
+              message: widget.onApply == null
+                  ? L10n.of(context).barNoCollection
+                  : L10n.of(context).designsApplyToCollection,
               child: GestureDetector(
                 onTap: widget.onApply,
                 child: AnimatedContainer(
@@ -238,8 +242,8 @@ class _TemplateTileState extends State<_TemplateTile> {
                                 color: AppColors.accent,
                                 borderRadius: AppRadius.all(AppRadius.xs),
                               ),
-                              child: const Text(
-                                'EN USO',
+                              child: Text(
+                                L10n.of(context).designsInUse,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 8,
@@ -257,13 +261,13 @@ class _TemplateTileState extends State<_TemplateTile> {
                               children: [
                                 _MiniButton(
                                   icon: Icons.edit_outlined,
-                                  tooltip: 'Editar',
+                                  tooltip: L10n.of(context).edit,
                                   onTap: widget.onEdit,
                                 ),
                                 const SizedBox(width: 3),
                                 _MiniButton(
                                   icon: Icons.delete_outline,
-                                  tooltip: 'Eliminar',
+                                  tooltip: L10n.of(context).delete,
                                   danger: true,
                                   onTap: widget.onDelete,
                                 ),
@@ -279,7 +283,7 @@ class _TemplateTileState extends State<_TemplateTile> {
           ),
           const SizedBox(height: AppSpace.xs),
           Text(
-            widget.template.name,
+            widget.template.nameIn(L10n.of(context)),
             style: AppText.rowSubtitle.copyWith(
               color: widget.selected ? AppColors.accent : AppColors.textSecondary,
               fontWeight: widget.selected ? FontWeight.w600 : FontWeight.normal,

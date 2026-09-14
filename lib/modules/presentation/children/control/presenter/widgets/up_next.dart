@@ -26,7 +26,7 @@ class _UpNext extends StatelessWidget {
     if (onlyAcrossItems && !crossesItem) return const SizedBox.shrink();
 
     final item = next.item;
-    final labels = item.slideLabels;
+    final labels = item.slideLabelsIn(L10n.of(context));
     final label = next.slide < labels.length ? labels[next.slide] : '';
 
     return Container(
@@ -41,11 +41,11 @@ class _UpNext extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.skip_next_rounded, size: 12, color: AppColors.textMuted),
               SizedBox(width: AppSpace.xs),
-              Text('A CONTINUACIÓN', style: AppText.sectionLabel),
+              Text(L10n.of(context).upNext, style: AppText.sectionLabel),
             ],
           ),
           const SizedBox(height: AppSpace.sm),
@@ -53,7 +53,7 @@ class _UpNext extends StatelessWidget {
           const SizedBox(height: AppSpace.sm - 2),
           if (crossesItem)
             Text(
-              item.displayTitle,
+              item.titleIn(L10n.of(context)),
               style: const TextStyle(
                 color: AppColors.accentLight,
                 fontSize: 11,
@@ -132,11 +132,11 @@ class _EndOfSet extends StatelessWidget {
         color: AppColors.surfaceControl,
         borderRadius: AppRadius.all(AppRadius.md),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(Icons.flag_outlined, size: 12, color: AppColors.textDisabled),
           SizedBox(width: AppSpace.sm - 2),
-          Text('Fin del set list', style: AppText.rowSubtitle),
+          Text(L10n.of(context).endOfSetList, style: AppText.rowSubtitle),
         ],
       ),
     );

@@ -12,7 +12,10 @@ Future<void> _importPptx(BuildContext context, ControlCubit cubit) async {
 
   if (!path.toLowerCase().endsWith('.pptx')) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Selecciona un archivo .pptx'), duration: Duration(seconds: 2)),
+      SnackBar(
+        content: Text(L10n.of(context).importPickPptx),
+        duration: const Duration(seconds: 2),
+      ),
     );
     return;
   }
@@ -23,10 +26,7 @@ Future<void> _importPptx(BuildContext context, ControlCubit cubit) async {
 
   if (slides.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No se encontró texto en el archivo'),
-        duration: Duration(seconds: 3),
-      ),
+      SnackBar(content: Text(L10n.of(context).importPptxNoText), duration: Duration(seconds: 3)),
     );
     return;
   }
@@ -41,7 +41,10 @@ Future<void> _importPptx(BuildContext context, ControlCubit cubit) async {
   final count = await cubit.importPptx(path, templateId: templateId.templateId);
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$count slides importados'), duration: const Duration(seconds: 3)),
+      SnackBar(
+        content: Text(L10n.of(context).importPptxDone(count)),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 }
@@ -56,7 +59,10 @@ Future<void> _importPptxAsImages(BuildContext context, ControlCubit cubit) async
 
   if (!path.toLowerCase().endsWith('.pptx')) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Selecciona un archivo .pptx'), duration: Duration(seconds: 2)),
+      SnackBar(
+        content: Text(L10n.of(context).importPickPptx),
+        duration: const Duration(seconds: 2),
+      ),
     );
     return;
   }
@@ -64,16 +70,17 @@ Future<void> _importPptxAsImages(BuildContext context, ControlCubit cubit) async
   if (!context.mounted) return;
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
+  final t = L10n.of(context);
 
   showDialog(
     context: context,
     barrierDismissible: false,
     builder: (_) => AppDialog(
-      title: 'Importando PPTX',
+      title: t.importPptxConverting,
       icon: Icons.slideshow_outlined,
       showClose: false,
       width: 320,
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
@@ -83,10 +90,7 @@ Future<void> _importPptxAsImages(BuildContext context, ControlCubit cubit) async
               child: CircularProgressIndicator(strokeWidth: 2, color: kAccent),
             ),
             SizedBox(width: 16),
-            Text(
-              'Convirtiendo PPTX a imágenes...',
-              style: TextStyle(color: kTextSecondary, fontSize: 13),
-            ),
+            Text(t.importPptxConvertingBody, style: TextStyle(color: kTextSecondary, fontSize: 13)),
           ],
         ),
       ),
@@ -98,18 +102,14 @@ Future<void> _importPptxAsImages(BuildContext context, ControlCubit cubit) async
     navigator.pop();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          count > 0
-              ? '$count slides importados como imágenes'
-              : 'Error: LibreOffice no encontrado o PPTX vacío',
-        ),
+        content: Text(count > 0 ? t.importPptxImagesDone(count) : t.importPptxImagesFailed),
         duration: const Duration(seconds: 4),
       ),
     );
   } catch (e) {
     navigator.pop();
     messenger.showSnackBar(
-      SnackBar(content: Text('Error: $e'), duration: const Duration(seconds: 5)),
+      SnackBar(content: Text(t.errorWith('$e')), duration: const Duration(seconds: 5)),
     );
   }
 }
@@ -136,16 +136,16 @@ class _PptxImportDialogState extends State<_PptxImportDialog> {
     final presets = SlideTemplate.presets;
 
     return AppDialog(
-      title: 'Importar PPTX',
+      title: L10n.of(context).importPptxTitle,
       icon: Icons.slideshow_outlined,
       width: 380,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
         const SizedBox(width: 8),
         FilledButton(
           onPressed: () =>
               Navigator.pop(context, _PptxImportChoice(templateId: _selectedTemplateId)),
-          child: Text('Importar ${widget.slideCount} slides'),
+          child: Text(L10n.of(context).importPptxAction(widget.slideCount)),
         ),
       ],
       child: Column(
@@ -153,12 +153,12 @@ class _PptxImportDialogState extends State<_PptxImportDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${widget.slideCount} slides encontrados.',
+            L10n.of(context).importPptxFound(widget.slideCount),
             style: const TextStyle(color: kTextSecondary, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Template para los slides importados',
+          Text(
+            L10n.of(context).importPptxDesign,
             style: TextStyle(color: kTextSecondary, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -176,7 +176,10 @@ class _PptxImportDialogState extends State<_PptxImportDialog> {
                 dropdownColor: kDialogSurface,
                 style: const TextStyle(color: kTextPrimary, fontSize: 13),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Usar template de la colección')),
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(L10n.of(context).importPptxUseCollectionDesign),
+                  ),
                   ...presets.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))),
                 ],
                 onChanged: (v) => setState(() => _selectedTemplateId = v),
@@ -199,9 +202,9 @@ Future<void> _importVideo(BuildContext context, ControlCubit cubit) async {
 
   await cubit.importVideo(path);
   if (context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Video agregado'), duration: Duration(seconds: 2)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L10n.of(context).videoAdded), duration: const Duration(seconds: 2)),
+    );
   }
 }
 
@@ -231,8 +234,8 @@ Future<void> _importFolder(BuildContext context, ControlCubit cubit) async {
   if (images.isEmpty && videos.isEmpty) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se encontraron imágenes ni videos en la carpeta'),
+        SnackBar(
+          content: Text(L10n.of(context).folderNothingFound),
           duration: Duration(seconds: 3),
         ),
       );
@@ -259,11 +262,11 @@ Future<void> _importFolder(BuildContext context, ControlCubit cubit) async {
 
   if (context.mounted) {
     final parts = <String>[];
-    if (result.images > 0) parts.add('${images.length} imágenes');
-    if (result.videos > 0) parts.add('${result.videos} video${result.videos > 1 ? 's' : ''}');
+    if (result.images > 0) parts.add(L10n.of(context).folderImages(images.length));
+    if (result.videos > 0) parts.add(L10n.of(context).folderVideos(result.videos));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Importado: ${parts.join(' • ')}'),
+        content: Text(L10n.of(context).folderImported(parts.join(' • '))),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -284,13 +287,19 @@ class _FolderImportDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Importar carpeta',
+      title: L10n.of(context).folderImportTitle,
       icon: Icons.folder_open_outlined,
       width: 360,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(L10n.of(context).cancel),
+        ),
         const SizedBox(width: 8),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Importar')),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(L10n.of(context).import),
+        ),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -313,15 +322,15 @@ class _FolderImportDialog extends StatelessWidget {
           if (imageCount > 0)
             _CountRow(
               icon: Icons.image_outlined,
-              label: '$imageCount imagen${imageCount > 1 ? 'es' : ''}',
-              note: 'como una presentación',
+              label: L10n.of(context).folderImages(imageCount),
+              note: L10n.of(context).folderAsPresentation,
             ),
           if (imageCount > 0 && videoCount > 0) const SizedBox(height: 8),
           if (videoCount > 0)
             _CountRow(
               icon: Icons.video_file_outlined,
-              label: '$videoCount video${videoCount > 1 ? 's' : ''}',
-              note: videoCount > 1 ? '$videoCount elementos separados' : '1 elemento',
+              label: L10n.of(context).folderVideos(videoCount),
+              note: L10n.of(context).folderSeparateItems(videoCount),
             ),
         ],
       ),

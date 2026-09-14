@@ -42,7 +42,7 @@ class _SongsPanelView extends StatelessWidget {
           Expanded(
             child: AppSearchField(
               dense: true,
-              hintText: 'Buscar canción...',
+              hintText: L10n.of(context).songsSearchHint,
               onChanged: context.read<SongsListCubit>().onSearchChanged,
             ),
           ),
@@ -60,7 +60,7 @@ class _SongsPanelView extends StatelessWidget {
           ),
           AppIconButton(
             icon: Icons.add_rounded,
-            tooltip: 'Nueva canción',
+            tooltip: L10n.of(context).songsNew,
             iconSize: 18,
             size: 30,
             onTap: () => openSongForm(context, null),
@@ -85,11 +85,11 @@ class _SongsPanelView extends StatelessWidget {
                 ? EmptyState(
                     compact: true,
                     icon: Icons.music_off_rounded,
-                    title: model.search.isEmpty ? 'Sin canciones' : 'Nada coincide',
-                    message: model.search.isEmpty
-                        ? 'Crea la primera para poder armar un set.'
-                        : null,
-                    actionLabel: model.search.isEmpty ? 'Nueva canción' : null,
+                    title: model.search.isEmpty
+                        ? L10n.of(context).songsEmptyTitle
+                        : L10n.of(context).songsNoMatch,
+                    message: model.search.isEmpty ? L10n.of(context).songsEmptyMessage : null,
+                    actionLabel: model.search.isEmpty ? L10n.of(context).songsNew : null,
                     onAction: model.search.isEmpty ? () => openSongForm(context, null) : null,
                   )
                 : ListView.builder(
@@ -140,7 +140,7 @@ class _SongRowState extends State<_SongRow> {
                     Text(
                       [
                         if (song.author?.isNotEmpty == true) song.author!,
-                        '${song.verses.length} ${song.verses.length == 1 ? 'verso' : 'versos'}',
+                        L10n.of(context).songsVerseCount(song.verses.length),
                       ].join('  •  '),
                       style: AppText.rowSubtitle,
                       overflow: TextOverflow.ellipsis,
@@ -185,18 +185,22 @@ class _SongMenu extends StatelessWidget {
         padding: EdgeInsets.zero,
         iconSize: 15,
         color: AppColors.surfaceControl,
-        tooltip: 'Más acciones',
+        tooltip: L10n.of(context).moreActions,
         enabled: visible,
-        itemBuilder: (_) => const [
+        itemBuilder: (_) => [
           PopupMenuItem(
             value: 'edit',
             height: 38,
-            child: AppMenuRow(icon: Icons.edit_outlined, label: 'Editar'),
+            child: AppMenuRow(icon: Icons.edit_outlined, label: L10n.of(context).edit),
           ),
           PopupMenuItem(
             value: 'delete',
             height: 38,
-            child: AppMenuRow(icon: Icons.delete_outline, label: 'Eliminar', danger: true),
+            child: AppMenuRow(
+              icon: Icons.delete_outline,
+              label: L10n.of(context).delete,
+              danger: true,
+            ),
           ),
         ],
         onSelected: (value) async {
@@ -206,9 +210,9 @@ class _SongMenu extends StatelessWidget {
           } else if (value == 'delete') {
             final ok = await showAppConfirmDialog(
               context,
-              title: 'Eliminar canción',
-              message: '¿Eliminar "${song.title}"? No se puede deshacer.',
-              confirmLabel: 'Eliminar',
+              title: L10n.of(context).songsDeleteTitle,
+              message: L10n.of(context).confirmDeleteNamed(song.title),
+              confirmLabel: L10n.of(context).delete,
               destructive: true,
               icon: Icons.delete_outline,
             );

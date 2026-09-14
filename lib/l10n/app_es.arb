@@ -746,5 +746,399 @@
   "remoteFailed": "No se pudo abrir el control remoto: el puerto está ocupado por otro programa.",
   "remoteSameWifi": "El teléfono tiene que estar en la misma red Wi-Fi que esta computadora. Si la red de la iglesia aísla los dispositivos, usa el punto de acceso del teléfono.",
   "remoteFirewall": "La primera vez, macOS pregunta si permite conexiones entrantes: elige Permitir.",
-  "remoteRenewNote": "Cambiar el PIN desconecta a todos los teléfonos emparejados."
+  "remoteRenewNote": "Cambiar el PIN desconecta a todos los teléfonos emparejados.",
+  "edit": "Editar",
+  "moreActions": "Más acciones",
+  "back": "Atrás",
+  "confirmDeleteNamed": "¿Eliminar \"{name}\"? No se puede deshacer.",
+  "@confirmDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDeleteDesign": "¿Eliminar \"{name}\"?",
+  "@confirmDeleteDesign": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addedToSetList": "{label} agregado al set list",
+  "@addedToSetList": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "sampleVerse": "\"Porque de tal manera amó Dios al mundo\"",
+  "sampleVerseLong": "\"Porque de tal manera amó Dios al mundo,\nque ha dado a su Hijo unigénito\"",
+  "sampleVerseRef": "Juan 3:16",
+  "songsSearchHint": "Buscar canción...",
+  "songsNew": "Nueva canción",
+  "songsEmptyTitle": "Sin canciones",
+  "songsNoMatch": "Nada coincide",
+  "songsEmptyMessage": "Crea la primera para poder armar un set.",
+  "songsVerseCount": "{count, plural, =1{1 verso} other{{count} versos}}",
+  "@songsVerseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "songsDeleteTitle": "Eliminar canción",
+  "bibleNoVersionsTitle": "Sin versiones",
+  "bibleNoVersionsMessage": "Descarga una versión para usar la Biblia.",
+  "bibleVersions": "Versiones",
+  "bibleBooks": "Libros",
+  "bibleManageVersions": "Administrar versiones",
+  "bibleSearchBook": "Buscar libro...",
+  "bibleNoBookMatches": "Ningún libro coincide",
+  "bibleTapVerse": "Toca un versículo. Toca otro para elegir un pasaje.",
+  "bibleAddPassage": "{count, plural, =1{Agregar versículo} other{Agregar pasaje ({count} versículos)}}",
+  "@bibleAddPassage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mediaDeleteTitle": "Eliminar archivo",
+  "mediaFilterAll": "Todo",
+  "mediaFilterImages": "Imágenes",
+  "mediaFilterVideos": "Videos",
+  "mediaUploadFiles": "Subir archivos",
+  "mediaEmptyTitle": "Sin archivos",
+  "mediaEmptyMessage": "Sube imágenes o videos para usarlos en un servicio.",
+  "mediaUpload": "Subir",
+  "mediaDeleteFromLibrary": "Eliminar de la biblioteca",
+  "designsSectionCollection": "Diseño de la colección",
+  "designsNew": "Nuevo diseño",
+  "designsDeleteTitle": "Eliminar diseño",
+  "designsApplyToCollection": "Aplicar a la colección",
+  "designsInUse": "EN USO",
+  "itemTypeSong": "Canción",
+  "itemTypeVerse": "Versículo",
+  "itemTypeSermon": "Prédica",
+  "itemTypeFreeSlide": "Slide libre",
+  "itemTypePresentation": "Presentación",
+  "itemTypeVideo": "Video",
+  "itemTypeAnnouncement": "Anuncio",
+  "verseTypeVerse": "Verso",
+  "verseTypeChorus": "Coro",
+  "verseTypeBridge": "Puente",
+  "verseTypePreChorus": "Pre-coro",
+  "verseTypeTag": "Tag",
+  "verseTypeIntro": "Intro",
+  "verseTypeOutro": "Outro",
+  "sermonPointCount": "{count, plural, =1{1 punto} other{{count} puntos}}",
+  "@sermonPointCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "announcementWithCountdown": "Con cuenta regresiva",
+  "sermonTitleSlide": "Título",
+  "sermonPoint": "Punto {number}",
+  "@sermonPoint": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "slideCount": "{count, plural, =1{1 slide} other{{count} slides}}",
+  "@slideCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "repeatOf": "{seen}ª de {total}",
+  "@repeatOf": {
+    "placeholders": {
+      "seen": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "slideOf": "{current} de {total}",
+  "@slideOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "liveBadge": "● EN VIVO",
+  "upNext": "A CONTINUACIÓN",
+  "endOfSetList": "Fin del set list",
+  "slidesHeader": "Slides",
+  "noActiveItem": "Sin elemento activo",
+  "pickFromSetList": "Elige uno del set list.",
+  "resizeHint": "Arrastra para cambiar el ancho. Doble clic para volver al original.",
+  "nothingOnScreen": "Nada en pantalla",
+  "collectionExplainer": "Una colección es el plan de un servicio: las canciones, los versículos y la media en el orden en que van.",
+  "openCollectionToStart": "Abre una colección para empezar.",
+  "seeAll": "Ver todas",
+  "addItem": "Agregar elemento",
+  "addFromLibrary": "De la biblioteca",
+  "addQuickVerse": "Versículo rápido",
+  "addSearchBible": "Buscar en la Biblia",
+  "addImageOrVideo": "Imagen o video",
+  "addCreate": "Crear",
+  "addTextSlide": "Slide de texto",
+  "addImportFile": "Importar archivo",
+  "addPptxText": "texto",
+  "addPptxImages": "imágenes",
+  "addWholeFolder": "Carpeta completa",
+  "add": "Agregar",
+  "sermonNew": "Nueva prédica",
+  "sermonTitleHint": "Título de la prédica",
+  "sermonPoints": "PUNTOS",
+  "sermonRemovePoint": "Quitar punto",
+  "sermonAddFirstPoint": "Agregar primer punto",
+  "announcementTitle": "Slide de anuncio",
+  "announcementHint": "Bienvenidos a la iglesia...",
+  "announcementMessage": "Mensaje",
+  "announcementShowCountdown": "Mostrar cuenta regresiva",
+  "announcementPickTime": "Seleccionar hora de inicio",
+  "freeSlideTitle": "Slide libre",
+  "freeSlideTitleHint": "Título (opcional)",
+  "freeSlideContentHint": "Contenido del slide...",
+  "freeSlideNote": "Se proyectará con el diseño activo de la colección",
+  "importPickPptx": "Selecciona un archivo .pptx",
+  "importPptxNoText": "No se encontró texto en el archivo",
+  "importPptxDone": "{count, plural, =1{1 slide importado} other{{count} slides importados}}",
+  "@importPptxDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxImagesDone": "{count, plural, =1{1 slide importado como imagen} other{{count} slides importados como imágenes}}",
+  "@importPptxImagesDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxConverting": "Importando PPTX",
+  "importPptxConvertingBody": "Convirtiendo PPTX a imágenes...",
+  "importPptxImagesFailed": "Error: LibreOffice no encontrado o PPTX vacío",
+  "errorWith": "Error: {error}",
+  "@errorWith": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importPptxTitle": "Importar PPTX",
+  "importPptxAction": "{count, plural, =1{Importar 1 slide} other{Importar {count} slides}}",
+  "@importPptxAction": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxFound": "{count, plural, =1{1 slide encontrado.} other{{count} slides encontrados.}}",
+  "@importPptxFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPptxDesign": "Diseño para los slides importados",
+  "importPptxUseCollectionDesign": "Usar el diseño de la colección",
+  "videoAdded": "Video agregado",
+  "folderNothingFound": "No se encontraron imágenes ni videos en la carpeta",
+  "folderImages": "{count, plural, =1{1 imagen} other{{count} imágenes}}",
+  "@folderImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "folderVideos": "{count, plural, =1{1 video} other{{count} videos}}",
+  "@folderVideos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "folderImported": "Importado: {parts}",
+  "@folderImported": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "folderImportTitle": "Importar carpeta",
+  "import": "Importar",
+  "folderAsPresentation": "como una presentación",
+  "folderSeparateItems": "{count, plural, =1{1 elemento} other{{count} elementos separados}}",
+  "@folderSeparateItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "designPickerTitle": "Seleccionar diseño",
+  "apply": "Aplicar",
+  "designSampleText": "Texto de ejemplo",
+  "designMineSuffix": "{name} (mío)",
+  "@designMineSuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designCopySuffix": "{name} (copia)",
+  "@designCopySuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designUntitled": "Mi diseño",
+  "designDiscardTitle": "¿Descartar el diseño?",
+  "designKeepEditing": "Seguir editando",
+  "designDiscard": "Descartar",
+  "designDiscardBody": "Los cambios de este diseño se pierden.",
+  "designBackground": "Fondo",
+  "designColorStart": "Color inicio",
+  "designColor": "Color",
+  "designColorEnd": "Color fin",
+  "designAngle": "Ángulo",
+  "designEdit": "Editar diseño",
+  "designSampleHint": "Texto de muestra",
+  "designReference": "Referencia",
+  "designName": "Nombre",
+  "designProperties": "Propiedades",
+  "designSelectLayer": "Selecciona una capa",
+  "designText": "Texto",
+  "designSize": "Tamaño",
+  "designLineHeight": "Interlineado",
+  "designTextColor": "Color texto",
+  "designShadow": "Sombra",
+  "designMargins": "Márgenes",
+  "designHorizontal": "Horizontal",
+  "designVertical": "Vertical",
+  "designShow": "Mostrar",
+  "designRefSize": "Tamaño ref.",
+  "designRefColor": "Color ref.",
+  "designTransition": "Transición",
+  "designDurationMs": "Duración (ms)",
+  "designUndo": "Deshacer  ⌘Z",
+  "designRedo": "Rehacer  ⇧⌘Z",
+  "designModeSimple": "Simple",
+  "designModeLayers": "Capas",
+  "designTryWith": "Probar con:",
+  "designSampleShort": "Corto",
+  "designSampleNormal": "Normal",
+  "designSampleLong": "Largo",
+  "designSampleShortText": "Aleluya",
+  "designSampleLongText": "\"Jehová es mi pastor; nada me faltará. En lugares de delicados pastos me hará descansar; junto a aguas de reposo me pastoreará; confortará mi alma; me guiará por sendas de justicia por amor de su nombre.\"",
+  "designSampleLongRef": "Salmos 23:1-3",
+  "designWeight": "Peso",
+  "designWeightLight": "Fino",
+  "designWeightRegular": "Normal",
+  "designWeightSemibold": "Semi",
+  "designWeightBold": "Bold",
+  "designAlignment": "Alineación",
+  "designPosition": "Posición",
+  "designRefBottomLeft": "Inf. izq.",
+  "designRefBottomCenter": "Inf. centro",
+  "designRefBottomRight": "Inf. der.",
+  "designRefPosition": "Posición ref.",
+  "designLayers": "Capas",
+  "designAddText": "Agregar texto",
+  "designAddReference": "Agregar referencia",
+  "designNoLayers": "Sin capas — agrega una.",
+  "designFont": "Fuente",
+  "designFontSystem": "Sistema",
+  "designSafeArea": "ÁREA SEGURA",
+  "designTextPlaceholder": "Texto...",
+  "designReferencePlaceholder": "Referencia...",
+  "designTransitionCut": "Corte directo",
+  "designTransitionFade": "Fade",
+  "designTransitionSlideLeft": "Deslizar →",
+  "designTransitionSlideRight": "Deslizar ←",
+  "designTransitionZoom": "Zoom in",
+  "designTransitionType": "Tipo",
+  "colorFromPhoto": "DE LA FOTO",
+  "colorFromChurch": "DE LA IGLESIA",
+  "colorSaveToChurch": "Guardar en los colores de la iglesia",
+  "colorRemoveFromChurch": "Quitar de los colores de la iglesia",
+  "colorContrast": "Contraste {ratio} a 1 contra el fondo",
+  "@colorContrast": {
+    "placeholders": {
+      "ratio": {
+        "type": "String"
+      }
+    }
+  },
+  "contrastGood": "Se lee bien",
+  "contrastTight": "Justo",
+  "contrastPoor": "No se va a leer",
+  "printChords": "Acordes: {chords}",
+  "@printChords": {
+    "placeholders": {
+      "chords": {
+        "type": "String"
+      }
+    }
+  },
+  "printTotal": "{count, plural, =1{Total: 1 elemento} other{Total: {count} elementos}}",
+  "@printTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "printExported": "Exportado: {file}",
+  "@printExported": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "printExportFailed": "Error al exportar: {error}",
+  "@printExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "presetDarkClassic": "Oscuro clásico",
+  "presetBlueNight": "Azul noche",
+  "presetLowerThird": "Letras abajo",
+  "presetLight": "Claro"
 }

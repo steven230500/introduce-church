@@ -58,7 +58,7 @@ class _PreviewHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              item?.displayTitle ?? t.noItemSelected,
+              item?.titleIn(t) ?? t.noItemSelected,
               style: item == null ? AppText.rowSubtitle : AppText.panelTitle,
               overflow: TextOverflow.ellipsis,
             ),
@@ -179,7 +179,7 @@ class _SlideGrid extends StatelessWidget {
     }
 
     final slides = item.slides;
-    final labels = item.slideLabels;
+    final labels = item.slideLabelsIn(t);
     final isImageSlide = item.type == CollectionItemType.imageSlide;
     final cubit = context.read<ControlCubit>();
 
@@ -355,10 +355,10 @@ class _SidePreviewPanel extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.displayTitle, style: AppText.rowTitle, overflow: TextOverflow.ellipsis),
+                  Text(item.titleIn(t), style: AppText.rowTitle, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text(
-                    '${model.liveSlideIndex + 1} de ${item.slides.length}',
+                    t.slideOf(model.liveSlideIndex + 1, item.slides.length),
                     style: AppText.rowSubtitle,
                   ),
                   if (model.isLive) ...[
@@ -691,7 +691,7 @@ class _LiveBadge extends StatelessWidget {
         ),
         decoration: BoxDecoration(color: AppColors.live, borderRadius: AppRadius.all(AppRadius.xs)),
         child: Text(
-          '● EN VIVO',
+          L10n.of(context).liveBadge,
           style: TextStyle(
             color: Colors.white,
             fontSize: compact ? 7 : 10,

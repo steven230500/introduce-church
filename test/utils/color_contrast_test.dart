@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/utils/color_contrast.dart';
+import 'package:introduce_church/l10n/l10n_en.dart';
+import 'package:introduce_church/l10n/l10n_es.dart';
 
 void main() {
   group('reading a colour someone typed', () {
@@ -57,7 +59,8 @@ void main() {
 
     test('every verdict says something in Spanish', () {
       for (final verdict in ContrastVerdict.values) {
-        expect(verdict.label, isNotEmpty);
+        expect(verdict.labelIn(L10nEs()), isNotEmpty);
+        expect(verdict.labelIn(L10nEn()), isNot(verdict.labelIn(L10nEs())));
       }
     });
   });

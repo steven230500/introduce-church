@@ -3,6 +3,7 @@ part of '../../page.dart';
 // ── Export set list ───────────────────────────────────────────────────────────
 
 Future<void> _exportSetList(BuildContext context, Collection collection) async {
+  final t = L10n.of(context);
   final buf = StringBuffer();
   final sep = '═' * 50;
   final dash = '─' * 50;
@@ -19,19 +20,19 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
 
   for (var i = 0; i < collection.items.length; i++) {
     final item = collection.items[i];
-    buf.writeln('${i + 1}. ${item.displayTitle.toUpperCase()}  [${item.type.label}]');
+    buf.writeln('${i + 1}. ${item.titleIn(t).toUpperCase()}  [${item.type.labelIn(t)}]');
 
     switch (item.type) {
       case CollectionItemType.song:
         if (item.song?.author != null) buf.writeln('   ${item.song!.author}');
         buf.writeln('   $dash');
         for (final verse in item.song?.verses ?? []) {
-          buf.writeln('   ${verse.type.label}:');
+          buf.writeln('   ${verse.type.labelIn(t)}:');
           for (final line in verse.content.split('\n')) {
             buf.writeln('   $line');
           }
           if (verse.chords?.isNotEmpty == true) {
-            buf.writeln('   [Acordes: ${verse.chords}]');
+            buf.writeln('   [${t.printChords(verse.chords!)}]');
           }
           buf.writeln();
         }
@@ -56,7 +57,7 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
         final msg = item.contentJson?['message'] as String? ?? '';
         if (msg.isNotEmpty) buf.writeln('   $msg');
         if (item.contentJson?['timerTarget'] != null) {
-          buf.writeln('   [Con cuenta regresiva]');
+          buf.writeln('   [${t.announcementWithCountdown}]');
         }
         buf.writeln();
       case CollectionItemType.imageSlide:
@@ -66,7 +67,7 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
   }
 
   buf.writeln(sep);
-  buf.writeln('Total: ${collection.items.length} elementos');
+  buf.writeln(t.printTotal(collection.items.length));
   buf.writeln(sep);
 
   try {
@@ -85,7 +86,7 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Exportado: introduce_${date}_$safeName.txt'),
+          content: Text(t.printExported('introduce_${date}_$safeName.txt')),
           backgroundColor: AppColors.success,
           duration: const Duration(seconds: 3),
         ),
@@ -94,7 +95,10 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al exportar: $e'), backgroundColor: const Color(0xFFFF453A)),
+        SnackBar(
+          content: Text(t.printExportFailed('$e')),
+          backgroundColor: const Color(0xFFFF453A),
+        ),
       );
     }
   }

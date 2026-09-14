@@ -15,77 +15,90 @@ class _AddItemMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      tooltip: 'Agregar elemento',
+      tooltip: L10n.of(context).addItem,
       color: AppColors.surfaceControl,
       position: PopupMenuPosition.under,
       itemBuilder: (_) => [
-        const _SectionItem('De la biblioteca'),
-        const PopupMenuItem(
+        _SectionItem(L10n.of(context).addFromLibrary),
+        PopupMenuItem(
           value: 'song',
           height: 38,
-          child: AppMenuRow(icon: Icons.music_note, label: 'Canción'),
+          child: AppMenuRow(icon: Icons.music_note, label: L10n.of(context).itemTypeSong),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'quick_verse',
           height: 38,
-          child: AppMenuRow(icon: Icons.bolt_rounded, label: 'Versículo rápido', trailing: 'V'),
+          child: AppMenuRow(
+            icon: Icons.bolt_rounded,
+            label: L10n.of(context).addQuickVerse,
+            trailing: 'V',
+          ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'bible',
           height: 38,
-          child: AppMenuRow(icon: Icons.menu_book, label: 'Buscar en la Biblia'),
+          child: AppMenuRow(icon: Icons.menu_book, label: L10n.of(context).addSearchBible),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'media',
           height: 38,
-          child: AppMenuRow(icon: Icons.perm_media_outlined, label: 'Imagen o video'),
+          child: AppMenuRow(
+            icon: Icons.perm_media_outlined,
+            label: L10n.of(context).addImageOrVideo,
+          ),
         ),
         const PopupMenuDivider(),
-        const _SectionItem('Crear'),
-        const PopupMenuItem(
+        _SectionItem(L10n.of(context).addCreate),
+        PopupMenuItem(
           value: 'free',
           height: 38,
-          child: AppMenuRow(icon: Icons.text_fields, label: 'Slide de texto'),
+          child: AppMenuRow(icon: Icons.text_fields, label: L10n.of(context).addTextSlide),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'sermon',
           height: 38,
-          child: AppMenuRow(icon: Icons.mic_outlined, label: 'Prédica'),
+          child: AppMenuRow(icon: Icons.mic_outlined, label: L10n.of(context).itemTypeSermon),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'announcement',
           height: 38,
-          child: AppMenuRow(icon: Icons.campaign_outlined, label: 'Anuncio'),
+          child: AppMenuRow(
+            icon: Icons.campaign_outlined,
+            label: L10n.of(context).itemTypeAnnouncement,
+          ),
         ),
         const PopupMenuDivider(),
-        const _SectionItem('Importar archivo'),
-        const PopupMenuItem(
+        _SectionItem(L10n.of(context).addImportFile),
+        PopupMenuItem(
           value: 'pptx',
           height: 38,
           child: AppMenuRow(
             icon: Icons.upload_file_outlined,
             label: 'PowerPoint',
-            trailing: 'texto',
+            trailing: L10n.of(context).addPptxText,
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'pptx_images',
           height: 38,
           child: AppMenuRow(
             icon: Icons.slideshow_outlined,
             label: 'PowerPoint',
-            trailing: 'imágenes',
+            trailing: L10n.of(context).addPptxImages,
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'video',
           height: 38,
-          child: AppMenuRow(icon: Icons.video_file_outlined, label: 'Video'),
+          child: AppMenuRow(icon: Icons.video_file_outlined, label: L10n.of(context).itemTypeVideo),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'folder',
           height: 38,
-          child: AppMenuRow(icon: Icons.folder_open_outlined, label: 'Carpeta completa'),
+          child: AppMenuRow(
+            icon: Icons.folder_open_outlined,
+            label: L10n.of(context).addWholeFolder,
+          ),
         ),
       ],
       onSelected: (value) => _handle(context, value),
@@ -100,7 +113,7 @@ class _AddItemMenu extends StatelessWidget {
                 borderRadius: AppRadius.all(AppRadius.md),
                 border: Border.all(color: AppColors.accentOutline),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.add_rounded, size: 16, color: AppColors.accent),
@@ -109,7 +122,7 @@ class _AddItemMenu extends StatelessWidget {
                   // running past the edge of the button.
                   Flexible(
                     child: Text(
-                      'Agregar elemento',
+                      L10n.of(context).addItem,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppColors.accent,
@@ -242,15 +255,15 @@ class _SermonDialogState extends State<_SermonDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Nueva prédica',
+      title: L10n.of(context).sermonNew,
       icon: Icons.mic_outlined,
       width: 480,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
         const SizedBox(width: AppSpace.sm),
         FilledButton(
           onPressed: _titleCtrl.text.trim().isEmpty ? null : _save,
-          child: const Text('Guardar'),
+          child: Text(L10n.of(context).save),
         ),
       ],
       child: SingleChildScrollView(
@@ -259,8 +272,8 @@ class _SermonDialogState extends State<_SermonDialog> {
           children: [
             AppTextField(
               controller: _titleCtrl,
-              hintText: 'Título de la prédica',
-              label: 'Título',
+              hintText: L10n.of(context).sermonTitleHint,
+              label: L10n.of(context).sermonTitleSlide,
               autofocus: true,
               onSubmitted: (_) => _addPoint(),
               onChanged: (_) => setState(() {}),
@@ -268,12 +281,12 @@ class _SermonDialogState extends State<_SermonDialog> {
             const SizedBox(height: AppSpace.lg),
             Row(
               children: [
-                const Text('PUNTOS', style: AppText.sectionLabel),
+                Text(L10n.of(context).sermonPoints, style: AppText.sectionLabel),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _addPoint,
                   icon: const Icon(Icons.add, size: 14),
-                  label: const Text('Agregar', style: TextStyle(fontSize: 12)),
+                  label: Text(L10n.of(context).add, style: const TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(foregroundColor: AppColors.accent),
                 ),
               ],
@@ -302,7 +315,7 @@ class _SermonDialogState extends State<_SermonDialog> {
                     Expanded(
                       child: AppTextField(
                         controller: entry.value,
-                        hintText: 'Punto ${i + 1}',
+                        hintText: L10n.of(context).sermonPoint(i + 1),
                         onSubmitted: (_) => _addPoint(),
                       ),
                     ),
@@ -312,7 +325,7 @@ class _SermonDialogState extends State<_SermonDialog> {
                         size: 18,
                         color: AppColors.textTertiary,
                       ),
-                      tooltip: 'Quitar punto',
+                      tooltip: L10n.of(context).sermonRemovePoint,
                       onPressed: () => _removePoint(i),
                     ),
                   ],
@@ -325,7 +338,7 @@ class _SermonDialogState extends State<_SermonDialog> {
                 child: TextButton.icon(
                   onPressed: _addPoint,
                   icon: const Icon(Icons.add, size: 14),
-                  label: const Text('Agregar primer punto'),
+                  label: Text(L10n.of(context).sermonAddFirstPoint),
                   style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
                 ),
               ),
@@ -347,11 +360,11 @@ Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) a
     builder: (_) => TextControllerScope(
       builder: (_, msgCtrl) => StatefulBuilder(
         builder: (ctx, setState) => AppDialog(
-          title: 'Slide de anuncio',
+          title: L10n.of(ctx).announcementTitle,
           icon: Icons.campaign_outlined,
           width: 440,
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L10n.of(ctx).cancel)),
             const SizedBox(width: AppSpace.sm),
             ValueListenableBuilder(
               valueListenable: msgCtrl,
@@ -365,7 +378,7 @@ Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) a
                           timerTarget: useTimer ? timerTarget : null,
                         );
                       },
-                child: const Text('Agregar'),
+                child: Text(L10n.of(ctx).add),
               ),
             ),
           ],
@@ -375,8 +388,8 @@ Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) a
             children: [
               AppTextField(
                 controller: msgCtrl,
-                hintText: 'Bienvenidos a la iglesia...',
-                label: 'Mensaje',
+                hintText: L10n.of(ctx).announcementHint,
+                label: L10n.of(ctx).announcementMessage,
                 maxLines: 3,
                 autofocus: true,
               ),
@@ -385,8 +398,8 @@ Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) a
                 children: [
                   Switch(value: useTimer, onChanged: (v) => setState(() => useTimer = v)),
                   const SizedBox(width: AppSpace.sm),
-                  const Text(
-                    'Mostrar cuenta regresiva',
+                  Text(
+                    L10n.of(ctx).announcementShowCountdown,
                     style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   ),
                 ],
@@ -397,7 +410,7 @@ Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) a
                   icon: const Icon(Icons.access_time, size: 16),
                   label: Text(
                     timerTarget == null
-                        ? 'Seleccionar hora de inicio'
+                        ? L10n.of(ctx).announcementPickTime
                         : '${timerTarget!.hour.toString().padLeft(2, '0')}:'
                               '${timerTarget!.minute.toString().padLeft(2, '0')}',
                     style: const TextStyle(fontSize: 13),
