@@ -8,26 +8,22 @@ import 'package:flutter_modular/flutter_modular.dart' show Modular;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
-import '../../../core/widgets/ui/app_buttons.dart';
 import '../children/control/presenter/cubit/cubit.dart';
 import '../children/control/presenter/page.dart';
 import 'collections_library_page.dart';
 import 'history_page.dart';
 import 'library/library_dock.dart';
-import '../../../core/api/api_client.dart';
 import '../../../core/history/projection_recorder.dart';
 import '../../../core/remote/remote_control.dart';
 import '../../../core/services/app_prefs_service.dart';
-import '../../../core/services/locale_controller.dart';
 import '../../../l10n/l10n.dart';
 import '../../../core/widgets/ui/panel_resizer.dart';
-import '../../auth/utils/navigator.dart';
 import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
-import 'widgets/change_password_dialog.dart';
 import 'widgets/command_palette.dart';
 import 'widgets/live_bar.dart';
 import 'widgets/remote_dialog.dart';
+import 'widgets/settings_dialog.dart';
 import 'widgets/quick_verse_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
 
@@ -341,7 +337,14 @@ class _Sidebar extends StatelessWidget {
             active: false,
             onTap: () => showOrgAdminDialog(context),
           ),
-          const _AccountButton(),
+          // Account, language and the projector screen live together here:
+          // they belong to this computer, not to the service on it.
+          _SideButton(
+            icon: Icons.settings_outlined,
+            label: L10n.of(context).settingsTitle,
+            active: false,
+            onTap: () => showSettingsDialog(context, context.read<ControlCubit>()),
+          ),
           const SizedBox(height: AppSpace.md),
         ],
       ),
@@ -353,112 +356,6 @@ class _Sidebar extends StatelessWidget {
 ///
 /// These used to have nowhere to live, so an operator could not change their
 /// password or hand the machine to someone else without editing a file.
-class _AccountButton extends StatelessWidget {
-  const _AccountButton();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Modular.get<ApiClient>().currentUser;
-    final t = L10n.of(context);
-    final locale = Modular.get<LocaleController>();
-
-    return PopupMenuButton<String>(
-      tooltip: user?.email ?? t.menuAccount,
-      color: AppColors.surfaceControl,
-      position: PopupMenuPosition.over,
-      itemBuilder: (_) => [
-        if (user != null)
-          PopupMenuItem<String>(
-            enabled: false,
-            height: 40,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (user.displayName?.isNotEmpty == true)
-                  Text(
-                    user.displayName!,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                Text(user.email, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-              ],
-            ),
-          ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          height: 38,
-          // A submenu rather than a dialog: choosing a language is one press,
-          // and a person hunting for it does not know what the app calls the
-          // screen it would otherwise live on.
-          child: PopupMenuButton<String>(
-            tooltip: '',
-            color: AppColors.surfaceControl,
-            position: PopupMenuPosition.under,
-            offset: const Offset(0, -4),
-            onSelected: (code) {
-              locale.choose(code == 'system' ? null : Locale(code));
-              Navigator.pop(context);
-            },
-            itemBuilder: (_) => [
-              CheckedPopupMenuItem<String>(
-                value: 'system',
-                checked: locale.value == null,
-                height: 38,
-                child: Text(
-                  t.languageFollowSystem,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                ),
-              ),
-              for (final option in LocaleController.supported)
-                CheckedPopupMenuItem<String>(
-                  value: option.languageCode,
-                  checked: locale.value?.languageCode == option.languageCode,
-                  height: 38,
-                  // Each language's own name, written the way its readers
-                  // write it, so somebody scanning for theirs finds it.
-                  child: Text(
-                    lookupL10n(option).languageName,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                  ),
-                ),
-            ],
-            child: AppMenuRow(icon: Icons.translate_rounded, label: t.menuLanguage),
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'password',
-          height: 38,
-          child: AppMenuRow(icon: Icons.key_outlined, label: t.menuChangePassword),
-        ),
-        PopupMenuItem<String>(
-          value: 'signout',
-          height: 38,
-          child: AppMenuRow(icon: Icons.logout_rounded, label: t.menuSignOut, danger: true),
-        ),
-      ],
-      onSelected: (value) async {
-        if (value == 'password') {
-          await showChangePasswordDialog(context);
-        } else if (value == 'signout') {
-          await Modular.get<ApiClient>().signOut();
-          AuthNavigator.goToLogin();
-        }
-      },
-      child: const SizedBox(
-        width: AppSizes.sidebarWidth,
-        height: 54,
-        child: Center(
-          child: Icon(Icons.account_circle_outlined, size: 22, color: AppColors.textMuted),
-        ),
-      ),
-    );
-  }
-}
-
 class _SideButton extends StatelessWidget {
   const _SideButton({
     required this.icon,

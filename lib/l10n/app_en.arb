@@ -1222,5 +1222,15 @@
   "bibleLocalFileNote": "Versions marked \"local file\" need you to import your own JSON file in the thiagobodruk/bible format.",
   "confirm": "Confirm",
   "clearSearch": "Clear",
-  "searchFieldHint": "Search..."
+  "searchFieldHint": "Search...",
+  "settingsTitle": "Settings",
+  "settingsAccount": "Account",
+  "settingsLanguage": "Language",
+  "settingsProjector": "Projector screen",
+  "settingsProjectorUnset": "Chosen the first time you project.",
+  "settingsProjectorOneScreen": "Only one screen is connected.",
+  "settingsProjectorChoose": "Choose screen",
+  "languagePickTitle": "Choose your language",
+  "languagePickCaption": "Use the app in English",
+  "languagePickLater": "You can change it later in Settings."
 }

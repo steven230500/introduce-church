@@ -108,7 +108,22 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<void> setLocale(String? code) async {
     locale = code;
+    languageWasAsked = true;
   }
+
+  bool languageWasAsked = false;
+
+  @override
+  Future<bool> languageAsked() async => languageWasAsked || locale != null;
+
+  @override
+  Future<void> setLanguageAsked() async => languageWasAsked = true;
+
+  /// Whether the computer counts as one that was in use before.
+  bool used = false;
+
+  @override
+  Future<bool> hasBeenUsed() async => used || session != null || saved != null;
 
   Map<String, double>? layout;
 

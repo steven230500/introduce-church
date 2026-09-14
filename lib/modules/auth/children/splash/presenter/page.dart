@@ -11,6 +11,7 @@ class SplashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<SplashCubit, SplashState>(
       listener: (context, state) {
+        if (state is SplashNavigateLanguage) Modular.to.navigate('/auth/language');
         if (state is SplashNavigateLogin) Modular.to.navigate('/auth/login');
         if (state is SplashNavigatePresentation) Modular.to.navigate('/presentation/');
         if (state is SplashNavigateOrgSetup) Modular.to.navigate('/org-setup/');

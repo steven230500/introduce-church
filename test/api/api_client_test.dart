@@ -107,7 +107,7 @@ void main() {
   group('opening the app', () {
     test('with no internet, a stored session goes straight to the presenter', () async {
       final prefs = FakePrefsService()..session = storedSession(inSeconds: -60);
-      final splash = SplashCubit(clientWith(_Adapter.offline(), prefs));
+      final splash = SplashCubit(clientWith(_Adapter.offline(), prefs), prefs);
       addTearDown(splash.close);
 
       await splash.check();
@@ -117,7 +117,7 @@ void main() {
 
     test('a session the server refuses goes to login', () async {
       final prefs = FakePrefsService()..session = storedSession(inSeconds: -60);
-      final splash = SplashCubit(clientWith(_Adapter.status(401), prefs));
+      final splash = SplashCubit(clientWith(_Adapter.status(401), prefs), prefs);
       addTearDown(splash.close);
 
       await splash.check();

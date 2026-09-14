@@ -155,7 +155,30 @@ class AppPrefsService {
     } else {
       d['locale'] = code;
     }
+    // Choosing to follow the computer is an answer too, and must not bring
+    // the first-run question back.
+    d['language_asked'] = true;
     await _write(d);
+  }
+
+  /// Whether this computer has been asked which language to use.
+  Future<bool> languageAsked() async {
+    final d = await _read();
+    return d['language_asked'] == true || d.containsKey('locale');
+  }
+
+  Future<void> setLanguageAsked() async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['language_asked'] = true;
+    await _write(d);
+  }
+
+  /// Whether this computer was already in use before the language question
+  /// existed: a session or a plan saved on it. Those churches have been
+  /// reading the app in a language for months and are not asked again.
+  Future<bool> hasBeenUsed() async {
+    final d = await _read();
+    return d.containsKey('session') || d.containsKey('collections') || d.containsKey('templates');
   }
 
   Future<String?> getProjectorDisplay() async {
