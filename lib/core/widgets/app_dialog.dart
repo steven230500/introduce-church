@@ -13,7 +13,7 @@ const kDialogBorder = AppColors.border;
 const kDialogHeaderBg = AppColors.surfaceRaised;
 const kTextPrimary = AppColors.textPrimary;
 const kTextSecondary = AppColors.textTertiary;
-const kTextMuted = AppColors.textDisabled;
+const kTextMuted = AppColors.textMuted;
 const kAccent = AppColors.accent;
 const kDestructive = AppColors.danger;
 

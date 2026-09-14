@@ -184,7 +184,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
           const SizedBox(height: AppSpace.xs),
           Text(
             L10n.of(context).quickVerseExamples('jn 3:16   ·   1 co 13:4-7   ·   salmos 23'),
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+            style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
           ),
         ],
       ),
@@ -211,10 +211,10 @@ class _Feedback extends StatelessWidget {
 
     return switch (result.problem) {
       ReferenceProblem.empty ||
-      null => _Line(text: L10n.of(context).quickVerseTypeBook, color: AppColors.textMuted),
+      null => _Line(text: L10n.of(context).quickVerseTypeBook, color: AppColors.textTertiary),
       ReferenceProblem.noChapter => _Line(
         text: L10n.of(context).quickVerseMissingChapter,
-        color: AppColors.textMuted,
+        color: AppColors.textTertiary,
       ),
       ReferenceProblem.noBook => _Line(
         text: L10n.of(context).quickVerseUnknownBook(result.typed ?? ''),

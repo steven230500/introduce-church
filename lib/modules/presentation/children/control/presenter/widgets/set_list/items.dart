@@ -43,7 +43,7 @@ class _SetListItems extends StatelessWidget {
             Text(
               t.emptyCollection,
               style: TextStyle(
-                color: AppColors.textMuted,
+                color: AppColors.textTertiary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -301,7 +301,7 @@ class _OrderBadge extends StatelessWidget {
       child: Text(
         '${index + 1}',
         style: TextStyle(
-          color: isActive ? Colors.white : AppColors.textMuted,
+          color: isActive ? Colors.white : AppColors.textTertiary,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

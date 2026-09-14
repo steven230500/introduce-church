@@ -49,7 +49,7 @@ class _SignOutButton extends StatelessWidget {
     return Row(
       children: [
         if (email != null)
-          Text(email, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(email, style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
         const SizedBox(width: 8),
         TextButton.icon(
           icon: const Icon(Icons.logout_rounded, size: 15),
@@ -204,7 +204,7 @@ class _CreateViewState extends State<_CreateView> {
                 decoration: InputDecoration(
                   labelText: L10n.of(context).orgNameLabel,
                   hintText: L10n.of(context).orgNameHint,
-                  hintStyle: const TextStyle(color: AppColors.textDisabled),
+                  hintStyle: const TextStyle(color: AppColors.textMuted),
                   filled: true,
                   fillColor: AppColors.surface,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -327,7 +327,7 @@ class _JoinViewState extends State<_JoinView> {
                 Center(
                   child: Text(
                     L10n.of(context).orgNoResults,
-                    style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   ),
                 )
               else
@@ -422,7 +422,7 @@ class _PendingView extends StatelessWidget {
               Text(
                 L10n.of(context).orgRequestHowToApprove,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary, height: 1.5),
               ),
               const SizedBox(height: 32),
               SizedBox(

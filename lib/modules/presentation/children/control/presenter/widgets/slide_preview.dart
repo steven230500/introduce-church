@@ -152,7 +152,7 @@ class _ViewModeButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: active ? Colors.white : AppColors.textMuted,
+                  color: active ? Colors.white : AppColors.textTertiary,
                 ),
               ),
             ],
@@ -463,7 +463,7 @@ class _OutputThumbnail extends StatelessWidget {
                     child: Text(
                       t.blackMark,
                       style: TextStyle(
-                        color: AppColors.textDisabled,
+                        color: AppColors.textTertiary,
                         fontSize: 9,
                         letterSpacing: 1.5,
                         fontWeight: FontWeight.w700,
@@ -615,7 +615,7 @@ class _Preview extends StatelessWidget {
                     child: Text(
                       t.blackScreen,
                       style: TextStyle(
-                        color: AppColors.textDisabled,
+                        color: AppColors.textTertiary,
                         fontSize: 14,
                         letterSpacing: 2,
                         fontWeight: FontWeight.w600,
@@ -626,7 +626,7 @@ class _Preview extends StatelessWidget {
                   Center(
                     child: Text(
                       t.selectAnItem,
-                      style: TextStyle(color: AppColors.textDisabled, fontSize: 15),
+                      style: TextStyle(color: AppColors.textTertiary, fontSize: 15),
                     ),
                   ),
                 if (onAir) const _LiveBadge(),

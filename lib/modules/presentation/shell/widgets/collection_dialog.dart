@@ -145,7 +145,7 @@ class _CollectionDialogState extends State<_CollectionDialog> {
                   Text(
                     _date != null ? _formatDate(_date!) : L10n.of(context).collectionDateOptional,
                     style: TextStyle(
-                      color: _date != null ? AppColors.textPrimary : AppColors.textDisabled,
+                      color: _date != null ? AppColors.textPrimary : AppColors.textMuted,
                       fontSize: 13,
                     ),
                   ),

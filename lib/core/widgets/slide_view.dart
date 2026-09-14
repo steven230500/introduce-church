@@ -49,7 +49,7 @@ class SlideView extends StatelessWidget {
         errorBuilder: (ctx, err, st) => const DecoratedBox(
           decoration: BoxDecoration(color: Color(0xFF000000)),
           child: Center(
-            child: Text('⚠', style: TextStyle(color: AppColors.textDisabled, fontSize: 48)),
+            child: Text('⚠', style: TextStyle(color: AppColors.textTertiary, fontSize: 48)),
           ),
         ),
       );

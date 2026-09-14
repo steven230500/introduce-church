@@ -79,7 +79,10 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 6),
-          Text(L10n.of(context).freeSlideNote, style: TextStyle(color: kTextMuted, fontSize: 11)),
+          Text(
+            L10n.of(context).freeSlideNote,
+            style: TextStyle(color: kTextSecondary, fontSize: 11),
+          ),
         ],
       ),
     );

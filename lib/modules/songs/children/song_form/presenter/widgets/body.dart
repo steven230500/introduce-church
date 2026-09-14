@@ -262,7 +262,7 @@ class _FormState extends State<_Form> {
                       SizedBox(height: 10),
                       Text(
                         L10n.of(context).songNoVerses,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -307,7 +307,7 @@ class _DarkField extends StatelessWidget {
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
-        labelStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        labelStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
         filled: true,
         fillColor: AppColors.surface,
         border: OutlineInputBorder(

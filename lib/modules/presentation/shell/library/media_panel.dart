@@ -232,7 +232,7 @@ class _Filter extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: active ? AppColors.accent : AppColors.textMuted,
+            color: active ? AppColors.accent : AppColors.textTertiary,
             fontSize: 10,
             fontWeight: FontWeight.w600,
           ),

@@ -206,7 +206,7 @@ class _AnnouncementViewState extends State<_AnnouncementView> {
                 Text(
                   L10n.of(context).countdownStartsSoon,
                   style: TextStyle(
-                    color: AppColors.textMuted,
+                    color: AppColors.textTertiary,
                     fontSize: 24,
                     fontWeight: FontWeight.w300,
                     letterSpacing: 1,
@@ -280,7 +280,7 @@ class _CountdownViewState extends State<_CountdownView> {
             Text(
               L10n.of(context).countdownStartsSoon,
               style: TextStyle(
-                color: AppColors.textMuted,
+                color: AppColors.textTertiary,
                 fontSize: 28,
                 fontWeight: FontWeight.w300,
                 letterSpacing: 1,

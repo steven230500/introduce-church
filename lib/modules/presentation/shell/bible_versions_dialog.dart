@@ -93,7 +93,7 @@ class _VersionRow extends StatelessWidget {
                     state.meta.bundled
                         ? L10n.of(context).bibleVersionBundled(state.meta.code)
                         : state.meta.code,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
                   ),
                   if (state.meta.localImport && !installed) ...[
                     const SizedBox(width: 6),
@@ -213,7 +213,7 @@ class _VersionAction extends StatelessWidget {
             SizedBox(width: 8),
             Text(
               L10n.of(context).songImporting,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
             ),
           ],
         ),
@@ -294,7 +294,7 @@ class _ImportNote extends StatelessWidget {
           Expanded(
             child: Text(
               L10n.of(context).bibleLocalFileNote,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
             ),
           ),
         ],

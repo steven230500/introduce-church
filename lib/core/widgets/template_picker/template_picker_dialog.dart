@@ -751,7 +751,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                                             Text(
                                               L10n.of(context).designSelectLayer,
                                               style: TextStyle(
-                                                color: AppColors.textDisabled,
+                                                color: AppColors.textTertiary,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -1115,7 +1115,7 @@ class _ModeButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: active ? Colors.white : AppColors.textMuted,
+                color: active ? Colors.white : AppColors.textTertiary,
               ),
             ),
           ],
@@ -1190,7 +1190,7 @@ class _SectionLabel extends StatelessWidget {
       style: const TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: AppColors.textMuted,
+        color: AppColors.textTertiary,
         letterSpacing: 0.5,
       ),
     ),
@@ -1639,7 +1639,7 @@ class _LayersListSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
+                color: AppColors.textTertiary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1668,7 +1668,7 @@ class _LayersListSection extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
               L10n.of(context).designNoLayers,
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
             ),
           )
         else
@@ -1872,7 +1872,7 @@ class _LayerSlider extends StatelessWidget {
       ),
       SizedBox(
         width: 32,
-        child: Text(_display, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        child: Text(_display, style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
       ),
     ],
   );

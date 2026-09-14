@@ -243,7 +243,7 @@ class _Field extends StatelessWidget {
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        labelStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
         prefixIcon: Icon(icon, size: 18, color: AppColors.textMuted),
         suffixIcon: suffixIcon,
         filled: true,

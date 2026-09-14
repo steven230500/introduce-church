@@ -404,7 +404,7 @@ class _Preview extends StatelessWidget {
             padding: const EdgeInsets.only(top: 2, bottom: AppSpace.md),
             child: Text(
               p.basename(song.source),
-              style: AppText.rowSubtitle.copyWith(color: AppColors.textMuted),
+              style: AppText.rowSubtitle,
               overflow: TextOverflow.ellipsis,
             ),
           ),

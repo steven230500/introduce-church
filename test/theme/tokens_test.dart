@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/theme/app_colors.dart';
@@ -173,6 +175,32 @@ void main() {
       ]) {
         expect(style.fontSize, greaterThanOrEqualTo(9));
       }
+    });
+  });
+
+  group('text written straight into a screen', () {
+    test('never uses the greys that do not clear AA, except as a hint', () {
+      // The roles above are safe, but a screen can still spell out a colour
+      // itself, and twenty of them did: the line saying there are no layers
+      // yet, the section labels on the stage monitor, the note under a text
+      // slide - all 1.5 to 2.8 to 1, unreadable from the back of a booth.
+      // Placeholders may stay dim, and a colour picked by a condition is a
+      // state (disabled, not reached) rather than copy.
+      final dim = RegExp(
+        r'(\w+):\s*(?:const\s+)?TextStyle\((?:[^()]|\([^()]*\))*?\bcolor:\s*'
+        r'(?:AppColors\.)?(textMuted|textDisabled|kTextMuted)\b(?!\s*[?:])',
+      );
+      final offenders = <String>[];
+      for (final file in Directory('lib').listSync(recursive: true).whereType<File>()) {
+        if (!file.path.endsWith('.dart')) continue;
+        final source = file.readAsStringSync();
+        for (final match in dim.allMatches(source)) {
+          if (match.group(1) == 'hintStyle') continue;
+          final line = '\n'.allMatches(source.substring(0, match.start)).length + 1;
+          offenders.add('${file.path}:$line');
+        }
+      }
+      expect(offenders, isEmpty);
     });
   });
 }

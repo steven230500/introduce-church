@@ -410,7 +410,7 @@ class _Field extends StatelessWidget {
                 focusedBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 hintText: t.searchHint,
-                hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 15),
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 15),
               ),
             ),
           ),

@@ -150,7 +150,7 @@ class _SectionLabel extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: AppColors.textDisabled,
+              color: AppColors.textTertiary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
@@ -373,7 +373,7 @@ class _InfoPanelState extends State<_InfoPanel> {
             const SizedBox(height: 4),
             Text(
               L10n.of(context).stageSlideOf(current.slideIndex + 1, current.slideCount),
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
             ),
             // Large enough to read from the pulpit: this is the number the
             // preacher is looking for.
@@ -448,7 +448,7 @@ class _InfoPanelState extends State<_InfoPanel> {
           ] else
             Text(
               L10n.of(context).stageNoSlide,
-              style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
             ),
 
           const Spacer(),

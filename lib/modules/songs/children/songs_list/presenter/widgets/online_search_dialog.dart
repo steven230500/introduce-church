@@ -257,7 +257,7 @@ class _ResultsArea extends StatelessWidget {
       return const Center(
         child: Text(
           'Escribe un título o artista y presiona Buscar.',
-          style: TextStyle(color: kTextMuted, fontSize: 13),
+          style: TextStyle(color: kTextSecondary, fontSize: 13),
           textAlign: TextAlign.center,
         ),
       );

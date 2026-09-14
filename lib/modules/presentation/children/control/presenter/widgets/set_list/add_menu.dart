@@ -339,7 +339,7 @@ class _SermonDialogState extends State<_SermonDialog> {
                   onPressed: _addPoint,
                   icon: const Icon(Icons.add, size: 14),
                   label: Text(L10n.of(context).sermonAddFirstPoint),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.textTertiary),
                 ),
               ),
           ],

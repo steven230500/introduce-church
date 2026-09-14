@@ -355,7 +355,7 @@ class _CountRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            Text(note, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+            Text(note, style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
           ],
         ),
       ],

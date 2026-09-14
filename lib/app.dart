@@ -56,7 +56,7 @@ class App extends StatelessWidget {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.surfaceControl,
-          hintStyle: const TextStyle(color: AppColors.textDisabled),
+          hintStyle: const TextStyle(color: AppColors.textMuted),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),

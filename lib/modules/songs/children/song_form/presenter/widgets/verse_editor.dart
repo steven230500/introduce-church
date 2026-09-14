@@ -118,7 +118,7 @@ class _VerseEditorState extends State<_VerseEditor> {
               style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
               decoration: InputDecoration(
                 hintText: L10n.of(context).songVerseHint,
-                hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 14),
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
                 filled: true,
                 fillColor: AppColors.background,
                 border: OutlineInputBorder(

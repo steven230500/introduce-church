@@ -313,7 +313,7 @@ class _NowShowing extends StatelessWidget {
     if (collection == null) {
       return Text(
         t.barNoCollection,
-        style: const TextStyle(color: AppColors.textDisabled, fontSize: 12),
+        style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
       );
     }
 
@@ -339,7 +339,7 @@ class _NowShowing extends StatelessWidget {
           if (item != null) ...[
             const TextSpan(
               text: '  •  ',
-              style: TextStyle(color: AppColors.textDisabled),
+              style: TextStyle(color: AppColors.textTertiary),
             ),
             TextSpan(
               text: item.titleIn(t),
@@ -348,7 +348,7 @@ class _NowShowing extends StatelessWidget {
             if (position.isNotEmpty)
               TextSpan(
                 text: '   $position',
-                style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
+                style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
               ),
           ],
         ],
@@ -633,7 +633,10 @@ class _CountdownDialogState extends State<_CountdownDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.countdownPresets, style: const TextStyle(color: kTextMuted, fontSize: 11)),
+          Text(
+            t.countdownPresets,
+            style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+          ),
           const SizedBox(height: AppSpace.sm),
           Wrap(
             spacing: AppSpace.sm,
@@ -649,7 +652,10 @@ class _CountdownDialogState extends State<_CountdownDialog> {
                 .toList(),
           ),
           const SizedBox(height: AppSpace.lg),
-          Text(t.countdownCustom, style: const TextStyle(color: kTextMuted, fontSize: 11)),
+          Text(
+            t.countdownCustom,
+            style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+          ),
           const SizedBox(height: AppSpace.sm - 2),
           Row(
             children: [

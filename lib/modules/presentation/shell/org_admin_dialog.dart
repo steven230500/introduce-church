@@ -218,7 +218,7 @@ class _PendingTab extends StatelessWidget {
       return Center(
         child: Text(
           L10n.of(context).orgOnlyAdminsSeeRequests,
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
         ),
       );
     }
@@ -226,7 +226,7 @@ class _PendingTab extends StatelessWidget {
       return Center(
         child: Text(
           L10n.of(context).orgNoPendingRequests,
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
         ),
       );
     }
@@ -313,7 +313,7 @@ class _MembersTab extends StatelessWidget {
       return Center(
         child: Text(
           L10n.of(context).orgNoMembers,
-          style: const TextStyle(color: AppColors.textMuted),
+          style: const TextStyle(color: AppColors.textTertiary),
         ),
       );
     }

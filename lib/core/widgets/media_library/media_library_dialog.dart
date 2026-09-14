@@ -333,7 +333,7 @@ class _Body extends StatelessWidget {
             SizedBox(height: 12),
             Text(
               'Sin media — sube imágenes o videos',
-              style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
             ),
           ],
         ),

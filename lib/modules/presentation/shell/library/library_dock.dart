@@ -104,7 +104,7 @@ class _DockTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.accent : AppColors.textMuted;
+    final color = active ? AppColors.accent : AppColors.textTertiary;
     return Tooltip(
       message: label,
       child: GestureDetector(

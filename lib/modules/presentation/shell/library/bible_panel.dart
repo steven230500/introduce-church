@@ -317,7 +317,7 @@ class _VersesList extends StatelessWidget {
                       child: Text(
                         '$number',
                         style: TextStyle(
-                          color: selected ? AppColors.accent : AppColors.textDisabled,
+                          color: selected ? AppColors.accent : AppColors.textTertiary,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),

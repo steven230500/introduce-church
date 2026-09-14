@@ -143,7 +143,7 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
               textAlignVertical: TextAlignVertical.top,
               decoration: InputDecoration(
                 hintText: L10n.of(context).pasteHint,
-                hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 13),
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 filled: true,
                 fillColor: AppColors.background,
                 border: OutlineInputBorder(
@@ -347,7 +347,7 @@ class _SegmentsPreview extends StatelessWidget {
                           Text(
                             L10n.of(context).pasteEmpty,
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                            style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                           ),
                         ],
                       ),

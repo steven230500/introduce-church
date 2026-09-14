@@ -215,7 +215,7 @@ class AppMenuRow extends StatelessWidget {
         if (trailing != null) ...[
           const Spacer(),
           const SizedBox(width: AppSpace.md),
-          Text(trailing!, style: const TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+          Text(trailing!, style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
         ],
       ],
     );
