@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/api/api_client.dart';
+import 'package:introduce_church/modules/auth/children/splash/presenter/cubit/cubit.dart';
+import 'package:introduce_church/modules/auth/children/splash/presenter/cubit/state.dart';
 
 import '../helpers/fakes.dart';
 
@@ -99,6 +101,28 @@ void main() {
       await sub.cancel();
 
       expect(signedOut, isFalse);
+    });
+  });
+
+  group('opening the app', () {
+    test('with no internet, a stored session goes straight to the presenter', () async {
+      final prefs = FakePrefsService()..session = storedSession(inSeconds: -60);
+      final splash = SplashCubit(clientWith(_Adapter.offline(), prefs));
+      addTearDown(splash.close);
+
+      await splash.check();
+
+      expect(splash.state, isA<SplashNavigatePresentation>());
+    });
+
+    test('a session the server refuses goes to login', () async {
+      final prefs = FakePrefsService()..session = storedSession(inSeconds: -60);
+      final splash = SplashCubit(clientWith(_Adapter.status(401), prefs));
+      addTearDown(splash.close);
+
+      await splash.check();
+
+      expect(splash.state, isA<SplashNavigateLogin>());
     });
   });
 }

@@ -95,10 +95,16 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     _recorder;
     _lifecycle;
     unawaited(_remote.restore());
+    _control.keepRetrying();
   }
+
+  /// Held rather than looked up again in dispose, where the tree it would be
+  /// looked up in is already coming down.
+  late final ControlCubit _control = context.read<ControlCubit>();
 
   @override
   void dispose() {
+    _control.stopRetrying();
     unawaited(_recorder.stop());
     unawaited(_remote.dispose());
     _lifecycle.dispose();

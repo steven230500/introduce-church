@@ -124,8 +124,14 @@ cada elemento, y al terminar se eligen cuáles guardar como plan. Lo que se
 proyecta durante un ensayo no cuenta para el reporte de licencias.
 
 **Modo sin internet.** El servicio arranca y funciona sin red. La sesión
-sobrevive, los diseños quedan en caché y la app avisa cuando no alcanza el
-servidor en vez de quedarse callada.
+sobrevive, los diseños y la biblioteca de canciones quedan en caché y la app
+avisa cuando no alcanza el servidor en vez de quedarse callada. Sin red también
+se puede preparar: crear, copiar y borrar servicios, agregar canciones,
+pasajes, avisos y videos, quitar elementos (y deshacerlo), reordenar y
+renombrar. Todo se ve y se proyecta al instante, queda guardado aunque se
+cierre la computadora, y se envía solo, en el orden en que se hizo, cuando
+vuelve la conexión. Si en esa computadora entra otra iglesia antes de que
+vuelva la red, sus cambios esperan a que la primera vuelva a entrar.
 
 **Vista de slide grande.** Para cuando la cuadrícula estorba y lo único que
 importa es lo que está saliendo ahora.

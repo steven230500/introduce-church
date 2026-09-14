@@ -198,4 +198,116 @@ void main() {
       expect(after.bgAudioPath, isNull);
     });
   });
+
+  group('adding and removing, before it is sent', () {
+    CollectionItem item(String id, int order) => CollectionItem(
+      id: id,
+      collectionId: 'c1',
+      type: CollectionItemType.freeSlide,
+      order: order,
+      contentJson: {'text': id},
+    );
+
+    Collection service({String id = 'c1', DateTime? date, List<CollectionItem>? items}) =>
+        Collection(id: id, name: id, serviceDate: date, items: items ?? [item('i1', 0)]);
+
+    PendingWrite add(List<CollectionItem> items) => PendingWrite(
+      kind: PendingKind.itemsAdd,
+      target: 'c1',
+      args: {
+        'items': [for (final i in items) i.toJson()],
+      },
+    );
+
+    test('an added item goes on the end of the plan', () {
+      final after = applyPendingWrite(service(), add([item('i9', 5)]));
+
+      expect(after.items.map((i) => i.id), ['i1', 'i9']);
+      expect(after.items.last.order, 1, reason: 'where it lands, not where it came from');
+    });
+
+    test('an add applied twice adds once', () {
+      // The queue is laid over the cache on every reload, and the cache may
+      // already hold what the queue sent.
+      final once = applyPendingWrite(service(), add([item('i9', 0)]));
+      final twice = applyPendingWrite(once, add([item('i9', 0)]));
+
+      expect(twice.items.map((i) => i.id), ['i1', 'i9']);
+    });
+
+    test('two songs added to one service are two changes, not one', () async {
+      final dir = Directory.systemTemp.createTempSync('pending_adds');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final queue = PendingWrites(file: File('${dir.path}/pending.json'));
+
+      await queue.add(add([item('a', 0)]));
+      await queue.add(add([item('b', 0)]));
+
+      expect(await queue.load(), hasLength(2));
+    });
+
+    test('a removal closes the gap it leaves', () {
+      final plan = service(items: [item('i1', 0), item('i2', 1), item('i3', 2)]);
+
+      final after = applyPendingWrite(
+        plan,
+        const PendingWrite(kind: PendingKind.itemRemove, target: 'i2', args: {}),
+      );
+
+      expect(after.items.map((i) => i.id), ['i1', 'i3']);
+      expect(after.items.map((i) => i.order), [0, 1]);
+    });
+
+    test('a new service takes its place by date, the way the server lists them', () {
+      final list = [
+        service(id: 'later', date: DateTime(2026, 9, 27)),
+        service(id: 'earlier', date: DateTime(2026, 9, 6)),
+        service(id: 'undated'),
+      ];
+
+      final after = applyPendingWriteToAll(
+        list,
+        const PendingWrite(
+          kind: PendingKind.collectionCreate,
+          target: 'new',
+          args: {'name': 'Domingo', 'service_date': '2026-09-13T00:00:00.000'},
+        ),
+      );
+
+      expect(after.map((c) => c.id), ['later', 'new', 'earlier', 'undated']);
+      expect(after[1].items, isEmpty);
+    });
+
+    test('a service created twice is one service', () {
+      const create = PendingWrite(
+        kind: PendingKind.collectionCreate,
+        target: 'new',
+        args: {'name': 'Domingo'},
+      );
+
+      final after = applyPendingWriteToAll(applyPendingWriteToAll([service()], create), create);
+
+      expect(after.map((c) => c.id), ['new', 'c1'], reason: 'the newest first among undated');
+    });
+
+    test('a deleted service leaves the list', () {
+      final after = applyPendingWriteToAll([
+        service(),
+        service(id: 'c2'),
+      ], const PendingWrite(kind: PendingKind.collectionDelete, target: 'c1', args: {}));
+
+      expect(after.map((c) => c.id), ['c2']);
+    });
+
+    test('the church a change was made for survives the app being closed', () {
+      const write = PendingWrite(
+        kind: PendingKind.itemTitle,
+        target: 'i1',
+        args: {'title': 'x'},
+        org: 'iglesia-a',
+      );
+
+      expect(PendingWrite.fromJson(write.toJson()), write);
+    });
+  });
 }

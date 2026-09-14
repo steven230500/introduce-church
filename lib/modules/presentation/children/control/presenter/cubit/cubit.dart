@@ -12,8 +12,10 @@ import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../../../../../core/local_db/bible_repository.dart';
 import '../../../../../../core/services/app_prefs_service.dart';
 import '../../../../../../core/utils/app_logger.dart';
+import '../../../../../../core/utils/new_id.dart';
 import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
+import '../../../../../../core/api/network_failure.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
 import '../../../../../../core/motion/motion_scenes.dart';
@@ -318,10 +320,12 @@ class ControlCubit extends Cubit<ControlState> {
     SongsListRepository? songs,
     ServiceClock? clock,
     DateTime Function()? now,
+    String? Function()? currentOrg,
   }) : _pending = pending ?? PendingWrites(),
        _songs = songs,
        _clock = clock ?? ServiceClock(),
        _now = now ?? DateTime.now,
+       _currentOrg = currentOrg ?? _signedInOrg,
        super(const ControlLoadingState());
 
   final ControlRepository _repository;
@@ -339,6 +343,17 @@ class ControlCubit extends Cubit<ControlState> {
 
   final ServiceClock _clock;
   final DateTime Function() _now;
+
+  /// The church signed in now, which queued changes are checked against.
+  final String? Function() _currentOrg;
+
+  static String? _signedInOrg() {
+    try {
+      return Modular.get<ApiClient>().orgId;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// When the item on the screen went on it; null while nothing is live.
   DateTime? get itemStartedAt => _clock.itemStartedAt;
@@ -399,7 +414,6 @@ class ControlCubit extends Cubit<ControlState> {
   Future<void> setItemPlanned(String itemId, int? secs) async {
     await _write(
       PendingWrite(kind: PendingKind.itemPlanned, target: itemId, args: {'planned_secs': secs}),
-      () => _repository.updateItemPlanned(itemId, secs),
       reload: false,
     );
     if (state is! ControlLoadedState) return;
@@ -425,74 +439,101 @@ class ControlCubit extends Cubit<ControlState> {
   Timer? _autoAdvanceTimer;
   Timer? _overlayTimer;
 
-  /// The collection rows exactly as the server sent them.
-  ///
-  /// Kept so the projector and stage windows can be handed the plan itself
-  /// rather than an id they would have to resolve over a network that, in most
-  /// of these rooms, is not there.
-  List<Map<String, dynamic>> _rawCollections = const [];
   Player? _audioPlayer;
 
   // ── Writing with no network ───────────────────────────────────────────────
-
-  /// Whether a failure was the network rather than the request.
-  ///
-  /// One place, because the four string tests this replaces were copied into
-  /// every method that cared and had already started to drift apart.
-  static bool _isNetworkFailure(Object error) {
-    if (error is ApiException) {
-      // A refused or malformed request came back with a status, so the server
-      // was reachable and retrying it later would fail exactly the same way.
-      return error.statusCode == null;
-    }
-    final text = error.toString();
-    return text.contains('SocketException') ||
-        text.contains('Failed host lookup') ||
-        text.contains('host lookup') ||
-        text.contains('TimeoutException') ||
-        text.contains('timeout') ||
-        text.contains('Connection refused') ||
-        text.contains('Network is unreachable');
-  }
 
   /// Sends a change, or remembers it if the server cannot be reached.
   ///
   /// The change is applied on screen either way. Before this, an edit made in
   /// a building with no internet threw into nothing: the operator saw the old
   /// title, assumed the click had missed, and did it again.
+  ///
+  /// A change goes out through the same [_send] that replays the queue, so
+  /// the path a Sunday with no internet takes is the one every weekday takes.
   /// Callers that already put the change on screen themselves pass
   /// `reload: false`: reloading the whole plan after a slider moves costs a
   /// round trip and makes the set list jump under the operator's hand.
-  Future<void> _write(
-    PendingWrite change,
-    Future<void> Function() send, {
-    bool reload = true,
-  }) async {
+  Future<void> _write(PendingWrite change, {bool reload = true}) async {
+    final flushed = await _serially(() async {
+      final waiting = (await _myPending()).length;
+      // Anything still waiting goes first. An item sent ahead of the new
+      // service it belongs to, still in the queue, would land on nothing.
+      if (await _flushPendingNow() > 0) {
+        await _queue(change);
+        return null;
+      }
+      try {
+        await _send(change);
+      } catch (error) {
+        if (!isNetworkFailure(error)) rethrow;
+        await _queue(change);
+        return null;
+      }
+      return waiting > 0;
+    });
+    if (flushed == null) return;
+    // Emptying the queue on the way is news too: the offline mark comes off.
+    if (reload || flushed) await refresh();
+  }
+
+  Future<void> _queue(PendingWrite change) async {
+    final stamped = change.forOrg(_currentOrg());
+    await _pending.add(stamped);
+    _applyLocally(stamped, (await _myPending()).length);
+  }
+
+  /// The queued changes that belong to the church signed in now. Another
+  /// church's stay on the disk, untouched, until that church signs in again.
+  Future<List<PendingWrite>> _myPending() async {
+    final org = _currentOrg();
+    return [
+      for (final change in await _pending.load())
+        if (change.org == null || change.org == org) change,
+    ];
+  }
+
+  /// Runs [task] after every other queue operation has finished.
+  ///
+  /// Two flushes at once - a refresh and an edit landing together - would
+  /// each send the same queue and each save what they thought was left,
+  /// and a change queued between the two would be written over.
+  Future<T> _serially<T>(Future<T> Function() task) async {
+    final previous = _queueLock;
+    final done = Completer<void>();
+    _queueLock = done.future;
     try {
-      await send();
-      if (reload) await refresh();
-    } catch (error) {
-      if (!_isNetworkFailure(error)) rethrow;
-      await _pending.add(change);
-      _applyLocally(change, (await _pending.load()).length);
+      if (previous != null) await previous;
+      return await task();
+    } finally {
+      // Let go once nothing is waiting, rather than keep a finished future
+      // around: one made in another zone never runs a callback in this one.
+      if (identical(_queueLock, done.future)) _queueLock = null;
+      done.complete();
     }
   }
+
+  Future<void>? _queueLock;
 
   /// Shows a queued change immediately, and says the app is offline.
   void _applyLocally(PendingWrite change, int waiting) {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
-    final collections = [
-      for (final collection in model.collections) applyPendingWrite(collection, change),
-    ];
+    final collections = applyPendingWriteToAll(model.collections, change);
     final active = model.activeCollection == null
         ? null
         : collections.where((c) => c.id == model.activeCollection!.id).firstOrNull;
+    final last = (active?.items.length ?? 1) - 1;
     emit(
       ControlLoadedState(
         model.copyWith(
           collections: collections,
           activeCollection: active,
+          clearCollection: active == null,
+          // An item taken out from above the cursor must not leave it pointing
+          // past the end of the plan.
+          currentItemIndex: model.currentItemIndex.clamp(0, last < 0 ? 0 : last),
+          liveItemIndex: model.liveItemIndex.clamp(0, last < 0 ? 0 : last),
           offline: true,
           pendingWrites: waiting,
         ),
@@ -500,31 +541,68 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
-  /// Sends everything that was made offline, oldest first.
+  /// [collections] with everything still in the queue applied over them.
+  ///
+  /// Over a download as well as over the cache: a change the flush could not
+  /// send is still the operator's plan, and a reload must not hide it.
+  static List<Collection> _withPending(List<Collection> collections, List<PendingWrite> queue) =>
+      queue.fold(collections, applyPendingWriteToAll);
+
+  /// Sends everything that was made offline, oldest first, and returns how
+  /// many are still waiting.
   ///
   /// Before the fetch, never after: a reload that ran first would hand back
   /// the server's older copy and quietly undo the work on screen.
-  Future<int> _flushPending() async {
+  Future<int> _flushPending() => _serially(_flushPendingNow);
+
+  Future<int> _flushPendingNow() async {
     final queue = await _pending.load();
     if (queue.isEmpty) return 0;
-    final stillWaiting = <PendingWrite>[];
+    final mine = await _myPending();
+    final kept = <PendingWrite>[];
+    var stillWaiting = 0;
     for (final change in queue) {
+      if (!mine.contains(change)) {
+        kept.add(change);
+        continue;
+      }
+      // The network gone for one change is gone for the ones after it, and
+      // trying them anyway could put an item on the server before the service
+      // it belongs to, if the wifi came back halfway down the list.
+      if (stillWaiting > 0) {
+        kept.add(change);
+        stillWaiting++;
+        continue;
+      }
       try {
         await _send(change);
       } catch (error) {
         // Still no network: keep it. Anything else means the server has an
-        // opinion about this change, and retrying it every refresh forever
-        // would be worse than dropping it.
-        if (_isNetworkFailure(error)) stillWaiting.add(change);
+        // opinion about this change - a delete of something already gone, an
+        // edit to an item someone else removed - and retrying it every
+        // refresh forever would be worse than dropping it.
+        if (isNetworkFailure(error)) {
+          kept.add(change);
+          stillWaiting++;
+        }
       }
     }
-    await _pending.save(stillWaiting);
-    return stillWaiting.length;
+    await _pending.save(kept);
+    return stillWaiting;
   }
 
   Future<void> _send(PendingWrite change) async {
     final args = change.args;
     switch (change.kind) {
+      case PendingKind.collectionCreate:
+        final date = args['service_date'] as String?;
+        await _repository.createCollection(
+          id: change.target,
+          name: args['name'] as String? ?? '',
+          serviceDate: date == null ? null : DateTime.tryParse(date),
+        );
+      case PendingKind.collectionDelete:
+        await _repository.deleteCollection(change.target);
       case PendingKind.collectionDetails:
         final date = args['service_date'] as String?;
         await _repository.updateCollection(
@@ -539,6 +617,12 @@ class ControlCubit extends Cubit<ControlState> {
           change.target,
           args['template_id'] as String?,
         );
+      case PendingKind.itemsAdd:
+        await _repository.addItems(change.target, change.addedItems);
+      case PendingKind.itemRemove:
+        await _repository.removeItemFromCollection(change.target);
+      case PendingKind.itemTemplate:
+        await _templateRepository.setItemTemplate(change.target, args['template_id'] as String?);
       case PendingKind.itemTitle:
         await _repository.updateItemTitle(change.target, args['title'] as String? ?? '');
       case PendingKind.itemNotes:
@@ -556,7 +640,7 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   /// How many changes are waiting for the network to come back.
-  Future<int> pendingCount() async => (await _pending.load()).length;
+  Future<int> pendingCount() async => (await _myPending()).length;
 
   /// Full load with a loading state. Use only for the first load and for
   /// recovering from an error screen.
@@ -569,60 +653,33 @@ class ControlCubit extends Cubit<ControlState> {
   Future<void> refresh() => _fetch(showSpinner: false);
 
   Future<void> _fetch({required bool showSpinner}) async {
-    final previousCollectionId = state is ControlLoadedState
-        ? (state as ControlLoadedState).model.activeCollection?.id
-        : null;
-    final previousItemIndex = state is ControlLoadedState
-        ? (state as ControlLoadedState).model.currentItemIndex
-        : 0;
-    final previousSlideIndex = state is ControlLoadedState
-        ? (state as ControlLoadedState).model.currentSlideIndex
-        : 0;
-    final previousLiveItem = state is ControlLoadedState
-        ? (state as ControlLoadedState).model.liveItemIndex
-        : 0;
-    final previousLiveSlide = state is ControlLoadedState
-        ? (state as ControlLoadedState).model.liveSlideIndex
-        : 0;
-    final previous = state is ControlLoadedState ? (state as ControlLoadedState).model : null;
+    final before = state is ControlLoadedState ? (state as ControlLoadedState).model : null;
+    // Read again when the answer arrives, not kept from when the question
+    // left: a slide changed while the plan was loading must not be put back.
+    ControlModel? previous() =>
+        state is ControlLoadedState ? (state as ControlLoadedState).model : before;
     if (showSpinner) emit(const ControlLoadingState());
     try {
       final stillWaiting = await _flushPending();
       final rawCollections = await _repository.getCollectionsRaw();
       final rawTemplates = await _templateRepository.getTemplatesRaw();
       final userTemplates = TemplateRepository.parseTemplates(rawTemplates);
-      final collections = rawCollections.map(Collection.fromJson).toList();
-      _rawCollections = rawCollections;
-      final active = previousCollectionId != null
-          ? collections.where((c) => c.id == previousCollectionId).firstOrNull
-          : null;
+      final collections = _withPending(
+        rawCollections.map(Collection.fromJson).toList(),
+        await _myPending(),
+      );
       await _prefs.saveCollections(rawCollections);
       await _prefs.saveTemplates(rawTemplates);
-      final itemCount = active?.items.length ?? 0;
       emit(
         ControlLoadedState(
-          ControlModel(
+          _reloaded(
+            previous(),
             collections: collections,
-            activeCollection: active,
             userTemplates: userTemplates,
-            // A refresh must not move the projector. Keep the cursor and every
-            // broadcast flag exactly where the operator left them.
-            currentItemIndex: itemCount == 0 ? 0 : previousItemIndex.clamp(0, itemCount - 1),
-            currentSlideIndex: previousSlideIndex,
-            liveItemIndex: itemCount == 0 ? 0 : previousLiveItem.clamp(0, itemCount - 1),
-            liveSlideIndex: previousLiveSlide,
-            followCursor: previous?.followCursor ?? true,
-            offline: false,
+            // Reads worked but writes did not: as far as the operator's
+            // changes are concerned, that is still no network.
+            offline: stillWaiting > 0,
             pendingWrites: stillWaiting,
-            isLive: previous?.isLive ?? false,
-            blankScreen: previous?.blankScreen ?? false,
-            gridView: previous?.gridView ?? true,
-            countdownActive: previous?.countdownActive ?? false,
-            countdownEnd: previous?.countdownEnd,
-            overlayVisible: previous?.overlayVisible ?? false,
-            overlayText: previous?.overlayText,
-            waiting: previous?.waiting ?? const WaitingConfig(),
-            rehearsing: previous?.rehearsing ?? false,
           ),
         ),
       );
@@ -633,34 +690,27 @@ class ControlCubit extends Cubit<ControlState> {
         AuthNavigator.goToLogin();
         return;
       }
-      if (_isNetworkFailure(e)) {
+      if (isNetworkFailure(e)) {
         final cached = await _prefs.loadCollections();
         if (cached != null && cached.isNotEmpty) {
-          final collections = cached.map(Collection.fromJson).toList();
-          _rawCollections = cached;
+          final queue = await _myPending();
           final cachedTemplates = await _prefs.loadTemplates() ?? const [];
-          final active = previousCollectionId != null
-              ? collections.where((c) => c.id == previousCollectionId).firstOrNull
-              : null;
           emit(
             ControlLoadedState(
-              ControlModel(
-                collections: collections,
-                activeCollection: active,
-                userTemplates: previous?.userTemplates.isNotEmpty == true
-                    ? previous!.userTemplates
+              _reloaded(
+                previous(),
+                // The last download with what was done since on top: a service
+                // made or an item added with no network is still there after
+                // the laptop has been closed and opened again.
+                collections: _withPending(cached.map(Collection.fromJson).toList(), queue),
+                userTemplates: previous()?.userTemplates.isNotEmpty == true
+                    ? previous()!.userTemplates
                     : TemplateRepository.parseTemplates(cachedTemplates),
-                followCursor: previous?.followCursor ?? true,
                 // Everything needed to run the service is on the disk. Writing
                 // still works, it just waits: the queue holds it until the
                 // network is back, and the operator is told how much is waiting.
                 offline: true,
-                pendingWrites: (await _pending.load()).length,
-                isLive: previous?.isLive ?? false,
-                blankScreen: previous?.blankScreen ?? false,
-                gridView: previous?.gridView ?? true,
-                waiting: previous?.waiting ?? const WaitingConfig(),
-                rehearsing: previous?.rehearsing ?? false,
+                pendingWrites: queue.length,
               ),
             ),
           );
@@ -671,6 +721,45 @@ class ControlCubit extends Cubit<ControlState> {
       }
       emit(ControlErrorState('Error al cargar: ${s.split('\n').first}'));
     }
+  }
+
+  /// A fresh model over [collections] that keeps everything the operator set.
+  ///
+  /// A refresh must not move the projector: the cursor and every broadcast
+  /// flag stay exactly where they were left.
+  static ControlModel _reloaded(
+    ControlModel? previous, {
+    required List<Collection> collections,
+    required List<SlideTemplate> userTemplates,
+    required bool offline,
+    required int pendingWrites,
+  }) {
+    final activeId = previous?.activeCollection?.id;
+    final active = activeId == null ? null : collections.where((c) => c.id == activeId).firstOrNull;
+    final last = (active?.items.length ?? 0) - 1;
+    int clampItem(int? index) => last < 0 ? 0 : (index ?? 0).clamp(0, last);
+    return ControlModel(
+      collections: collections,
+      activeCollection: active,
+      userTemplates: userTemplates,
+      currentItemIndex: clampItem(previous?.currentItemIndex),
+      currentSlideIndex: previous?.currentSlideIndex ?? 0,
+      liveItemIndex: clampItem(previous?.liveItemIndex),
+      liveSlideIndex: previous?.liveSlideIndex ?? 0,
+      followCursor: previous?.followCursor ?? true,
+      offline: offline,
+      pendingWrites: pendingWrites,
+      isLive: previous?.isLive ?? false,
+      blankScreen: previous?.blankScreen ?? false,
+      gridView: previous?.gridView ?? true,
+      countdownActive: previous?.countdownActive ?? false,
+      countdownEnd: previous?.countdownEnd,
+      overlayVisible: previous?.overlayVisible ?? false,
+      overlayText: previous?.overlayText,
+      stageMessage: previous?.stageMessage,
+      waiting: previous?.waiting ?? const WaitingConfig(),
+      rehearsing: previous?.rehearsing ?? false,
+    );
   }
 
   void selectCollection(Collection collection) {
@@ -865,18 +954,27 @@ class ControlCubit extends Cubit<ControlState> {
     emit(ControlLoadedState(model.copyWith(gridView: !model.gridView)));
   }
 
+  /// Makes a new service and opens it. Works with no network: the service is
+  /// named here, so everything added to it before the server hears about it
+  /// already points at the right place.
   Future<void> createCollection(String name, {DateTime? serviceDate}) async {
-    final col = await _repository.createCollection(name: name, serviceDate: serviceDate);
-    await refresh();
-    if (state is ControlLoadedState) {
-      final model = (state as ControlLoadedState).model;
-      final created = model.collections.firstWhere((c) => c.id == col.id, orElse: () => col);
-      emit(
-        ControlLoadedState(
-          model.copyWith(activeCollection: created, currentItemIndex: 0, currentSlideIndex: 0),
-        ),
-      );
-    }
+    final id = newId();
+    await _write(
+      PendingWrite(
+        kind: PendingKind.collectionCreate,
+        target: id,
+        args: {'name': name, 'service_date': serviceDate?.toIso8601String()},
+      ),
+    );
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final created = model.collections.where((c) => c.id == id).firstOrNull;
+    if (created == null) return;
+    emit(
+      ControlLoadedState(
+        model.copyWith(activeCollection: created, currentItemIndex: 0, currentSlideIndex: 0),
+      ),
+    );
   }
 
   Future<void> updateCollection(String id, String name, {DateTime? serviceDate}) {
@@ -886,7 +984,6 @@ class ControlCubit extends Cubit<ControlState> {
         target: id,
         args: {'name': name, 'service_date': serviceDate?.toIso8601String()},
       ),
-      () => _repository.updateCollection(id: id, name: name, serviceDate: serviceDate),
     );
   }
 
@@ -900,21 +997,45 @@ class ControlCubit extends Cubit<ControlState> {
     required String name,
     DateTime? serviceDate,
   }) async {
-    final created = await _repository.createCollection(name: name, serviceDate: serviceDate);
-    await _repository.copyItemsInto(created.id, source.items);
+    final id = newId();
+    await _write(
+      PendingWrite(
+        kind: PendingKind.collectionCreate,
+        target: id,
+        args: {'name': name, 'service_date': serviceDate?.toIso8601String()},
+      ),
+      reload: false,
+    );
+    await _addItems(id, [
+      for (final item in source.items) item.copiedInto(id, newId()),
+    ], reload: false);
     if (source.templateId != null) {
-      await _templateRepository.setCollectionTemplate(created.id, source.templateId);
+      await _write(
+        PendingWrite(
+          kind: PendingKind.collectionTemplate,
+          target: id,
+          args: {'template_id': source.templateId},
+        ),
+        reload: false,
+      );
     }
     if (source.bgAudioPath != null) {
-      await _repository.updateCollectionBgAudio(created.id, source.bgAudioPath);
+      await _write(
+        PendingWrite(
+          kind: PendingKind.collectionBgAudio,
+          target: id,
+          args: {'path': source.bgAudioPath},
+        ),
+        reload: false,
+      );
     }
     await refresh();
 
-    if (state is! ControlLoadedState) return created;
+    if (state is! ControlLoadedState) return null;
     final model = (state as ControlLoadedState).model;
-    final copy = model.collections.where((c) => c.id == created.id).firstOrNull;
+    final copy = model.collections.where((c) => c.id == id).firstOrNull;
     if (copy != null) selectCollection(copy);
-    return copy ?? created;
+    return copy;
   }
 
   // ── A service in a file ───────────────────────────────────────────────────
@@ -959,12 +1080,13 @@ class ControlCubit extends Cubit<ControlState> {
     }
 
     final library = await _songLibrary.getSongs();
-    final songIds = <String, String>{};
+    // The file's song ids, mapped to this church's copy of each song.
+    final songs = <String, Song>{};
     var newSongs = 0;
     for (final song in file.songs) {
       final known = library.where((existing) => _sameSong(existing, song)).firstOrNull;
       if (known != null) {
-        songIds[song.id] = known.id;
+        songs[song.id] = known;
         continue;
       }
       final saved = await _songLibrary.saveSong(
@@ -977,40 +1099,50 @@ class ControlCubit extends Cubit<ControlState> {
             (type: verse.type.value, content: verse.content, chords: verse.chords),
         ],
       );
-      songIds[song.id] = saved.id;
+      songs[song.id] = saved;
       newSongs++;
     }
 
-    final created = await _repository.createCollection(
-      name: file.name,
-      serviceDate: file.serviceDate,
+    final id = newId();
+    await _write(
+      PendingWrite(
+        kind: PendingKind.collectionCreate,
+        target: id,
+        args: {'name': file.name, 'service_date': file.serviceDate?.toIso8601String()},
+      ),
+      reload: false,
     );
     if (file.designId != null && designIds[file.designId] != null) {
-      await _templateRepository.setCollectionTemplate(created.id, designIds[file.designId]);
+      await _write(
+        PendingWrite(
+          kind: PendingKind.collectionTemplate,
+          target: id,
+          args: {'template_id': designIds[file.designId]},
+        ),
+        reload: false,
+      );
     }
 
-    await _repository.copyItemsInto(created.id, [
+    await _addItems(id, [
       for (final (order, item) in file.items.indexed)
         CollectionItem(
-          id: '',
-          collectionId: created.id,
+          id: newId(),
+          collectionId: id,
           type: item.type,
           order: order,
-          // Only the id travels: copyItemsInto sends song_id, and the row it
-          // points at is this church's own copy.
-          song: _songStub(songIds[item.songId]),
+          song: songs[item.songId],
           templateId: designIds[item.designId],
           contentJson: item.content,
           notes: item.notes,
           autoAdvanceSecs: item.autoAdvanceSecs,
           plannedSecs: item.plannedSecs,
         ),
-    ]);
+    ], reload: false);
 
     await refresh();
     if (state is ControlLoadedState) {
       final model = (state as ControlLoadedState).model;
-      final opened = model.collections.where((c) => c.id == created.id).firstOrNull;
+      final opened = model.collections.where((c) => c.id == id).firstOrNull;
       if (opened != null) selectCollection(opened);
     }
 
@@ -1031,9 +1163,6 @@ class ControlCubit extends Cubit<ControlState> {
   static bool _sameDesign(SlideTemplate a, SlideTemplate b) =>
       a.name.trim().toLowerCase() == b.name.trim().toLowerCase() &&
       a.toJson().toString() == b.toJson().toString();
-
-  /// A placeholder carrying nothing but the id the new row must point at.
-  static Song? _songStub(String? id) => id == null ? null : Song(id: id, title: '');
 
   /// Two songs are the same song when the church would say so: same title,
   /// same author. Ids never match across churches.
@@ -1061,185 +1190,205 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
-  Future<void> deleteCollection(String id) async {
-    await _repository.deleteCollection(id);
-    await refresh();
+  Future<void> deleteCollection(String id) =>
+      _write(PendingWrite(kind: PendingKind.collectionDelete, target: id, args: const {}));
+
+  // ── Adding and removing items ─────────────────────────────────────────────
+
+  /// The open service, when there is one to add to.
+  Collection? get _openCollection =>
+      state is ControlLoadedState ? (state as ControlLoadedState).model.activeCollection : null;
+
+  /// A new item at the end of [collection], named here so it can be added
+  /// with no network.
+  static CollectionItem _draft(
+    Collection collection,
+    CollectionItemType type, {
+    Song? song,
+    Map<String, dynamic>? content,
+    String? templateId,
+  }) => CollectionItem(
+    id: newId(),
+    collectionId: collection.id,
+    type: type,
+    order: collection.items.length,
+    song: song,
+    templateId: templateId,
+    contentJson: content,
+  );
+
+  /// Adds [items] to the end of a collection, in one request.
+  ///
+  /// The whole items go in the queue, songs and verses included, so what was
+  /// added offline can be shown and projected before the server has it.
+  Future<void> _addItems(String collectionId, List<CollectionItem> items, {bool reload = true}) {
+    if (items.isEmpty) return Future.value();
+    return _write(
+      PendingWrite(
+        kind: PendingKind.itemsAdd,
+        target: collectionId,
+        args: {
+          'items': [for (final item in items) item.toJson()],
+        },
+      ),
+      reload: reload,
+    );
   }
 
-  Future<void> addSong(String songId) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    final order = model.activeCollection!.items.length;
-    await _repository.addSongToCollection(
-      collectionId: model.activeCollection!.id,
-      songId: songId,
-      order: order,
+  /// Adds [item] to [collection] and puts it at [index].
+  ///
+  /// The server only ever appends, so anything that belongs somewhere else
+  /// gets there by a new running order sent straight after. The add goes
+  /// first: if the order is what fails, the item is there but misplaced, which
+  /// an operator can fix by dragging; the other way round it would be gone.
+  Future<void> _addAt(Collection collection, CollectionItem item, int index) async {
+    final ids = [
+      for (final existing in collection.items)
+        if (existing.id != item.id) existing.id,
+    ];
+    final at = index.clamp(0, ids.length);
+    if (at == ids.length) return _addItems(collection.id, [item]);
+    await _addItems(collection.id, [item], reload: false);
+    ids.insert(at, item.id);
+    await _write(
+      PendingWrite(kind: PendingKind.itemOrder, target: collection.id, args: {'item_ids': ids}),
     );
-    await refresh();
+  }
+
+  Future<void> addSong(Song song) async {
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [_draft(collection, CollectionItemType.song, song: song)]);
   }
 
   Future<int> importPptx(String filePath, {String? templateId}) async {
-    if (state is! ControlLoadedState) return 0;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return 0;
+    final collection = _openCollection;
+    if (collection == null) return 0;
     final slides = await PptxImportService().extractSlides(filePath);
     if (slides.isEmpty) return 0;
-    final startOrder = model.activeCollection!.items.length;
-    await _repository.addFreeSlideBatch(
-      collectionId: model.activeCollection!.id,
-      texts: slides,
-      startOrder: startOrder,
-      templateId: templateId,
-    );
-    await refresh();
+    await _addItems(collection.id, [
+      for (final (offset, text) in slides.indexed)
+        _draft(
+          collection,
+          CollectionItemType.freeSlide,
+          content: {'text': text},
+          templateId: templateId,
+        ).copyWith(order: collection.items.length + offset),
+    ]);
     return slides.length;
   }
 
   Future<int> importPptxAsImages(String filePath) async {
-    if (state is! ControlLoadedState) return 0;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return 0;
+    final collection = _openCollection;
+    if (collection == null) return 0;
     final imagePaths = await PptxImportService().extractSlidesAsImages(filePath);
     if (imagePaths.isEmpty) return 0;
-    final startOrder = model.activeCollection!.items.length;
-    await _repository.addImageSlideBatch(
-      collectionId: model.activeCollection!.id,
-      imagePaths: imagePaths,
-      title: p.basename(filePath),
-      startOrder: startOrder,
-    );
-    await refresh();
+    await _addItems(collection.id, [
+      _draft(
+        collection,
+        CollectionItemType.imageSlide,
+        content: {'title': p.basename(filePath), 'paths': imagePaths},
+      ),
+    ]);
     return imagePaths.length;
   }
 
   Future<void> addAnnouncement(String message, {String? title, DateTime? timerTarget}) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    await _repository.addAnnouncement(
-      collectionId: model.activeCollection!.id,
-      message: message,
-      order: model.activeCollection!.items.length,
-      title: title,
-      timerTarget: timerTarget,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(
+        collection,
+        CollectionItemType.announcement,
+        content: {
+          'message': message,
+          'title': ?title,
+          'timerTarget': ?timerTarget?.toIso8601String(),
+        },
+      ),
+    ]);
   }
 
   Future<void> addFreeSlide(String text, {String? title}) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    final order = model.activeCollection!.items.length;
-    await _repository.addFreeSlideToCollection(
-      collectionId: model.activeCollection!.id,
-      text: text,
-      title: title,
-      order: order,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(collection, CollectionItemType.freeSlide, content: {'text': text, 'title': ?title}),
+    ]);
   }
 
   Future<void> addImageSlide(String imagePath, {String? title}) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    final order = model.activeCollection!.items.length;
-    await _repository.addImageSlideBatch(
-      collectionId: model.activeCollection!.id,
-      imagePaths: [imagePath],
-      title: title ?? p.basenameWithoutExtension(imagePath),
-      startOrder: order,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(
+        collection,
+        CollectionItemType.imageSlide,
+        content: {
+          'title': title ?? p.basenameWithoutExtension(imagePath),
+          'paths': [imagePath],
+        },
+      ),
+    ]);
   }
 
   Future<void> importVideo(String filePath) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    final order = model.activeCollection!.items.length;
-    final title = p.basenameWithoutExtension(filePath);
-    await _repository.addVideoToCollection(
-      collectionId: model.activeCollection!.id,
-      videoPath: filePath,
-      title: title,
-      order: order,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(
+        collection,
+        CollectionItemType.videoSlide,
+        content: {'path': filePath, 'title': p.basenameWithoutExtension(filePath)},
+      ),
+    ]);
   }
 
+  /// Adds a folder as one presentation of its images, followed by each of its
+  /// videos - in one request, not one per video.
   Future<({int images, int videos})> importFolder({
     required String folderTitle,
     required List<String> imagePaths,
     required List<String> videoPaths,
   }) async {
-    if (state is! ControlLoadedState) return (images: 0, videos: 0);
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return (images: 0, videos: 0);
+    final collection = _openCollection;
+    if (collection == null) return (images: 0, videos: 0);
 
-    final collectionId = model.activeCollection!.id;
-    int order = model.activeCollection!.items.length;
-
-    if (imagePaths.isNotEmpty) {
-      await _repository.addImageSlideBatch(
-        collectionId: collectionId,
-        imagePaths: imagePaths,
-        title: folderTitle,
-        startOrder: order,
-      );
-      order++;
-    }
-
-    for (final videoPath in videoPaths) {
-      await _repository.addVideoToCollection(
-        collectionId: collectionId,
-        videoPath: videoPath,
-        title: p.basenameWithoutExtension(videoPath),
-        order: order++,
-      );
-    }
-
-    await refresh();
+    final items = [
+      if (imagePaths.isNotEmpty)
+        _draft(
+          collection,
+          CollectionItemType.imageSlide,
+          content: {'title': folderTitle, 'paths': imagePaths},
+        ),
+      for (final videoPath in videoPaths)
+        _draft(
+          collection,
+          CollectionItemType.videoSlide,
+          content: {'path': videoPath, 'title': p.basenameWithoutExtension(videoPath)},
+        ),
+    ];
+    await _addItems(collection.id, [
+      for (final (offset, item) in items.indexed)
+        item.copyWith(order: collection.items.length + offset),
+    ]);
     return (images: imagePaths.isNotEmpty ? 1 : 0, videos: videoPaths.length);
   }
 
-  Future<void> removeItem(String itemId) async {
-    await _repository.removeItemFromCollection(itemId);
-    await refresh();
-  }
+  Future<void> removeItem(String itemId) =>
+      _write(PendingWrite(kind: PendingKind.itemRemove, target: itemId, args: const {}));
 
-  /// Puts [item] back at [index].
+  /// Puts [item] back at [index], under its own id.
   ///
-  /// Restoring appends, so the row arrives last and the whole running order is
-  /// then rewritten to drop it back in place. Done in that order a failure
-  /// leaves the item present but misplaced, which an operator can fix by
-  /// dragging; the other way round it would be gone for good.
+  /// The same id, so a note or a new order queued for it before it was
+  /// removed still finds it, and undo works with no network as well.
   Future<void> restoreItem(CollectionItem item, int index) async {
-    await _repository.restoreItem(item);
-    await refresh();
-    await _moveNewestItemTo(item.collectionId, index);
-  }
-
-  /// Moves the row that was just added into position.
-  ///
-  /// The API only ever appends, so anything that has to land somewhere else
-  /// gets there by rewriting the running order afterwards.
-  Future<void> _moveNewestItemTo(String collectionId, int index) async {
     if (state is! ControlLoadedState) return;
     final collection = (state as ControlLoadedState).model.collections
-        .where((c) => c.id == collectionId)
+        .where((c) => c.id == item.collectionId)
         .firstOrNull;
     if (collection == null) return;
-
-    final ids = collection.items.map((i) => i.id).toList();
-    if (ids.length < 2 || index < 0 || index >= ids.length - 1) return;
-    ids.insert(index, ids.removeLast());
-    await _write(
-      PendingWrite(kind: PendingKind.itemOrder, target: collection.id, args: {'item_ids': ids}),
-      () => _repository.reorderItems(collection.id, ids),
-    );
+    await _addAt(collection, item, index);
   }
 
   /// Adds a reading straight after the item on screen, and goes to it.
@@ -1255,49 +1404,31 @@ class ControlCubit extends Cubit<ControlState> {
     if (collection == null) return;
 
     final target = collection.items.isEmpty ? 0 : model.currentItemIndex + 1;
-    await _repository.addBibleVerseToCollection(
-      collectionId: collection.id,
-      ref: ref,
-      order: collection.items.length,
-    );
-    await refresh();
-    await _moveNewestItemTo(collection.id, target);
+    final verse = _draft(collection, CollectionItemType.bibleVerse, content: ref.toJson());
+    await _addAt(collection, verse, target);
     selectItem(target);
   }
 
   Future<void> setItemTitle(String itemId, String title) {
     return _write(
       PendingWrite(kind: PendingKind.itemTitle, target: itemId, args: {'title': title}),
-      () => _repository.updateItemTitle(itemId, title),
     );
   }
 
   Future<void> addSermon(String title, List<String> points) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-    final order = model.activeCollection!.items.length;
-    await _repository.addSermonToCollection(
-      collectionId: model.activeCollection!.id,
-      title: title,
-      points: points,
-      order: order,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(collection, CollectionItemType.sermon, content: {'title': title, 'points': points}),
+    ]);
   }
 
   Future<void> addBibleVerse(BibleVerseRef ref) async {
-    if (state is! ControlLoadedState) return;
-    final model = (state as ControlLoadedState).model;
-    if (model.activeCollection == null) return;
-
-    final order = model.activeCollection!.items.length;
-    await _repository.addBibleVerseToCollection(
-      collectionId: model.activeCollection!.id,
-      ref: ref,
-      order: order,
-    );
-    await refresh();
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(collection, CollectionItemType.bibleVerse, content: ref.toJson()),
+    ]);
   }
 
   /// Reads the church's designs again, after one was made, changed or deleted
@@ -1330,7 +1461,14 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   Future<void> setCollectionTemplate(String collectionId, String? templateId) async {
-    await _templateRepository.setCollectionTemplate(collectionId, templateId);
+    await _write(
+      PendingWrite(
+        kind: PendingKind.collectionTemplate,
+        target: collectionId,
+        args: {'template_id': templateId},
+      ),
+      reload: false,
+    );
     await _knowTemplate(templateId);
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
@@ -1356,7 +1494,14 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   Future<void> setItemTemplate(String collectionId, String itemId, String? templateId) async {
-    await _templateRepository.setItemTemplate(itemId, templateId);
+    await _write(
+      PendingWrite(
+        kind: PendingKind.itemTemplate,
+        target: itemId,
+        args: {'template_id': templateId},
+      ),
+      reload: false,
+    );
     await _knowTemplate(templateId);
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
@@ -1488,7 +1633,6 @@ class ControlCubit extends Cubit<ControlState> {
   Future<void> updateItemNotes(String itemId, String? notes) {
     return _write(
       PendingWrite(kind: PendingKind.itemNotes, target: itemId, args: {'notes': notes}),
-      () => _repository.updateItemNotes(itemId, notes),
     );
   }
 
@@ -1508,7 +1652,6 @@ class ControlCubit extends Cubit<ControlState> {
     final ids = items.map((i) => i.id).toList();
     await _write(
       PendingWrite(kind: PendingKind.itemOrder, target: col.id, args: {'item_ids': ids}),
-      () => _repository.reorderItems(col.id, ids),
       reload: false,
     );
   }
@@ -1633,7 +1776,6 @@ class ControlCubit extends Cubit<ControlState> {
   Future<void> setCollectionBgAudio(String collectionId, String? path) async {
     await _write(
       PendingWrite(kind: PendingKind.collectionBgAudio, target: collectionId, args: {'path': path}),
-      () => _repository.updateCollectionBgAudio(collectionId, path),
       reload: false,
     );
     if (state is! ControlLoadedState) return;
@@ -1661,8 +1803,40 @@ class ControlCubit extends Cubit<ControlState> {
     }
   }
 
+  /// Tries the server again every [every] while it cannot be reached.
+  ///
+  /// Without it, what was queued went out only when someone next changed
+  /// something or reopened the app - so a service planned offline on Saturday
+  /// could still be missing from the other computers on Sunday, with the wifi
+  /// back all along. Started and stopped by the presenter screen, which is
+  /// what lives as long as a service does.
+  void keepRetrying({Duration every = const Duration(seconds: 30)}) {
+    _retryTimer?.cancel();
+    _retryTimer = Timer.periodic(every, (_) => _retry());
+  }
+
+  void stopRetrying() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+  }
+
+  Timer? _retryTimer;
+  bool _retrying = false;
+
+  Future<void> _retry() async {
+    if (_retrying || state is! ControlLoadedState) return;
+    if (!(state as ControlLoadedState).model.offline) return;
+    _retrying = true;
+    try {
+      await refresh();
+    } finally {
+      _retrying = false;
+    }
+  }
+
   @override
   Future<void> close() {
+    stopRetrying();
     _autoAdvanceTimer?.cancel();
     _overlayTimer?.cancel();
     _audioPlayer?.dispose();
@@ -1689,7 +1863,6 @@ class ControlCubit extends Cubit<ControlState> {
         target: itemId,
         args: {'auto_advance_secs': secs},
       ),
-      () => _repository.updateItemAutoAdvance(itemId, secs),
       reload: false,
     );
     if (state is! ControlLoadedState) return;
@@ -1746,7 +1919,7 @@ class ControlCubit extends Cubit<ControlState> {
     unawaited(
       WindowLink.broadcast({
         ...position,
-        'collection': ?_rawCollection(model.activeCollection?.id),
+        'collection': ?_collectionRow(model.activeCollection),
         'stream_style': ?_streamStyle?.toJson(),
         'templates': [
           for (final template in model.userTemplates)
@@ -1770,8 +1943,29 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
-  Map<String, dynamic>? _rawCollection(String? id) {
-    if (id == null) return null;
-    return _rawCollections.where((row) => row['id'] == id).firstOrNull;
+  /// The plan handed to the projector and stage windows, so they never have
+  /// to resolve an id over a network that, in most of these rooms, is not
+  /// there.
+  ///
+  /// Built from the plan on the operator's screen, not kept from the last
+  /// download: an item moved with no network has to be item four on the
+  /// projector as well. Remembered per collection, because this goes out on
+  /// every slide change and the plan changes far less often.
+  Map<String, dynamic>? _collectionRow(Collection? collection) {
+    if (collection == null) return null;
+    if (!identical(collection, _rowFor)) {
+      _rowFor = collection;
+      _row = collection.toJson();
+    }
+    return _row;
   }
+
+  Collection? _rowFor;
+  Map<String, dynamic>? _row;
+
+  /// The plan as the projector window is handed it now.
+  @visibleForTesting
+  Map<String, dynamic>? get projectedCollection => state is ControlLoadedState
+      ? _collectionRow((state as ControlLoadedState).model.activeCollection)
+      : null;
 }

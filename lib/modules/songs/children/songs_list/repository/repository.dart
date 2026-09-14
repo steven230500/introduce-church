@@ -1,16 +1,41 @@
 import '../../../../../core/api/api_client.dart';
+import '../../../../../core/api/network_failure.dart';
 import '../../../../../core/models/song.dart';
+import '../../../../../core/services/song_library_cache.dart';
 import '../../../../../core/song_import/imported_song.dart';
 import '../../../../../core/utils/app_logger.dart';
+import '../../../../../core/utils/fuzzy_match.dart';
 
 class SongsListRepository {
-  const SongsListRepository(this._api);
+  SongsListRepository(this._api, {SongLibraryCache? cache}) : _cache = cache ?? SongLibraryCache();
   final ApiClient _api;
+  final SongLibraryCache _cache;
 
+  /// The library, or what matches [search] in it.
+  ///
+  /// With no network, the copy saved by the last full download answers
+  /// instead, searched here the way the server searches: title or author.
   Future<List<Song>> getSongs({String? search}) async {
     appLogger.d('SongsListRepository.getSongs | search: $search');
-    final rows = await _api.get<List<dynamic>>('/songs', query: {'search': ?search});
-    return (rows ?? []).map((j) => Song.fromJson(j as Map<String, dynamic>)).toList();
+    final query = search?.trim() ?? '';
+    try {
+      final rows = await _api.get<List<dynamic>>('/songs', query: {'search': ?search});
+      final songs = (rows ?? []).cast<Map<String, dynamic>>();
+      if (query.isEmpty) await _cache.save(songs);
+      return songs.map(Song.fromJson).toList();
+    } catch (error) {
+      if (!isNetworkFailure(error)) rethrow;
+      final cached = await _cache.load();
+      if (cached == null) rethrow;
+      final needle = foldForSearch(query);
+      return [
+        for (final row in cached)
+          if (needle.isEmpty ||
+              foldForSearch('${row['title'] ?? ''}').contains(needle) ||
+              foldForSearch('${row['author'] ?? ''}').contains(needle))
+            Song.fromJson(row),
+      ];
+    }
   }
 
   /// Creates or replaces a song, verses included.

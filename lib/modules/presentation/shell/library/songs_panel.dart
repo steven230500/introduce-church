@@ -164,7 +164,7 @@ class _SongRowState extends State<_SongRow> {
     if ((control.state as ControlLoadedState).model.activeCollection == null) {
       return;
     }
-    control.addSong(song.id);
+    control.addSong(song);
     showAddedToast(context, song.title);
   }
 }

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/services/pending_writes.dart';
 import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
+import 'package:introduce_church/core/models/song.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 
 import '../helpers/builders.dart';
@@ -216,6 +219,23 @@ void main() {
       expect(model().currentItemIndex, 0);
     });
 
+    test('a slide changed while a reload is on its way stays changed', () async {
+      // Reloads run in the background while offline. Built from where the
+      // cursor was when the reload started, one used to put the projector
+      // back on the slide the operator had just left.
+      await openFirstCollection();
+      final gate = Completer<void>();
+      repo.readGate = gate.future;
+
+      final reload = cubit.refresh();
+      cubit.selectItem(1);
+      gate.complete();
+      await reload;
+
+      expect(model().currentItemIndex, 1);
+      expect(model().liveItemIndex, 1);
+    });
+
     test('keeps the blank screen on across a reload', () async {
       await openFirstCollection();
       cubit.toggleBlank();
@@ -230,7 +250,9 @@ void main() {
     test('adding a song writes through and reloads without a spinner', () async {
       await openFirstCollection();
 
-      final states = await statesDuring(() => cubit.addSong('song-9'));
+      final states = await statesDuring(
+        () => cubit.addSong(const Song(id: 'song-9', title: 'Nueva')),
+      );
 
       expect(repo.calls, contains('addSong:song-9'));
       expect(states, isNotEmpty);
@@ -436,7 +458,7 @@ void main() {
       await cubit.duplicateCollection(source, name: 'Culto siguiente');
 
       expect(repo.calls, contains('createCollection:Culto siguiente'));
-      expect(repo.calls, contains('copyItems:2'));
+      expect(repo.calls, contains('addItems:2'));
       expect(model().activeCollection!.name, 'Culto siguiente');
       expect(model().activeCollection!.items.map((i) => i.displayTitle), ['Primera', 'Segunda']);
     });
@@ -463,10 +485,8 @@ void main() {
 
       await cubit.duplicateCollection(model().activeCollection!, name: 'Copia');
 
-      expect(
-        templates.calls,
-        contains('collectionTemplate:new-collection:${SlideTemplate.blueNight.id}'),
-      );
+      final copy = model().activeCollection!.id;
+      expect(templates.calls, contains('collectionTemplate:$copy:${SlideTemplate.blueNight.id}'));
     });
 
     test('an empty plan copies as an empty plan, not as a failure', () async {
@@ -476,7 +496,7 @@ void main() {
       await cubit.duplicateCollection(model().activeCollection!, name: 'Copia');
 
       expect(model().activeCollection!.items, isEmpty);
-      expect(repo.calls.where((c) => c.startsWith('copyItems')), isEmpty);
+      expect(repo.calls.where((c) => c.startsWith('addItems')), isEmpty);
     });
   });
 

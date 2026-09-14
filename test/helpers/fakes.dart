@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -5,7 +6,6 @@ import 'package:introduce_church/core/api/api_client.dart';
 import 'package:introduce_church/core/api/presentation_socket.dart';
 import 'package:introduce_church/core/backgrounds/background_probe.dart';
 import 'package:introduce_church/core/backgrounds/background_standard.dart';
-import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/core/models/collection.dart';
 import 'package:introduce_church/core/models/collection_item_type.dart';
 import 'package:introduce_church/core/models/media_item.dart';
@@ -51,7 +51,9 @@ class FakePrefsService extends AppPrefsService {
 
   @override
   Future<void> saveCollections(List<Map<String, dynamic>> raw) async {
-    saved = raw;
+    // A copy, as a file on disk would be: the fake repository changes its rows
+    // in place, and a cache sharing them would see the future.
+    saved = (jsonDecode(jsonEncode(raw)) as List).cast<Map<String, dynamic>>();
   }
 
   @override
@@ -155,6 +157,9 @@ class FakeControlRepository extends ControlRepository {
   /// Throw this on the next read, to exercise the offline and error paths.
   Object? failWith;
 
+  /// While set, reads wait for it.
+  Future<void>? readGate;
+
   /// Throw this on every write until it is cleared, to exercise the queue that
   /// holds changes made with no network.
   Object? failWritesWith;
@@ -171,6 +176,9 @@ class FakeControlRepository extends ControlRepository {
   @override
   Future<List<Map<String, dynamic>>> getCollectionsRaw() async {
     reads++;
+    // Holds the answer back, so a test can act while a reload is on its way.
+    final gate = readGate;
+    if (gate != null) await gate;
     final failure = failWith;
     if (failure != null) {
       failWith = null;
@@ -193,23 +201,36 @@ class FakeControlRepository extends ControlRepository {
   // real backend would. Without this a reload emits a state equal to the
   // previous one, bloc suppresses it, and a test can't tell a working refresh
   // from a broken one.
+  /// Adds rows the way the server does: under the ids the app chose, at the
+  /// end of the running order, skipping an id it already has.
   @override
-  Future<void> addSongToCollection({
-    required String collectionId,
-    required String songId,
-    required int order,
-  }) async {
-    calls.add('addSong:$songId');
-    _items(
-      collectionId,
-    ).add(songItemRow(id: 'item-$songId', collectionId: collectionId, order: order, title: songId));
+  Future<void> addItems(String collectionId, List<CollectionItem> items) async {
+    _checkNetwork('addItems');
+    if (items.isEmpty) return;
+    calls.add('addItems:${items.length}');
+    final target = _items(collectionId);
+    for (final item in items) {
+      calls.add(switch (item.type) {
+        CollectionItemType.song => 'addSong:${item.song?.id}',
+        CollectionItemType.bibleVerse => 'addVerse:${item.displayTitle}',
+        _ => 'add:${item.type.value}',
+      });
+      if (target.any((row) => row['id'] == item.id)) continue;
+      target.add({...item.toJson(), 'collection_id': collectionId, 'item_order': target.length});
+    }
   }
 
   @override
   Future<void> removeItemFromCollection(String itemId) async {
+    _checkNetwork();
     calls.add('removeItem:$itemId');
     for (final row in rows) {
-      (row['collection_items'] as List).removeWhere((i) => i['id'] == itemId);
+      final items = List<Map<String, dynamic>>.from(row['collection_items'] as List)
+        ..removeWhere((i) => i['id'] == itemId);
+      for (final (order, item) in items.indexed) {
+        item['item_order'] = order;
+      }
+      row['collection_items'] = items;
     }
   }
 
@@ -222,93 +243,21 @@ class FakeControlRepository extends ControlRepository {
     return items;
   }
 
-  @override
-  Future<void> copyItemsInto(String collectionId, List<CollectionItem> items) async {
-    // The real one sends nothing for an empty plan, and so does this.
-    if (items.isEmpty) return;
-    calls.add('copyItems:${items.length}');
-    final target = _items(collectionId);
-    for (final item in items) {
-      target.add({
-        'id': 'copy-${target.length}',
-        'collection_id': collectionId,
-        'item_type': item.type.value,
-        'item_order': target.length,
-        'template_id': item.templateId,
-        'content_json': item.contentJson,
-        'notes': item.notes,
-        'auto_advance_secs': item.autoAdvanceSecs,
-        'planned_secs': item.plannedSecs,
-        'songs': ?_songRow(item.song),
-      });
+  /// Every write goes through here, so one switch turns the network off for
+  /// all of them at once.
+  void _checkNetwork([String call = '']) {
+    final failure = failWritesWith;
+    if (failure != null) throw failure;
+    // The network dropping for one request and not another, as it does when
+    // the wifi comes back halfway through sending a queue.
+    if (networkDownFor?.call(call) ?? false) {
+      throw const SocketException('Network is unreachable');
     }
   }
 
-  @override
-  Future<void> restoreItem(CollectionItem item) async {
-    calls.add('restore:${item.displayTitle}');
-    final items = _items(item.collectionId);
-    items.add({
-      'id': 'restored-${item.id}',
-      'collection_id': item.collectionId,
-      'item_type': item.type.value,
-      'item_order': items.length,
-      'template_id': item.templateId,
-      'content_json': item.contentJson,
-      'notes': item.notes,
-      'auto_advance_secs': item.autoAdvanceSecs,
-      // The server rehydrates the song from song_id on the way back out, so
-      // the fake has to hand the row its song too or a restored song item
-      // comes back with no title.
-      'songs': ?_songRow(item.song),
-    });
-  }
-
-  static Map<String, dynamic>? _songRow(Song? song) => song == null
-      ? null
-      : {
-          'id': song.id,
-          'title': song.title,
-          'author': song.author,
-          'language': song.language,
-          'tags': song.tags,
-          'verses': [
-            for (final verse in song.verses)
-              {
-                'id': verse.id,
-                'song_id': verse.songId,
-                'type': verse.type.name,
-                'verse_order': verse.order,
-                'content': verse.content,
-              },
-          ],
-        };
-
-  @override
-  Future<void> addBibleVerseToCollection({
-    required String collectionId,
-    required BibleVerseRef ref,
-    required int order,
-  }) async {
-    calls.add('addVerse:${ref.reference}');
-    final items = _items(collectionId);
-    items.add(
-      itemRow(
-        id: 'verse-${items.length}',
-        collectionId: collectionId,
-        type: 'bible_verse',
-        order: items.length,
-        contentJson: ref.toJson(),
-      ),
-    );
-  }
-
-  /// Every write goes through here, so one switch turns the network off for
-  /// all of them at once.
-  void _checkNetwork() {
-    final failure = failWritesWith;
-    if (failure != null) throw failure;
-  }
+  /// Fails the writes this picks out - by the call name, `createCollection`,
+  /// `addItems` and so on - as if the network were down for just those.
+  bool Function(String call)? networkDownFor;
 
   @override
   Future<void> updateItemAutoAdvance(String itemId, int? secs) async {
@@ -361,20 +310,29 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
-  Future<Collection> createCollection({required String name, DateTime? serviceDate}) async {
+  Future<void> createCollection({
+    required String id,
+    required String name,
+    DateTime? serviceDate,
+  }) async {
+    _checkNetwork('createCollection');
     calls.add('createCollection:$name');
-    final created = Collection(id: 'new-collection', name: name, serviceDate: serviceDate);
-    // A real server hands back a row that the next read will find.
+    // A repeat of the same id is the same service, as on the server.
+    if (rows.any((row) => row['id'] == id)) return;
     rows = [
       ...rows,
-      collectionRow(id: created.id, name: name, serviceDate: serviceDate?.toIso8601String()),
+      collectionRow(id: id, name: name, serviceDate: serviceDate?.toIso8601String()),
     ];
-    return created;
   }
 
   @override
   Future<void> deleteCollection(String id) async {
+    _checkNetwork();
     calls.add('deleteCollection:$id');
+    rows = [
+      for (final row in rows)
+        if (row['id'] != id) row,
+    ];
   }
 }
 

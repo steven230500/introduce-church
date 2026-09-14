@@ -65,6 +65,15 @@ class Verse extends Equatable {
     chords: json['chords'] as String?,
   );
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'song_id': songId,
+    'type': type.value,
+    'verse_order': order,
+    'content': content,
+    'chords': chords,
+  };
+
   @override
   List<Object?> get props => [id, songId, type, order, content, chords];
 }
@@ -104,6 +113,19 @@ class Song extends Equatable {
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order)),
   );
+
+  /// The row as `/songs` sends it, so a song can travel inside a service to a
+  /// window or a queue and be read back by [Song.fromJson] unchanged.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'author': author,
+    'copyright': copyright,
+    'ccli_number': ccliNumber,
+    'language': language,
+    'tags': tags,
+    'verses': [for (final verse in verses) verse.toJson()],
+  };
 
   List<String> get slides => verses.map((v) => v.content).toList();
 

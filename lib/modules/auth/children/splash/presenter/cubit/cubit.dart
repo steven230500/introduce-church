@@ -21,7 +21,12 @@ class SplashCubit extends Cubit<SplashState> {
 
     // Refresh once at launch. The stored access token is minutes long and the
     // machine may have been asleep since the last service.
-    final session = await _api.refreshSession();
+    //
+    // A refresh that never reached the server keeps the stored session, and so
+    // does the launch: opening the laptop in a room with no internet used to
+    // land on a login screen that could not be passed without one, with the
+    // service and every plan for it cached on the machine.
+    final session = await _api.refreshSession() ?? _api.session;
     if (session == null) {
       emit(SplashNavigateLogin());
       return;

@@ -153,6 +153,21 @@ class CollectionItem extends Equatable {
     plannedSecs: plannedSecs,
   );
 
+  /// The same content as a new item [id] in another collection, for copying a
+  /// running order into a new service.
+  CollectionItem copiedInto(String collectionId, String id) => CollectionItem(
+    id: id,
+    collectionId: collectionId,
+    type: type,
+    order: order,
+    song: song,
+    templateId: templateId,
+    contentJson: contentJson,
+    notes: notes,
+    autoAdvanceSecs: autoAdvanceSecs,
+    plannedSecs: plannedSecs,
+  );
+
   CollectionItem copyWith({
     int? order,
     String? templateId,
@@ -194,6 +209,19 @@ class CollectionItem extends Equatable {
     autoAdvanceSecs: json['auto_advance_secs'] as int?,
     plannedSecs: (json['planned_secs'] as num?)?.toInt(),
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'collection_id': collectionId,
+    'item_type': type.value,
+    'item_order': order,
+    'template_id': templateId,
+    'content_json': contentJson,
+    'notes': notes,
+    'auto_advance_secs': autoAdvanceSecs,
+    'planned_secs': plannedSecs,
+    'songs': song?.toJson(),
+  };
 
   @override
   List<Object?> get props => [
@@ -244,6 +272,26 @@ class Collection extends Equatable {
           ..sort((a, b) => a.order.compareTo(b.order)),
   );
 
+  /// The row as `/collections` sends it.
+  ///
+  /// What the projector and stage windows are handed, built from the plan on
+  /// the operator's screen rather than kept from the last download: a change
+  /// made with no network is on that screen, and the projector has to agree
+  /// with it about which song is item four.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'service_date': serviceDate == null
+        ? null
+        : '${serviceDate!.year.toString().padLeft(4, '0')}-'
+              '${serviceDate!.month.toString().padLeft(2, '0')}-'
+              '${serviceDate!.day.toString().padLeft(2, '0')}',
+    'notes': notes,
+    'template_id': templateId,
+    'bg_audio_path': bgAudioPath,
+    'collection_items': [for (final item in items) item.toJson()],
+  };
+
   Collection copyWith({
     String? id,
     String? name,
@@ -267,5 +315,5 @@ class Collection extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, templateId, items];
+  List<Object?> get props => [id, name, serviceDate, notes, templateId, bgAudioPath, items];
 }

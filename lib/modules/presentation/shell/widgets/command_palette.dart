@@ -168,7 +168,7 @@ class _CommandPaletteState extends State<CommandPalette> {
               title: song.title,
               subtitle: song.author,
               enabled: _hasService,
-              run: (_) => control.addSong(song.id),
+              run: (_) => control.addSong(song),
             ),
           ),
     );
