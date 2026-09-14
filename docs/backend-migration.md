@@ -4,7 +4,9 @@ Hecha y desplegada el 11 de septiembre de 2026. La app ya no depende de ningún
 servicio alojado por terceros: identidad, datos y sincronización en vivo corren
 en tu droplet.
 
-**En producción:** `https://api.introduce.casavidactg.com`
+**En producción:** `https://api.introducechurch.com` (desde el 14 de septiembre;
+`https://api.introduce.casavidactg.com` sigue respondiendo para las copias
+instaladas antes y los archivos subidos con esa dirección)
 **En el droplet:** `/opt/introduce` (compose con `introduce-api` + `introduce-db`)
 
 ---
@@ -110,7 +112,7 @@ organización. Se puede correr dos veces sin duplicar nada.
 ## Cambiar la contraseña
 
 ```bash
-curl -X POST https://api.introduce.casavidactg.com/account/password \
+curl -X POST https://api.introducechurch.com/account/password \
   -H "Authorization: Bearer <tu access token>" \
   -H "Content-Type: application/json" \
   -d '{"current_password":"<la actual>","new_password":"<la nueva>"}'
