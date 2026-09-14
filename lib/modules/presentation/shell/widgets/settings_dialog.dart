@@ -3,6 +3,8 @@ import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import 'package:screen_retriever/screen_retriever.dart';
 
 import '../../../../core/api/api_client.dart';
+import '../../../../core/config/app_version.dart';
+import '../../../../core/services/update_checker.dart';
 import '../../../../core/services/locale_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
@@ -15,6 +17,7 @@ import '../../../auth/utils/navigator.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import 'change_password_dialog.dart';
 import 'projector_picker_dialog.dart';
+import 'update_dialog.dart';
 
 /// Everything set on this computer rather than for the church: who is signed
 /// in, the language, and the screen the projector opens on.
@@ -28,6 +31,7 @@ Future<void> showSettingsDialog(BuildContext context, ControlCubit control) {
       displays: control.projectorDisplays,
       rememberedDisplay: control.rememberedProjector,
       rememberDisplay: control.rememberProjector,
+      updates: Modular.get<UpdateChecker>(),
       onChangePassword: () => showChangePasswordDialog(context),
       onSignOut: () async {
         Navigator.of(dialog).pop();
@@ -48,6 +52,9 @@ class SettingsDialog extends StatefulWidget {
     required this.rememberDisplay,
     required this.onChangePassword,
     required this.onSignOut,
+    this.updates,
+    this.version = appVersion,
+    this.onOpenUpdate,
   });
 
   final AuthUser? user;
@@ -58,6 +65,14 @@ class SettingsDialog extends StatefulWidget {
   final VoidCallback onChangePassword;
   final VoidCallback onSignOut;
 
+  /// Where the version section asks about updates. Without one it shows the
+  /// version alone.
+  final UpdateChecker? updates;
+  final String version;
+
+  /// Shows a found update. Defaults to the update dialog.
+  final void Function(AvailableUpdate update)? onOpenUpdate;
+
   @override
   State<SettingsDialog> createState() => _SettingsDialogState();
 }
@@ -65,6 +80,32 @@ class SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<SettingsDialog> {
   List<Display> _displays = const [];
   Display? _projector;
+
+  /// The result of the last check asked for here: null before any, then
+  /// whether GitHub answered.
+  bool? _reached;
+  bool _checking = false;
+
+  Future<void> _checkUpdates() async {
+    final updates = widget.updates;
+    if (updates == null) return;
+    setState(() => _checking = true);
+    final reached = await updates.check();
+    if (!mounted) return;
+    setState(() {
+      _checking = false;
+      _reached = reached;
+    });
+  }
+
+  void _openUpdate(AvailableUpdate update) {
+    final open = widget.onOpenUpdate;
+    if (open != null) {
+      open(update);
+    } else {
+      showUpdateDialog(context, update);
+    }
+  }
 
   @override
   void initState() {
@@ -174,8 +215,56 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 OutlinedButton(onPressed: _chooseProjector, child: Text(t.settingsProjectorChoose)),
             ],
           ),
+          const SizedBox(height: AppSpace.xl),
+          _Section(label: t.settingsVersion),
+          _versionRow(t),
         ],
       ),
+    );
+  }
+
+  Widget _versionRow(L10n t) {
+    final updates = widget.updates;
+    final version = Text(t.settingsVersionNumber(widget.version), style: AppText.body);
+    if (updates == null) return version;
+
+    return ValueListenableBuilder<AvailableUpdate?>(
+      valueListenable: updates.available,
+      builder: (context, update, _) {
+        final note = update != null
+            ? null
+            : _reached == true
+            ? t.settingsUpToDate
+            : _reached == false
+            ? t.settingsUpdateFailed
+            : null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: version),
+                const SizedBox(width: AppSpace.md),
+                if (update != null)
+                  FilledButton.icon(
+                    onPressed: () => _openUpdate(update),
+                    icon: const Icon(Icons.system_update_alt_rounded, size: 15),
+                    label: Text(t.settingsUpdateTo(update.version)),
+                  )
+                else
+                  OutlinedButton(
+                    onPressed: _checking ? null : _checkUpdates,
+                    child: Text(t.settingsCheckUpdates),
+                  ),
+              ],
+            ),
+            if (note != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              Text(note, style: AppText.body),
+            ],
+          ],
+        );
+      },
     );
   }
 

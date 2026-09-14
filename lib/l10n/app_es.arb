@@ -1518,6 +1518,48 @@
   "settingsProjectorUnset": "Se elige la primera vez que proyectas.",
   "settingsProjectorOneScreen": "Solo hay una pantalla conectada.",
   "settingsProjectorChoose": "Elegir pantalla",
+  "settingsVersion": "Versión",
+  "settingsVersionNumber": "Introduce {version}",
+  "@settingsVersionNumber": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsCheckUpdates": "Buscar actualizaciones",
+  "settingsUpToDate": "Es la versión más reciente.",
+  "settingsUpdateFailed": "No se pudo llegar a GitHub para revisar. Prueba de nuevo con internet.",
+  "settingsUpdateTo": "Actualizar a la {version}",
+  "@settingsUpdateTo": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateAvailable": "Hay una versión nueva",
+  "updateTitle": "Introduce {version}",
+  "@updateTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateBody": "Ya se puede descargar. En esta computadora está la {current}.",
+  "@updateBody": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "updateStepsMac": "Descarga el archivo, cierra Introduce y reemplaza la app en Aplicaciones por la nueva. Los servicios, los diseños y la sesión se quedan como están. La primera vez, macOS vuelve a pedir Abrir igualmente en Privacidad y seguridad.",
+  "updateStepsWindows": "Descarga el archivo, cierra Introduce y reemplaza su carpeta por la nueva. Los servicios, los diseños y la sesión se quedan como están.",
+  "updateDownload": "Descargar",
+  "updateLater": "Ahora no",
+  "updateWhatsNew": "Qué cambió",
   "languagePickTitle": "Elige el idioma",
   "languagePickCaption": "Usar la app en español",
   "languagePickLater": "Puedes cambiarlo después en Configuración."

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "introduce_church" "\0"
+            VALUE "CompanyName", "Introduce" "\0"
+            VALUE "FileDescription", "Introduce" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "introduce_church" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "introduce_church.exe" "\0"
-            VALUE "ProductName", "introduce_church" "\0"
+            VALUE "InternalName", "Introduce" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Introduce." "\0"
+            VALUE "OriginalFilename", "Introduce.exe" "\0"
+            VALUE "ProductName", "Introduce" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

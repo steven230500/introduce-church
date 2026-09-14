@@ -16,6 +16,7 @@ import 'library/library_dock.dart';
 import '../../../core/history/projection_recorder.dart';
 import '../../../core/remote/remote_control.dart';
 import '../../../core/services/app_prefs_service.dart';
+import '../../../core/services/update_checker.dart';
 import '../../../l10n/l10n.dart';
 import '../../../core/widgets/ui/panel_resizer.dart';
 import 'org_admin_dialog.dart';
@@ -26,6 +27,7 @@ import 'widgets/remote_dialog.dart';
 import 'widgets/settings_dialog.dart';
 import 'widgets/quick_verse_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
+import 'widgets/update_dialog.dart';
 
 /// Application frame.
 ///
@@ -74,6 +76,10 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     Modular.get<AppPrefsService>(),
   );
 
+  /// Whether a newer version is out. Asked while the presenter is open, which
+  /// is whenever the app is in use.
+  final UpdateChecker _updates = Modular.get<UpdateChecker>();
+
   /// Quitting the app with a song still on the screen must still record that
   /// song, and dispose() is not guaranteed to run on the way out.
   late final AppLifecycleListener _lifecycle = AppLifecycleListener(
@@ -92,6 +98,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     _lifecycle;
     unawaited(_remote.restore());
     _control.keepRetrying();
+    _updates.start();
   }
 
   /// Held rather than looked up again in dispose, where the tree it would be
@@ -101,6 +108,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   @override
   void dispose() {
     _control.stopRetrying();
+    _updates.stop();
     unawaited(_recorder.stop());
     unawaited(_remote.dispose());
     _lifecycle.dispose();
@@ -223,7 +231,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 
                   return Row(
                     children: [
-                      _Sidebar(current: shell.section, remote: _remote),
+                      _Sidebar(current: shell.section, remote: _remote, updates: _updates),
                       const VerticalDivider(width: 1, color: AppColors.divider),
                       Expanded(child: _body(context, shell.section)),
                       if (showDock)
@@ -275,10 +283,11 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.current, required this.remote});
+  const _Sidebar({required this.current, required this.remote, required this.updates});
 
   final ShellSection current;
   final RemoteControl remote;
+  final UpdateChecker updates;
 
   @override
   Widget build(BuildContext context) {
@@ -314,6 +323,19 @@ class _Sidebar extends StatelessWidget {
             onTap: () => shell.goTo(ShellSection.history),
           ),
           const Spacer(),
+          // Only there while a newer version is out, and only ever opened by
+          // hand, so it can wait for the end of the service.
+          ValueListenableBuilder<AvailableUpdate?>(
+            valueListenable: updates.available,
+            builder: (context, update, _) => update == null
+                ? const SizedBox.shrink()
+                : _SideButton(
+                    icon: Icons.system_update_alt_rounded,
+                    label: L10n.of(context).updateAvailable,
+                    active: true,
+                    onTap: () => showUpdateDialog(context, update),
+                  ),
+          ),
           // Lit while phones are allowed in, so a remote left on is never
           // forgotten.
           ValueListenableBuilder<RemoteStatus>(

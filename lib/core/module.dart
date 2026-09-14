@@ -14,6 +14,7 @@ import 'repositories/template_repository.dart';
 import 'services/app_prefs_service.dart';
 import 'services/locale_controller.dart';
 import 'services/bible_download_service.dart';
+import 'services/update_checker.dart';
 
 class CoreModule extends Module {
   @override
@@ -47,5 +48,9 @@ class CoreModule extends Module {
     );
     i.addLazySingleton<TemplateRepository>(() => TemplateRepository(Modular.get<ApiClient>()));
     i.addLazySingleton<MediaRepository>(() => MediaRepository(Modular.get<ApiClient>()));
+
+    // One for the process, so the sidebar and the settings see the same answer
+    // and GitHub is asked once, not once per screen.
+    i.addLazySingleton<UpdateChecker>(() => UpdateChecker());
   }
 }

@@ -154,7 +154,7 @@ importa es lo que está saliendo ahora.
 | Plataforma | Estado |
 |---|---|
 | macOS | Funcionando, sin firmar todavía |
-| Windows | Compila en cada push ([build](../../actions/workflows/windows.yml)), falta probar en equipo real |
+| Windows | Beta en cada release: compila y se empaqueta, falta probar en equipo real |
 | Linux | Pendiente |
 
 ---
@@ -179,6 +179,12 @@ make dist-windows   # correr esto en una máquina Windows
 La primera vez en un Mac ajeno macOS no la abre, porque todavía no está
 firmada con certificado de Apple: Ajustes del Sistema → Privacidad y seguridad
 → Abrir igualmente (en macOS 14 o anterior basta clic derecho → Abrir).
+
+Publicar una versión: subir `version:` en `pubspec.yaml` y `appVersion` en
+`lib/core/config/app_version.dart` al mismo número, y empujar el tag
+(`git tag v1.0.2 && git push origin v1.0.2`). El workflow de release no publica
+si los tres no coinciden, porque la app compara su versión con la del último
+release para avisar que hay una nueva.
 
 Borrar datos locales y empezar de cero:
 
