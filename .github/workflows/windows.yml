@@ -1,0 +1,48 @@
+# Builds the Windows app on every push.
+#
+# Nobody has run the app on a Windows machine yet, and most churches have one
+# at the sound desk. This does not prove it works there, but it proves it still
+# compiles: a plugin without Windows support or a macOS-only call would
+# otherwise surface the day a church tries to install it. Kept apart from
+# check.yml so a broken Windows build never hides a failing test, or the
+# reverse.
+name: windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same pin as check.yml, for the same reason.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.2
+          channel: stable
+          cache: true
+
+      # A required asset, not in the repository.
+      - name: Write .env
+        shell: bash
+        run: echo "API_URL=${{ vars.API_URL || 'https://api.example.invalid' }}" > .env
+
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      # The build, for anyone who wants to try it on a real machine before a
+      # release exists. Kept a week, which is long enough to be fetched.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: introduce-windows
+          path: build/windows/x64/runner/Release/
+          retention-days: 7

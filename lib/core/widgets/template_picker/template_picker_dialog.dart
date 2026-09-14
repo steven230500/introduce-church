@@ -1594,6 +1594,9 @@ class _SafeAreaFrame extends StatelessWidget {
         // A label rather than a tooltip: this sits under an IgnorePointer so
         // the canvas stays draggable, and nothing under one can be hovered.
         child: Stack(
+          // The label sits in the margin just above the frame: inside it, the
+          // selection box of a layer placed at the top covered it exactly.
+          clipBehavior: Clip.none,
           children: [
             Positioned.fill(
               child: DecoratedBox(
@@ -1603,8 +1606,8 @@ class _SafeAreaFrame extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: 3,
-              top: 2,
+              left: 0,
+              top: -12,
               child: Text(
                 L10n.of(context).designSafeArea,
                 style: TextStyle(

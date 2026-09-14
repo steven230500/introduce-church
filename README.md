@@ -123,6 +123,12 @@ no hace falta escribirlos: se ensaya el servicio de corrido, la app cronometra
 cada elemento, y al terminar se eligen cuáles guardar como plan. Lo que se
 proyecta durante un ensayo no cuenta para el reporte de licencias.
 
+**En español o en inglés.** La primera vez que se abre en una computadora
+pregunta el idioma; después se cambia en Configuración, junto con la cuenta y
+la pantalla donde abre el proyector. El proyector y la pantalla de escenario
+hablan el mismo idioma que la consola. La Biblia incluida sigue siendo la
+Reina-Valera.
+
 **Modo sin internet.** El servicio arranca y funciona sin red. La sesión
 sobrevive, los diseños y la biblioteca de canciones quedan en caché y la app
 avisa cuando no alcanza el servidor en vez de quedarse callada. Sin red también
@@ -145,9 +151,8 @@ importa es lo que está saliendo ahora.
 | Plataforma | Estado |
 |---|---|
 | macOS | Funcionando, sin firmar todavía |
-| Windows | Compila, falta probar en equipo real |
+| Windows | Compila en cada push ([build](../../actions/workflows/windows.yml)), falta probar en equipo real |
 | Linux | Pendiente |
-| Control desde el teléfono | Pendiente |
 
 ---
 

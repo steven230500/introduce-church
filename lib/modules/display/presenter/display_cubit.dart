@@ -108,10 +108,17 @@ class DisplayAnnouncementState extends DisplayState {
 }
 
 class DisplayCubit extends Cubit<DisplayState> {
-  DisplayCubit(this._api, this._socket) : super(DisplayIdleState());
+  DisplayCubit(this._api, this._socket, {String Function(CollectionItem item)? titleOf})
+    : _titleOf = titleOf ?? _storedTitle,
+      super(DisplayIdleState());
 
   final ApiClient _api;
   final PresentationSocket _socket;
+
+  /// The name shown as a slide's reference when it has none of its own - an
+  /// untitled announcement - in the window's language.
+  final String Function(CollectionItem item) _titleOf;
+  static String _storedTitle(CollectionItem item) => item.displayTitle;
   StreamSubscription<Map<String, dynamic>>? _sub;
 
   /// Collections, cached by id.
@@ -269,7 +276,7 @@ class DisplayCubit extends Cubit<DisplayState> {
       final content = slides[clampedSlide];
       final refs = item.slideReferences;
       final ref = refs.isNotEmpty ? refs[clampedSlide] : '';
-      final reference = ref.isNotEmpty ? ref : item.displayTitle;
+      final reference = ref.isNotEmpty ? ref : _titleOf(item);
       final template = await _resolveTemplate(collection, item);
 
       emit(

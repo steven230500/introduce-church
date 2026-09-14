@@ -71,8 +71,7 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
   buf.writeln(sep);
 
   try {
-    final home = Platform.environment['HOME'] ?? '';
-    final docs = '$home/Documents';
+    final docs = p.join(homeDirectory(), 'Documents');
     final safeName = collection.name
         .replaceAll(RegExp(r'[^\w\s-]'), '')
         .trim()
@@ -80,9 +79,10 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
     final now = DateTime.now();
     final date =
         '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final path = '$docs/introduce_${date}_$safeName.txt';
+    final path = p.join(docs, 'introduce_${date}_$safeName.txt');
+    await Directory(docs).create(recursive: true);
     await File(path).writeAsString(buf.toString());
-    await Process.run('open', [path]);
+    await openWithSystem(path);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

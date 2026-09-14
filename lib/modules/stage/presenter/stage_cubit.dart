@@ -103,10 +103,16 @@ class StageState extends Equatable {
 }
 
 class StageCubit extends Cubit<StageState> {
-  StageCubit(this._api, this._socket) : super(const StageState());
+  StageCubit(this._api, this._socket, {String Function(CollectionItem item)? titleOf})
+    : _titleOf = titleOf ?? _storedTitle,
+      super(const StageState());
 
   final ApiClient _api;
   final PresentationSocket _socket;
+
+  /// An item's name in the window's language, for items with no title.
+  final String Function(CollectionItem item) _titleOf;
+  static String _storedTitle(CollectionItem item) => item.displayTitle;
   StreamSubscription<Map<String, dynamic>>? _sub;
   final Map<String, SlideTemplate> _templateCache = {};
   final Map<String, Collection> _collections = {};
@@ -220,9 +226,9 @@ class StageCubit extends Cubit<StageState> {
 
     return StageSlide(
       content: item.type == CollectionItemType.imageSlide ? '' : slides[clamped],
-      reference: ref.isNotEmpty ? ref : item.displayTitle,
+      reference: ref.isNotEmpty ? ref : _titleOf(item),
       template: template,
-      itemTitle: item.displayTitle,
+      itemTitle: _titleOf(item),
       slideIndex: clamped,
       slideCount: slides.length,
       imagePath: item.type == CollectionItemType.imageSlide ? slides[clamped] : null,

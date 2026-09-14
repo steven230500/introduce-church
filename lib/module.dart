@@ -4,7 +4,6 @@ import 'core/module.dart';
 import 'modules/auth/module.dart';
 import 'modules/org_setup/org_setup_module.dart';
 import 'modules/presentation/module.dart';
-import 'modules/songs/module.dart';
 
 class AuthGuard extends RouteGuard {
   AuthGuard() : super(redirectTo: '/auth/login');
@@ -38,7 +37,6 @@ class AppModule extends Module {
     r.module('/auth', module: AuthModule());
     r.module('/org-setup', module: OrgSetupModule(), guards: [AuthGuard()]);
     r.module('/presentation', module: PresentationModule(), guards: [AuthGuard(), OrgGuard()]);
-    r.module('/songs', module: SongsModule(), guards: [AuthGuard(), OrgGuard()]);
     r.redirect('/', to: '/auth/splash');
   }
 }

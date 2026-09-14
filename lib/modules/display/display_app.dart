@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/api/bootstrap.dart';
+import '../../core/models/labels.dart';
+import '../../l10n/l10n.dart';
 import '../../core/services/locale_controller.dart';
 import '../../core/windows/window_locale.dart';
 import 'presenter/display_cubit.dart';
@@ -28,12 +30,15 @@ class DisplayApp extends StatelessWidget {
         future: bootstrapWindowClients(),
         builder: (context, snapshot) {
           final clients = snapshot.data;
+          final strings = L10n.of(context);
           if (clients == null) {
             // Black, not a spinner: this window is pointed at a congregation.
             return const ColoredBox(color: Colors.black, child: SizedBox.expand());
           }
           return BlocProvider(
-            create: (_) => DisplayCubit(clients.api, clients.socket)..init(),
+            create: (_) =>
+                DisplayCubit(clients.api, clients.socket, titleOf: (item) => item.titleIn(strings))
+                  ..init(),
             child: const DisplayPage(),
           );
         },

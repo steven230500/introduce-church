@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:introduce_church/core/models/labels.dart';
 import 'package:introduce_church/core/models/slide_template.dart';
+import 'package:introduce_church/l10n/l10n_en.dart';
 import 'package:introduce_church/modules/display/presenter/display_cubit.dart';
 
 import '../helpers/builders.dart';
@@ -112,5 +114,37 @@ void main() {
     await sub.cancel();
 
     expect(seen, hasLength(1));
+  });
+
+  test('an item with no title is named in the window\'s language', () async {
+    // The projector window used to fall back to the model's Spanish name, so
+    // an untitled sermon read "Prédica" under an English slide.
+    final english = DisplayCubit(
+      api,
+      FakePresentationSocket(),
+      titleOf: (item) => item.titleIn(L10nEn()),
+    );
+    addTearDown(english.close);
+
+    await english.applyLocalState({
+      ...operatorState(),
+      'collection': collectionRow(
+        id: 'c1',
+        items: [
+          itemRow(
+            id: 'i1',
+            collectionId: 'c1',
+            type: 'sermon',
+            order: 0,
+            contentJson: {
+              'points': ['Grace'],
+            },
+          ),
+        ],
+      ),
+      'current_slide_index': 1,
+    });
+
+    expect((english.state as DisplaySlideState).reference, 'Sermon');
   });
 }
