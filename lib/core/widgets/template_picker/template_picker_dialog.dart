@@ -16,7 +16,10 @@ import '../backgrounds/background_gallery_dialog.dart';
 import '../slide_background.dart';
 import 'canvas_snap.dart';
 import 'color_field.dart';
+import 'editor_controls.dart';
 import '../slide_view.dart';
+import '../ui/app_buttons.dart';
+import '../ui/hover_builder.dart';
 import 'template_editor_cubit.dart';
 import 'template_picker_cubit.dart';
 import '../../../core/theme/app_colors.dart';
@@ -48,119 +51,76 @@ class _TemplatePickerDialog extends StatelessWidget {
         final cubit = context.read<TemplatePickerCubit>();
         final loaded = state is TemplatePickerLoadedState ? state : null;
 
-        return Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: 780,
-            height: 540,
-            child: Column(
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 12),
-                  child: Row(
-                    children: [
-                      Image.asset(
-                        'assets/images/casavida-isologo-white.png',
-                        height: 18,
-                        opacity: const AlwaysStoppedAnimation(0.55),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        L10n.of(context).designPickerTitle,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        icon: const Icon(Icons.add, size: 16),
-                        label: Text(L10n.of(context).designsNew),
-                        onPressed: () async {
-                          final result = await showTemplateEditor(
-                            context,
-                            repo: cubit.repo,
-                            initial: SlideTemplate.defaultTemplate,
-                            isNew: true,
-                          );
-                          if (result != null) await cubit.saveNew(result);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-
-                // Grid
-                Expanded(
-                  child: loaded == null
-                      ? const Center(child: CircularProgressIndicator())
-                      : GridView.builder(
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            childAspectRatio: 16 / 10,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          itemCount: loaded.all.length,
-                          itemBuilder: (_, i) {
-                            final t = loaded.all[i];
-                            final isCustom = !t.id.startsWith('preset_');
-                            return _TemplateTile(
-                              template: t,
-                              isSelected: loaded.selectedId == t.id,
-                              isCustom: isCustom,
-                              onTap: () => cubit.select(t.id),
-                              onEdit: isCustom
-                                  ? () async {
-                                      final result = await showTemplateEditor(
-                                        context,
-                                        repo: cubit.repo,
-                                        initial: t,
-                                        isNew: false,
-                                      );
-                                      if (result != null) {
-                                        await cubit.updateCustom(result);
-                                      }
-                                    }
-                                  : null,
-                              onDelete: isCustom ? () => cubit.deleteCustom(t.id) : null,
-                              onDuplicate: () => cubit.duplicate(
-                                t,
-                                name: L10n.of(context).designCopySuffix(t.name),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-
-                // Footer
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(L10n.of(context).cancel),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: loaded == null
-                            ? null
-                            : () => Navigator.pop(context, loaded.selectedId),
-                        child: Text(L10n.of(context).apply),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        return AppDialog(
+          title: L10n.of(context).designPickerTitle,
+          icon: Icons.palette_outlined,
+          width: 780,
+          height: 560,
+          contentPadding: EdgeInsets.zero,
+          headerActions: [
+            TextButton.icon(
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(L10n.of(context).designsNew),
+              onPressed: () async {
+                final result = await showTemplateEditor(
+                  context,
+                  repo: cubit.repo,
+                  initial: SlideTemplate.defaultTemplate,
+                  isNew: true,
+                );
+                if (result != null) await cubit.saveNew(result);
+              },
             ),
-          ),
+          ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(L10n.of(context).cancel),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: loaded == null ? null : () => Navigator.pop(context, loaded.selectedId),
+              child: Text(L10n.of(context).apply),
+            ),
+          ],
+          child: loaded == null
+              ? const Center(child: CircularProgressIndicator())
+              : GridView.builder(
+                  padding: const EdgeInsets.all(AppSpace.lg),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 16 / 10,
+                    crossAxisSpacing: AppSpace.md,
+                    mainAxisSpacing: AppSpace.md,
+                  ),
+                  itemCount: loaded.all.length,
+                  itemBuilder: (_, i) {
+                    final t = loaded.all[i];
+                    final isCustom = !t.id.startsWith('preset_');
+                    return _TemplateTile(
+                      template: t,
+                      isSelected: loaded.selectedId == t.id,
+                      isCustom: isCustom,
+                      onTap: () => cubit.select(t.id),
+                      onEdit: isCustom
+                          ? () async {
+                              final result = await showTemplateEditor(
+                                context,
+                                repo: cubit.repo,
+                                initial: t,
+                                isNew: false,
+                              );
+                              if (result != null) {
+                                await cubit.updateCustom(result);
+                              }
+                            }
+                          : null,
+                      onDelete: isCustom ? () => cubit.deleteCustom(t.id) : null,
+                      onDuplicate: () =>
+                          cubit.duplicate(t, name: L10n.of(context).designCopySuffix(t.name)),
+                    );
+                  },
+                ),
         );
       },
     );
@@ -304,20 +264,22 @@ Future<SlideTemplate?> showTemplateEditor(
     builder: (_) => BlocProvider(
       create: (_) =>
           TemplateEditorCubit(repo, Modular.get<OrganizationRepository>(), initial)..loadPalette(),
-      child: _TemplateEditorDialog(isNew: isNew),
+      child: TemplateEditorDialog(isNew: isNew),
     ),
   );
 }
 
-class _TemplateEditorDialog extends StatefulWidget {
-  const _TemplateEditorDialog({required this.isNew});
+/// The editor itself, for [showTemplateEditor] and for tests, which provide
+/// its cubit directly instead of through the app's injector.
+class TemplateEditorDialog extends StatefulWidget {
+  const TemplateEditorDialog({super.key, required this.isNew});
   final bool isNew;
 
   @override
-  State<_TemplateEditorDialog> createState() => _TemplateEditorDialogState();
+  State<TemplateEditorDialog> createState() => _TemplateEditorDialogState();
 }
 
-class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
+class _TemplateEditorDialogState extends State<TemplateEditorDialog> {
   late TextEditingController _nameCtrl;
   late TextEditingController _sampleCtrl;
   late TextEditingController _sampleRefCtrl;
@@ -454,20 +416,24 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           if (choice != null) update(applyBackground(cubit.state.template, choice));
         }
 
-        Widget bgControls() => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        final l = L10n.of(context);
+
+        Widget nameField() => EditorSection(
+          title: l.designName,
+          children: [EditorTextInput(controller: _nameCtrl, fontSize: 13)],
+        );
+
+        Widget backgroundSection() => EditorSection(
+          title: l.designBackground,
           children: [
-            _SectionLabel(L10n.of(context).designBackground),
             _BgTypeToggle(t, update, onPicture: chooseBackground),
-            const SizedBox(height: 10),
             if (_isPicture(t.bgType)) ...[
               _BackgroundCard(template: t, onChange: chooseBackground),
-              const SizedBox(height: 10),
               // In percent. As a fraction from 0 to 1 the slider had one
               // step - fully clear or fully black - and its number read 0 for
               // everything short of black.
-              _SliderRow(
-                label: L10n.of(context).bgDarkness,
+              EditorSlider(
+                label: l.bgDarkness,
                 value: t.bgOverlayOpacity * 100,
                 min: 0,
                 max: 100,
@@ -475,9 +441,7 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
               ),
             ] else ...[
               ColorField(
-                label: t.bgType == BackgroundType.gradient
-                    ? L10n.of(context).designColorStart
-                    : L10n.of(context).designColor,
+                label: t.bgType == BackgroundType.gradient ? l.designColorStart : l.designColor,
                 value: t.bgColor,
                 saved: state.palette,
                 onSave: cubit.saveColor,
@@ -485,18 +449,16 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
                 onChanged: (v) => update(t.copyWith(bgColor: v)),
               ),
               if (t.bgType == BackgroundType.gradient) ...[
-                const SizedBox(height: 8),
                 ColorField(
-                  label: L10n.of(context).designColorEnd,
+                  label: l.designColorEnd,
                   value: t.bgGradientEnd,
                   saved: state.palette,
                   onSave: cubit.saveColor,
                   onForget: cubit.forgetColor,
                   onChanged: (v) => update(t.copyWith(bgGradientEnd: v)),
                 ),
-                const SizedBox(height: 8),
-                _SliderRow(
-                  label: L10n.of(context).designAngle,
+                EditorSlider(
+                  label: l.designAngle,
                   value: t.bgGradientAngle,
                   min: 0,
                   max: 360,
@@ -507,94 +469,38 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           ],
         );
 
-        Widget dialogHeader() => Padding(
-          padding: const EdgeInsets.fromLTRB(14, 13, 8, 10),
-          child: Row(
-            children: [
-              Image.asset(
-                'assets/images/casavida-isologo-white.png',
-                height: 18,
-                opacity: const AlwaysStoppedAnimation(0.55),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                widget.isNew ? L10n.of(context).designsNew : L10n.of(context).designEdit,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              const Spacer(),
-              // Up here, where it can be found. The two buttons this replaces
-              // sat at the bottom of a scrolling panel, so the mode an editor
-              // is in was both invisible and hard to change.
-              _HistoryButtons(
-                canUndo: state.canUndo,
-                canRedo: state.canRedo,
-                onUndo: cubit.undo,
-                onRedo: cubit.redo,
-              ),
-              const SizedBox(width: AppSpace.sm),
-              _ModeToggle(
-                inLayers: isLayersMode,
-                onSimple: cubit.disableLayers,
-                onLayers: cubit.enableLayers,
-              ),
-              const SizedBox(width: AppSpace.sm),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                visualDensity: VisualDensity.compact,
-                onPressed: _close,
-              ),
-            ],
+        Widget sampleFields() => Container(
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.sm),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.divider)),
           ),
-        );
-
-        Widget dialogFooter() => Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(onPressed: _close, child: Text(L10n.of(context).cancel)),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: state.saving ? null : _save,
-                child: state.saving
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(L10n.of(context).save),
-              ),
-            ],
-          ),
-        );
-
-        Widget sampleFields() => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
           child: Column(
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 3,
-                    child: _DarkField(
+                    child: EditorTextInput(
                       controller: _sampleCtrl,
-                      hint: L10n.of(context).designSampleHint,
+                      hint: l.designSampleHint,
                       maxLines: 2,
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     flex: 2,
-                    child: _DarkField(
+                    child: EditorTextInput(
                       controller: _sampleRefCtrl,
-                      hint: L10n.of(context).designReference,
+                      hint: l.designReference,
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.sm),
               // The sample was one two-line verse, so a design was judged on
               // the one length it never has to survive. These are the lengths
               // a real service throws at it.
@@ -608,395 +514,306 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
           ),
         );
 
-        // ── 3-panel layout (layers mode) ────────────────────────────────────
-        if (isLayersMode) {
-          return Dialog(
-            insetPadding: const EdgeInsets.all(24),
-            child: SizedBox(
-              width: 1200,
-              height: 700,
-              // The header runs the whole width here rather than living in the
-              // narrow left column, which could not hold a title and a mode
-              // switch at the same time.
-              child: Column(
-                children: [
-                  dialogHeader(),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        // Left: name + bg + layer list
-                        SizedBox(
-                          width: 240,
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      TextField(
-                                        controller: _nameCtrl,
-                                        decoration: InputDecoration(
-                                          labelText: L10n.of(context).designName,
-                                          border: OutlineInputBorder(),
-                                          isDense: true,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      bgControls(),
-                                      const SizedBox(height: 16),
-                                      _LayersListSection(
-                                        template: t,
-                                        selectedLayerId: state.selectedLayerId,
-                                        cubit: cubit,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Divider(height: 1),
-                              dialogFooter(),
-                            ],
-                          ),
-                        ),
-
-                        const VerticalDivider(width: 1),
-
-                        // Center: drag-and-drop canvas (expanded)
-                        Expanded(
-                          child: Container(
-                            color: AppColors.background,
-                            child: Column(
-                              children: [
-                                sampleFields(),
-                                Expanded(
-                                  child: Center(
-                                    child: AspectRatio(
-                                      aspectRatio: 16 / 9,
-                                      child: Container(
-                                        margin: const EdgeInsets.all(16),
-                                        clipBehavior: Clip.hardEdge,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: AppColors.surfaceControl),
-                                        ),
-                                        child: _LayerCanvas(
-                                          template: t,
-                                          sampleContent: _sampleCtrl.text,
-                                          sampleReference: _sampleRefCtrl.text,
-                                          selectedLayerId: state.selectedLayerId,
-                                          cubit: cubit,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const VerticalDivider(width: 1),
-
-                        // Right: layer inspector (280px)
-                        SizedBox(
-                          width: 280,
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(14, 13, 14, 10),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      L10n.of(context).designProperties,
-                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                                    ),
-                                    const Spacer(),
-                                    if (state.selectedLayer != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surfaceControl,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          state.selectedLayer!.labelIn(L10n.of(context)),
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: AppColors.textTertiary,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const Divider(height: 1),
-                              Expanded(
-                                child: state.selectedLayer == null
-                                    ? Center(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app_outlined,
-                                              color: AppColors.border,
-                                              size: 32,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              L10n.of(context).designSelectLayer,
-                                              style: TextStyle(
-                                                color: AppColors.textTertiary,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : SingleChildScrollView(
-                                        padding: const EdgeInsets.all(14),
-                                        child: _LayerInspector(
-                                          layer: state.selectedLayer!,
-                                          cubit: cubit,
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // ── 2-panel layout (simple mode) ────────────────────────────────────
-        return Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: 900,
-            height: 600,
-            // Header across the whole dialog, as in layers mode. A 340px column
-            // cannot hold a title, undo, redo, the mode switch and a close
-            // button at once, and the mode an editor is in belongs above both
-            // panels anyway.
+        Widget stage(Widget slide) => Expanded(
+          child: ColoredBox(
+            color: AppColors.canvas,
             child: Column(
               children: [
-                dialogHeader(),
-                const Divider(height: 1),
+                // The same row in both modes. It was a second copy once, so
+                // the lengths only reached one of them.
+                sampleFields(),
                 Expanded(
-                  child: Row(
-                    children: [
-                      // Left: controls (340px)
-                      SizedBox(
-                        width: 340,
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TextField(
-                                      controller: _nameCtrl,
-                                      decoration: InputDecoration(
-                                        labelText: L10n.of(context).designName,
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    bgControls(),
-                                    const SizedBox(height: 20),
-                                    _SectionLabel(L10n.of(context).designText),
-                                    _SliderRow(
-                                      label: L10n.of(context).designSize,
-                                      value: t.fontSize,
-                                      min: 24,
-                                      max: 120,
-                                      onChanged: (v) => update(t.copyWith(fontSize: v)),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _SliderRow(
-                                      label: L10n.of(context).designLineHeight,
-                                      value: t.lineHeight,
-                                      min: 1.0,
-                                      max: 2.5,
-                                      decimals: 1,
-                                      onChanged: (v) => update(t.copyWith(lineHeight: v)),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _FontWeightPicker(t, update),
-                                    const SizedBox(height: 8),
-                                    _FontFamilyPicker(
-                                      value: t.fontFamily,
-                                      onChanged: (f) => update(t.copyWith(fontFamily: f)),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ColorField(
-                                      label: L10n.of(context).designTextColor,
-                                      value: t.textColor,
-                                      saved: state.palette,
-                                      fromPhoto: state.photoPalette,
-                                      onSave: cubit.saveColor,
-                                      onForget: cubit.forgetColor,
-                                      against: backdrop,
-                                      onChanged: (v) => update(t.copyWith(textColor: v)),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _TextAlignPicker(t, update),
-                                    const SizedBox(height: 8),
-                                    _ValignPicker(t, update),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          L10n.of(context).designShadow,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        const Spacer(),
-                                        Switch(
-                                          value: t.textShadow,
-                                          onChanged: (v) => update(t.copyWith(textShadow: v)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _SectionLabel(L10n.of(context).designMargins),
-                                    _SliderRow(
-                                      label: L10n.of(context).designHorizontal,
-                                      value: t.paddingH,
-                                      min: 0,
-                                      max: 200,
-                                      onChanged: (v) => update(t.copyWith(paddingH: v)),
-                                    ),
-                                    _SliderRow(
-                                      label: L10n.of(context).designVertical,
-                                      value: t.paddingV,
-                                      min: 0,
-                                      max: 200,
-                                      onChanged: (v) => update(t.copyWith(paddingV: v)),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    _SectionLabel(L10n.of(context).designReference),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          L10n.of(context).designShow,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        const Spacer(),
-                                        Switch(
-                                          value: t.showReference,
-                                          onChanged: (v) => update(t.copyWith(showReference: v)),
-                                        ),
-                                      ],
-                                    ),
-                                    if (t.showReference) ...[
-                                      const SizedBox(height: 8),
-                                      _SliderRow(
-                                        label: L10n.of(context).designRefSize,
-                                        value: t.referenceFontSize,
-                                        min: 8,
-                                        max: 36,
-                                        onChanged: (v) => update(t.copyWith(referenceFontSize: v)),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ColorField(
-                                        label: L10n.of(context).designRefColor,
-                                        value: t.referenceColor,
-                                        saved: state.palette,
-                                        fromPhoto: state.photoPalette,
-                                        onSave: cubit.saveColor,
-                                        onForget: cubit.forgetColor,
-                                        against: backdrop,
-                                        onChanged: (v) => update(t.copyWith(referenceColor: v)),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _RefPositionPicker(t, update),
-                                    ],
-                                    const SizedBox(height: 20),
-                                    _SectionLabel(L10n.of(context).designTransition),
-                                    _TransitionPicker(
-                                      value: t.transitionType,
-                                      onChanged: (v) => update(t.copyWith(transitionType: v)),
-                                    ),
-                                    if (t.transitionType != SlideTransitionType.cut) ...[
-                                      const SizedBox(height: 4),
-                                      _SliderRow(
-                                        label: L10n.of(context).designDurationMs,
-                                        value: t.transitionDurationMs.toDouble(),
-                                        min: 100,
-                                        max: 1000,
-                                        onChanged: (v) =>
-                                            update(t.copyWith(transitionDurationMs: v.round())),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 20),
-                                  ],
-                                ),
-                              ),
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Container(
+                        margin: const EdgeInsets.all(AppSpace.xl),
+                        clipBehavior: Clip.hardEdge,
+                        decoration: BoxDecoration(
+                          borderRadius: AppRadius.all(AppRadius.md),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x55000000),
+                              blurRadius: 24,
+                              offset: Offset(0, 8),
                             ),
-                            const Divider(height: 1),
-                            dialogFooter(),
                           ],
                         ),
+                        child: slide,
                       ),
-
-                      const VerticalDivider(width: 1),
-
-                      // Right: live preview
-                      Expanded(
-                        child: Container(
-                          color: AppColors.background,
-                          child: Column(
-                            children: [
-                              // The same row the canvas uses. It was a second copy
-                              // here, so the lengths only reached one of the modes.
-                              sampleFields(),
-                              Expanded(
-                                child: Center(
-                                  child: AspectRatio(
-                                    aspectRatio: 16 / 9,
-                                    child: Container(
-                                      margin: const EdgeInsets.all(20),
-                                      clipBehavior: Clip.hardEdge,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppColors.surfaceControl),
-                                      ),
-                                      // The design as the room will see it,
-                                      // moving background and all.
-                                      child: SlideMotion(
-                                        level: MotionLevel.all,
-                                        child: SlideView(
-                                          content: _sampleCtrl.text,
-                                          reference: _sampleRefCtrl.text,
-                                          template: t,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
+          ),
+        );
+
+        Widget column({required double width, required List<Widget> children}) => SizedBox(
+          width: width,
+          child: ColoredBox(
+            color: AppColors.surface,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+            ),
+          ),
+        );
+
+        // The editor is a dialog like the others: the same header, with the
+        // history and the mode switch in it, and the same footer. It used to
+        // be a stock Material dialog with its own header and a footer tucked
+        // into the left column.
+        Widget shell({required double width, required double height, required Widget body}) =>
+            AppDialog(
+              title: widget.isNew ? l.designsNew : l.designEdit,
+              icon: Icons.palette_outlined,
+              width: width,
+              height: height,
+              contentPadding: EdgeInsets.zero,
+              onClose: _close,
+              headerActions: [
+                _HistoryButtons(
+                  canUndo: state.canUndo,
+                  canRedo: state.canRedo,
+                  onUndo: cubit.undo,
+                  onRedo: cubit.redo,
+                ),
+                const SizedBox(width: AppSpace.sm),
+                _ModeToggle(
+                  inLayers: isLayersMode,
+                  onSimple: cubit.disableLayers,
+                  onLayers: cubit.enableLayers,
+                ),
+              ],
+              actions: [
+                TextButton(onPressed: _close, child: Text(l.cancel)),
+                const SizedBox(width: AppSpace.sm),
+                FilledButton(
+                  onPressed: state.saving ? null : _save,
+                  child: state.saving
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l.save),
+                ),
+              ],
+              child: body,
+            );
+
+        // ── Layers mode: layers, canvas, inspector ──────────────────────────
+        if (isLayersMode) {
+          final selected = state.selectedLayer;
+          return shell(
+            width: 1240,
+            height: 740,
+            body: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                column(
+                  width: 280,
+                  children: [
+                    nameField(),
+                    backgroundSection(),
+                    _LayersListSection(
+                      template: t,
+                      selectedLayerId: state.selectedLayerId,
+                      cubit: cubit,
+                    ),
+                  ],
+                ),
+                const VerticalDivider(width: 1, color: AppColors.divider),
+                stage(
+                  _LayerCanvas(
+                    template: t,
+                    sampleContent: _sampleCtrl.text,
+                    sampleReference: _sampleRefCtrl.text,
+                    selectedLayerId: state.selectedLayerId,
+                    cubit: cubit,
+                  ),
+                ),
+                const VerticalDivider(width: 1, color: AppColors.divider),
+                column(
+                  width: 300,
+                  children: [
+                    if (selected == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpace.xxl),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.touch_app_outlined,
+                              color: AppColors.textTertiary,
+                              size: 28,
+                            ),
+                            const SizedBox(height: AppSpace.sm),
+                            Text(
+                              l.designSelectLayer,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _LayerInspector(layer: selected, cubit: cubit),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        // ── Simple mode: controls and a live preview ─────────────────────────
+        return shell(
+          width: 960,
+          height: 660,
+          body: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              column(
+                width: 360,
+                children: [
+                  nameField(),
+                  backgroundSection(),
+                  EditorSection(
+                    title: l.designText,
+                    children: [
+                      EditorSlider(
+                        label: l.designSize,
+                        value: t.fontSize,
+                        min: 24,
+                        max: 120,
+                        onChanged: (v) => update(t.copyWith(fontSize: v)),
+                      ),
+                      EditorSlider(
+                        label: l.designLineHeight,
+                        value: t.lineHeight,
+                        min: 1.0,
+                        max: 2.5,
+                        decimals: 1,
+                        onChanged: (v) => update(t.copyWith(lineHeight: v)),
+                      ),
+                      _WeightPicker(
+                        value: t.fontWeight,
+                        onChanged: (v) => update(t.copyWith(fontWeight: v)),
+                      ),
+                      _FontFamilyPicker(
+                        value: t.fontFamily,
+                        onChanged: (f) => update(t.copyWith(fontFamily: f)),
+                      ),
+                      _AlignPicker(
+                        value: t.textAlign,
+                        onChanged: (v) => update(t.copyWith(textAlign: v)),
+                      ),
+                      _ValignPicker(
+                        value: t.textValign,
+                        onChanged: (v) => update(t.copyWith(textValign: v)),
+                      ),
+                      EditorSwitch(
+                        label: l.designShadow,
+                        value: t.textShadow,
+                        onChanged: (v) => update(t.copyWith(textShadow: v)),
+                      ),
+                      ColorField(
+                        label: l.designTextColor,
+                        value: t.textColor,
+                        saved: state.palette,
+                        fromPhoto: state.photoPalette,
+                        onSave: cubit.saveColor,
+                        onForget: cubit.forgetColor,
+                        against: backdrop,
+                        onChanged: (v) => update(t.copyWith(textColor: v)),
+                      ),
+                    ],
+                  ),
+                  EditorSection(
+                    title: l.designMargins,
+                    children: [
+                      EditorSlider(
+                        label: l.designHorizontal,
+                        value: t.paddingH,
+                        min: 0,
+                        max: 200,
+                        onChanged: (v) => update(t.copyWith(paddingH: v)),
+                      ),
+                      EditorSlider(
+                        label: l.designVertical,
+                        value: t.paddingV,
+                        min: 0,
+                        max: 200,
+                        onChanged: (v) => update(t.copyWith(paddingV: v)),
+                      ),
+                    ],
+                  ),
+                  EditorSection(
+                    title: l.designReference,
+                    children: [
+                      EditorSwitch(
+                        label: l.designShow,
+                        value: t.showReference,
+                        onChanged: (v) => update(t.copyWith(showReference: v)),
+                      ),
+                      if (t.showReference) ...[
+                        EditorSlider(
+                          label: l.designRefSize,
+                          value: t.referenceFontSize,
+                          min: 8,
+                          max: 36,
+                          onChanged: (v) => update(t.copyWith(referenceFontSize: v)),
+                        ),
+                        _RefPositionPicker(
+                          value: t.referencePosition,
+                          onChanged: (v) => update(t.copyWith(referencePosition: v)),
+                        ),
+                        ColorField(
+                          label: l.designRefColor,
+                          value: t.referenceColor,
+                          saved: state.palette,
+                          fromPhoto: state.photoPalette,
+                          onSave: cubit.saveColor,
+                          onForget: cubit.forgetColor,
+                          against: backdrop,
+                          onChanged: (v) => update(t.copyWith(referenceColor: v)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  EditorSection(
+                    title: l.designTransition,
+                    children: [
+                      _TransitionPicker(
+                        value: t.transitionType,
+                        onChanged: (v) => update(t.copyWith(transitionType: v)),
+                      ),
+                      if (t.transitionType != SlideTransitionType.cut)
+                        EditorSlider(
+                          label: l.designDurationMs,
+                          value: t.transitionDurationMs.toDouble(),
+                          min: 100,
+                          max: 1000,
+                          onChanged: (v) => update(t.copyWith(transitionDurationMs: v.round())),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              const VerticalDivider(width: 1, color: AppColors.divider),
+              // The design as the room will see it, moving background and all.
+              stage(
+                SlideMotion(
+                  level: MotionLevel.all,
+                  child: SlideView(
+                    content: _sampleCtrl.text,
+                    reference: _sampleRefCtrl.text,
+                    template: t,
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -1004,10 +821,6 @@ class _TemplateEditorDialogState extends State<_TemplateEditorDialog> {
   }
 }
 
-/// Switches between arranging a design with sliders and arranging it by hand.
-///
-/// Deliberately says what each mode is rather than what pressing it does, so
-/// the editor always shows which of the two you are in.
 /// Back a step, forward a step.
 ///
 /// Designing is trying things, and an operator who nudges a slider and does not
@@ -1045,6 +858,10 @@ class _HistoryButtons extends StatelessWidget {
   );
 }
 
+/// Switches between arranging a design with sliders and arranging it by hand.
+///
+/// Deliberately says what each mode is rather than what pressing it does, so
+/// the editor always shows which of the two you are in.
 class _ModeToggle extends StatelessWidget {
   const _ModeToggle({required this.inLayers, required this.onSimple, required this.onLayers});
 
@@ -1054,72 +871,19 @@ class _ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceControl,
-        borderRadius: AppRadius.all(AppRadius.sm + 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ModeButton(
-            icon: Icons.tune,
-            label: L10n.of(context).designModeSimple,
-            active: !inLayers,
-            onTap: inLayers ? onSimple : null,
-          ),
-          _ModeButton(
-            icon: Icons.layers_outlined,
-            label: L10n.of(context).designModeLayers,
-            active: inLayers,
-            onTap: inLayers ? null : onLayers,
-          ),
+    final l = L10n.of(context);
+    return SizedBox(
+      width: 190,
+      child: EditorSegmented<bool>(
+        selected: inLayers,
+        onChanged: (layers) {
+          if (layers == inLayers) return;
+          layers ? onLayers() : onSimple();
+        },
+        segments: [
+          EditorSegment(value: false, icon: Icons.tune, label: l.designModeSimple),
+          EditorSegment(value: true, icon: Icons.layers_outlined, label: l.designModeLayers),
         ],
-      ),
-    );
-  }
-}
-
-class _ModeButton extends StatelessWidget {
-  const _ModeButton({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs + 1),
-        decoration: BoxDecoration(
-          color: active ? AppColors.accent : Colors.transparent,
-          borderRadius: AppRadius.all(AppRadius.sm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: active ? Colors.white : AppColors.textMuted),
-            const SizedBox(width: AppSpace.xs + 1),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: active ? Colors.white : AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1147,24 +911,31 @@ class _SampleLengths extends StatelessWidget {
       children: [
         Text(l.designTryWith, style: AppText.rowSubtitle),
         const SizedBox(width: AppSpace.sm),
-        for (final entry in samples.entries) ...[
-          GestureDetector(
-            onTap: () => onPick(entry.value.$1, entry.value.$2),
-            child: MouseRegion(
+        for (final entry in samples.entries)
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpace.xs + 1),
+            child: HoverBuilder(
               cursor: SystemMouseCursors.click,
-              child: Container(
-                margin: const EdgeInsets.only(right: AppSpace.xs + 1),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceControl,
-                  borderRadius: AppRadius.all(AppRadius.sm),
-                  border: Border.all(color: AppColors.border),
+              builder: (context, hovering) => GestureDetector(
+                onTap: () => onPick(entry.value.$1, entry.value.$2),
+                child: AnimatedContainer(
+                  duration: AppMotion.fast,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hovering ? AppColors.surfaceRaised : AppColors.surfaceControl,
+                    borderRadius: AppRadius.all(AppRadius.xl),
+                    border: Border.all(
+                      color: hovering ? AppColors.accentOutline : AppColors.border,
+                    ),
+                  ),
+                  child: Text(
+                    entry.key,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  ),
                 ),
-                child: Text(entry.key, style: AppText.rowSubtitle),
               ),
             ),
           ),
-        ],
       ],
     );
   }
@@ -1178,24 +949,6 @@ String _weightLabel(L10n l, int weight) => switch (weight) {
   600 => l.designWeightSemibold,
   _ => l.designWeightBold,
 };
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-  final String label;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textTertiary,
-        letterSpacing: 0.5,
-      ),
-    ),
-  );
-}
 
 bool _isPicture(BackgroundType type) =>
     type == BackgroundType.image || type == BackgroundType.motion || type == BackgroundType.video;
@@ -1213,29 +966,23 @@ class _BgTypeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L10n.of(context);
     final current = _isPicture(t.bgType) ? _BgKind.picture : _BgKind.values[t.bgType.index];
-    return SegmentedButton<_BgKind>(
+    return EditorSegmented<_BgKind>(
+      selected: current,
       segments: [
-        // Scaled down rather than wrapped: in the canvas layout these three
-        // share a 240px column and were breaking into "Sóli do" and "Imag en".
-        ButtonSegment(
-          value: _BgKind.solid,
-          icon: const Icon(Icons.rectangle_outlined, size: 13),
-          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypeColor)),
-        ),
-        ButtonSegment(
+        EditorSegment(value: _BgKind.solid, icon: Icons.rectangle_outlined, label: l.bgTypeColor),
+        EditorSegment(
           value: _BgKind.gradient,
-          icon: const Icon(Icons.gradient_outlined, size: 13),
-          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypeGradient)),
+          icon: Icons.gradient_outlined,
+          label: l.bgTypeGradient,
         ),
-        ButtonSegment(
+        EditorSegment(
           value: _BgKind.picture,
-          icon: const Icon(Icons.wallpaper_outlined, size: 13),
-          label: FittedBox(fit: BoxFit.scaleDown, child: Text(l.bgTypePicture)),
+          icon: Icons.wallpaper_outlined,
+          label: l.bgTypePicture,
         ),
       ],
-      selected: {current},
-      onSelectionChanged: (s) {
-        switch (s.first) {
+      onChanged: (kind) {
+        switch (kind) {
           case _BgKind.solid:
             onUpdate(t.copyWith(bgType: BackgroundType.solid));
           case _BgKind.gradient:
@@ -1248,12 +995,6 @@ class _BgTypeToggle extends StatelessWidget {
             onPicture();
         }
       },
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 10)),
-        iconSize: const WidgetStatePropertyAll(13),
-      ),
     );
   }
 }
@@ -1314,299 +1055,116 @@ class _BackgroundCard extends StatelessWidget {
   }
 }
 
-class _SliderRow extends StatelessWidget {
-  const _SliderRow({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-    this.decimals = 0,
-  });
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final void Function(double) onChanged;
-  final int decimals;
+class _WeightPicker extends StatelessWidget {
+  const _WeightPicker({required this.value, required this.onChanged});
 
-  String get _display => decimals > 0 ? value.toStringAsFixed(decimals) : value.round().toString();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12)),
-        Expanded(
-          child: Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: ((max - min) * (decimals > 0 ? 10 : 0.5)).round().clamp(1, 200),
-            onChanged: onChanged,
-          ),
-        ),
-        _SliderValue(
-          text: _display,
-          onSubmitted: (raw) {
-            final parsed = double.tryParse(raw.replaceAll(',', '.'));
-            if (parsed != null) onChanged(parsed.clamp(min, max));
-          },
-        ),
-      ],
-    );
-  }
-}
-
-/// The number beside a slider, which can also be typed into.
-///
-/// A slider cannot be asked for 48 on purpose. The value was a label, so the
-/// only way to reach an exact size was to nudge the handle and hope.
-class _SliderValue extends StatefulWidget {
-  const _SliderValue({required this.text, required this.onSubmitted});
-
-  final String text;
-  final ValueChanged<String> onSubmitted;
-
-  @override
-  State<_SliderValue> createState() => _SliderValueState();
-}
-
-class _SliderValueState extends State<_SliderValue> {
-  late final TextEditingController _controller = TextEditingController(text: widget.text);
-  final _focus = FocusNode();
-
-  @override
-  void didUpdateWidget(_SliderValue old) {
-    super.didUpdateWidget(old);
-    // The slider moved. Do not overwrite what is being typed.
-    if (widget.text != old.text && !_focus.hasFocus) _controller.text = widget.text;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  void _commit() {
-    widget.onSubmitted(_controller.text);
-    _controller.text = widget.text;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      child: TextField(
-        controller: _controller,
-        focusNode: _focus,
-        textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        decoration: const InputDecoration(
-          isDense: true,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 6),
-        ),
-        onSubmitted: (_) => _commit(),
-        onTapOutside: (_) {
-          if (!_focus.hasFocus) return;
-          _focus.unfocus();
-          _commit();
-        },
-      ),
-    );
-  }
-}
-
-class _FontWeightPicker extends StatelessWidget {
-  const _FontWeightPicker(this.t, this.onUpdate);
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
+  final int value;
+  final ValueChanged<int> onChanged;
 
   static const _weights = [300, 400, 600, 700];
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(L10n.of(context).designWeight, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButton<int>(
-            value: t.fontWeight,
-            isExpanded: true,
-            isDense: true,
-            items: _weights
-                .map(
-                  (w) => DropdownMenuItem(value: w, child: Text(_weightLabel(L10n.of(context), w))),
-                )
-                .toList(),
-            onChanged: (v) {
-              if (v != null) onUpdate(t.copyWith(fontWeight: v));
-            },
-          ),
-        ),
-      ],
+    final l = L10n.of(context);
+    return EditorField(
+      label: l.designWeight,
+      child: EditorDropdown<int>(
+        value: _weights.contains(value) ? value : 400,
+        items: [
+          for (final w in _weights)
+            DropdownMenuItem(
+              value: w,
+              child: Text(
+                _weightLabel(l, w),
+                style: TextStyle(fontWeight: FontWeight.values[(w ~/ 100) - 1]),
+              ),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
 }
 
-class _TextAlignPicker extends StatelessWidget {
-  const _TextAlignPicker(this.t, this.onUpdate);
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
+class _AlignPicker extends StatelessWidget {
+  const _AlignPicker({required this.value, required this.onChanged});
+
+  final TextAlign value;
+  final ValueChanged<TextAlign> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(L10n.of(context).designAlignment, style: const TextStyle(fontSize: 12)),
-        const Spacer(),
-        _AlignBtn(Icons.format_align_left, TextAlign.left, t, onUpdate),
-        _AlignBtn(Icons.format_align_center, TextAlign.center, t, onUpdate),
-        _AlignBtn(Icons.format_align_right, TextAlign.right, t, onUpdate),
-      ],
-    );
-  }
-}
-
-class _AlignBtn extends StatelessWidget {
-  const _AlignBtn(this.icon, this.align, this.t, this.onUpdate);
-  final IconData icon;
-  final TextAlign align;
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = t.textAlign == align;
-    return IconButton(
-      icon: Icon(icon, size: 18, color: active ? AppColors.accent : AppColors.textMuted),
-      onPressed: () => onUpdate(t.copyWith(textAlign: align)),
-      visualDensity: VisualDensity.compact,
+    return EditorField(
+      label: L10n.of(context).designAlignment,
+      child: EditorSegmented<TextAlign>(
+        selected: value,
+        onChanged: onChanged,
+        segments: const [
+          EditorSegment(value: TextAlign.left, icon: Icons.format_align_left),
+          EditorSegment(value: TextAlign.center, icon: Icons.format_align_center),
+          EditorSegment(value: TextAlign.right, icon: Icons.format_align_right),
+        ],
+      ),
     );
   }
 }
 
 class _ValignPicker extends StatelessWidget {
-  const _ValignPicker(this.t, this.onUpdate);
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
+  const _ValignPicker({required this.value, required this.onChanged});
+
+  final TextVerticalAlign value;
+  final ValueChanged<TextVerticalAlign> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(L10n.of(context).designPosition, style: const TextStyle(fontSize: 12)),
-        const Spacer(),
-        _ValignBtn(Icons.vertical_align_top, TextVerticalAlign.top, t, onUpdate),
-        _ValignBtn(Icons.vertical_align_center, TextVerticalAlign.center, t, onUpdate),
-        _ValignBtn(Icons.vertical_align_bottom, TextVerticalAlign.bottom, t, onUpdate),
-      ],
-    );
-  }
-}
-
-class _ValignBtn extends StatelessWidget {
-  const _ValignBtn(this.icon, this.valign, this.t, this.onUpdate);
-  final IconData icon;
-  final TextVerticalAlign valign;
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = t.textValign == valign;
-    return IconButton(
-      icon: Icon(icon, size: 18, color: active ? AppColors.accent : AppColors.textMuted),
-      onPressed: () => onUpdate(t.copyWith(textValign: valign)),
-      visualDensity: VisualDensity.compact,
+    return EditorField(
+      label: L10n.of(context).designPosition,
+      child: EditorSegmented<TextVerticalAlign>(
+        selected: value,
+        onChanged: onChanged,
+        segments: const [
+          EditorSegment(value: TextVerticalAlign.top, icon: Icons.vertical_align_top),
+          EditorSegment(value: TextVerticalAlign.center, icon: Icons.vertical_align_center),
+          EditorSegment(value: TextVerticalAlign.bottom, icon: Icons.vertical_align_bottom),
+        ],
+      ),
     );
   }
 }
 
 class _RefPositionPicker extends StatelessWidget {
-  const _RefPositionPicker(this.t, this.onUpdate);
-  final SlideTemplate t;
-  final void Function(SlideTemplate) onUpdate;
+  const _RefPositionPicker({required this.value, required this.onChanged});
 
-  static const _opts = [
-    ReferencePosition.bottomLeft,
-    ReferencePosition.bottomCenter,
-    ReferencePosition.bottomRight,
-  ];
-
-  static String _label(L10n l, ReferencePosition position) => switch (position) {
-    ReferencePosition.bottomLeft => l.designRefBottomLeft,
-    ReferencePosition.bottomCenter => l.designRefBottomCenter,
-    _ => l.designRefBottomRight,
-  };
+  final ReferencePosition value;
+  final ValueChanged<ReferencePosition> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(L10n.of(context).designRefPosition, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButton<ReferencePosition>(
-            value: t.referencePosition,
-            isExpanded: true,
-            isDense: true,
-            items: _opts
-                .map((o) => DropdownMenuItem(value: o, child: Text(_label(L10n.of(context), o))))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) onUpdate(t.copyWith(referencePosition: v));
-            },
+    final l = L10n.of(context);
+    return EditorField(
+      label: l.designRefPosition,
+      // Icons with the words as tooltips: "Inf. izq." was the dropdown's way
+      // of fitting three places into a narrow column.
+      child: EditorSegmented<ReferencePosition>(
+        selected: value,
+        onChanged: onChanged,
+        segments: [
+          EditorSegment(
+            value: ReferencePosition.bottomLeft,
+            icon: Icons.align_horizontal_left,
+            tooltip: l.designRefBottomLeft,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DarkField extends StatelessWidget {
-  const _DarkField({
-    required this.controller,
-    required this.hint,
-    this.maxLines = 1,
-    this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final int maxLines;
-  final void Function(String)? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 12),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-        filled: true,
-        fillColor: AppColors.surfaceControl,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(color: AppColors.accent),
-        ),
+          EditorSegment(
+            value: ReferencePosition.bottomCenter,
+            icon: Icons.align_horizontal_center,
+            tooltip: l.designRefBottomCenter,
+          ),
+          EditorSegment(
+            value: ReferencePosition.bottomRight,
+            icon: Icons.align_horizontal_right,
+            tooltip: l.designRefBottomRight,
+          ),
+        ],
       ),
     );
   }
@@ -1627,55 +1185,39 @@ class _LayersListSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
     final sorted = [...template.layers]..sort((a, b) => a.zIndex.compareTo(b.zIndex));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return EditorSection(
+      title: l.designLayers,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIconButton(
+            icon: Icons.text_fields,
+            tooltip: l.designAddText,
+            size: 26,
+            iconSize: 15,
+            onTap: cubit.addTextLayer,
+          ),
+          AppIconButton(
+            icon: Icons.format_quote,
+            tooltip: l.designAddReference,
+            size: 26,
+            iconSize: 15,
+            onTap: cubit.addReferenceLayer,
+          ),
+        ],
+      ),
       children: [
-        Row(
-          children: [
-            Text(
-              L10n.of(context).designLayers,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textTertiary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const Spacer(),
-            Tooltip(
-              message: L10n.of(context).designAddText,
-              child: IconButton(
-                icon: const Icon(Icons.text_fields, size: 16),
-                visualDensity: VisualDensity.compact,
-                onPressed: cubit.addTextLayer,
-              ),
-            ),
-            Tooltip(
-              message: L10n.of(context).designAddReference,
-              child: IconButton(
-                icon: const Icon(Icons.format_quote, size: 16),
-                visualDensity: VisualDensity.compact,
-                onPressed: cubit.addReferenceLayer,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
         if (sorted.isEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              L10n.of(context).designNoLayers,
-              style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
-            ),
+          Text(
+            l.designNoLayers,
+            style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
           )
         else
-          ...sorted.map(
-            (layer) =>
-                _LayerListTile(layer: layer, isSelected: layer.id == selectedLayerId, cubit: cubit),
-          ),
+          for (final layer in sorted)
+            _LayerListTile(layer: layer, isSelected: layer.id == selectedLayerId, cubit: cubit),
       ],
     );
   }
@@ -1695,31 +1237,48 @@ class _LayerListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => cubit.selectLayer(layer.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accent.withValues(alpha: 0.15) : AppColors.surfaceControl,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? AppColors.accent : Colors.transparent, width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Icon(_icon, size: 14, color: isSelected ? AppColors.accent : AppColors.textTertiary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                layer.labelIn(L10n.of(context)),
-                style: TextStyle(fontSize: 12, color: isSelected ? AppColors.accent : Colors.white),
+    return HoverBuilder(
+      cursor: SystemMouseCursors.click,
+      builder: (context, hovering) => GestureDetector(
+        onTap: () => cubit.selectLayer(layer.id),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          height: kEditorControlHeight + 4,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.accentFillSoft
+                : (hovering ? AppColors.surfaceRaised : AppColors.surfaceControl),
+            borderRadius: AppRadius.all(AppRadius.md),
+            border: Border.all(color: isSelected ? AppColors.accent : AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _icon,
+                size: 14,
+                color: isSelected ? AppColors.accentLight : AppColors.textTertiary,
               ),
-            ),
-            GestureDetector(
-              onTap: () => cubit.removeLayer(layer.id),
-              child: const Icon(Icons.close, size: 14, color: AppColors.textMuted),
-            ),
-          ],
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Text(
+                  layer.labelIn(L10n.of(context)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              AppIconButton(
+                icon: Icons.close,
+                tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
+                size: 22,
+                iconSize: 13,
+                onTap: () => cubit.removeLayer(layer.id),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1736,177 +1295,84 @@ class _LayerInspector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (layer) {
-      TextSlideLayer l => _textInspector(context, l),
-      ReferenceSlideLayer l => _refInspector(context, l),
-    };
-  }
+    final l = L10n.of(context);
+    final layer = this.layer;
+    final colour = ColorField(
+      label: l.designColor,
+      value: switch (layer) {
+        TextSlideLayer text => text.textColor,
+        ReferenceSlideLayer ref => ref.textColor,
+      },
+      saved: cubit.state.palette,
+      fromPhoto: cubit.state.photoPalette,
+      against: cubit.state.backdrop,
+      onSave: cubit.saveColor,
+      onForget: cubit.forgetColor,
+      onChanged: (v) => cubit.updateLayer(switch (layer) {
+        TextSlideLayer text => text.copyWith(textColor: v),
+        ReferenceSlideLayer ref => ref.copyWith(textColor: v),
+      }),
+    );
 
-  Widget _textInspector(BuildContext context, TextSlideLayer l) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _LayerSlider(
-          label: L10n.of(context).designSize,
-          value: l.fontSize,
-          min: 20,
-          max: 120,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(fontSize: v)),
-        ),
-        const SizedBox(height: 4),
-        _LayerSlider(
-          label: L10n.of(context).designLineHeight,
-          value: l.lineHeight,
-          min: 1.0,
-          max: 2.5,
-          decimals: 1,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(lineHeight: v)),
-        ),
-        const SizedBox(height: 8),
-        _LayerWeightRow(
-          value: l.fontWeight,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(fontWeight: v)),
-        ),
-        const SizedBox(height: 8),
-        _FontFamilyPicker(
-          value: l.fontFamily,
-          onChanged: (f) => cubit.updateLayer(l.copyWith(fontFamily: f)),
-        ),
-        const SizedBox(height: 8),
-        _LayerAlignRow(
-          value: l.textAlign,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(textAlign: v)),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Text(L10n.of(context).designShadow, style: const TextStyle(fontSize: 12)),
-            const Spacer(),
-            Switch(
-              value: l.textShadow,
-              onChanged: (v) => cubit.updateLayer(l.copyWith(textShadow: v)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ColorField(
-          label: L10n.of(context).designColor,
-          value: l.textColor,
-          saved: cubit.state.palette,
-          fromPhoto: cubit.state.photoPalette,
-          against: cubit.state.backdrop,
-          onSave: cubit.saveColor,
-          onForget: cubit.forgetColor,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(textColor: v)),
-        ),
-      ],
+    return EditorSection(
+      title: '${l.designProperties} · ${layer.labelIn(l)}',
+      children: switch (layer) {
+        TextSlideLayer text => [
+          EditorSlider(
+            label: l.designSize,
+            value: text.fontSize,
+            min: 20,
+            max: 120,
+            onChanged: (v) => cubit.updateLayer(text.copyWith(fontSize: v)),
+          ),
+          EditorSlider(
+            label: l.designLineHeight,
+            value: text.lineHeight,
+            min: 1.0,
+            max: 2.5,
+            decimals: 1,
+            onChanged: (v) => cubit.updateLayer(text.copyWith(lineHeight: v)),
+          ),
+          _WeightPicker(
+            value: text.fontWeight,
+            onChanged: (v) => cubit.updateLayer(text.copyWith(fontWeight: v)),
+          ),
+          _FontFamilyPicker(
+            value: text.fontFamily,
+            onChanged: (f) => cubit.updateLayer(text.copyWith(fontFamily: f)),
+          ),
+          _AlignPicker(
+            value: text.textAlign,
+            onChanged: (v) => cubit.updateLayer(text.copyWith(textAlign: v)),
+          ),
+          EditorSwitch(
+            label: l.designShadow,
+            value: text.textShadow,
+            onChanged: (v) => cubit.updateLayer(text.copyWith(textShadow: v)),
+          ),
+          colour,
+        ],
+        ReferenceSlideLayer ref => [
+          EditorSlider(
+            label: l.designSize,
+            value: ref.fontSize,
+            min: 8,
+            max: 48,
+            onChanged: (v) => cubit.updateLayer(ref.copyWith(fontSize: v)),
+          ),
+          _FontFamilyPicker(
+            value: ref.fontFamily,
+            onChanged: (f) => cubit.updateLayer(ref.copyWith(fontFamily: f)),
+          ),
+          _AlignPicker(
+            value: ref.textAlign,
+            onChanged: (v) => cubit.updateLayer(ref.copyWith(textAlign: v)),
+          ),
+          colour,
+        ],
+      },
     );
   }
-
-  Widget _refInspector(BuildContext context, ReferenceSlideLayer l) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _LayerSlider(
-          label: L10n.of(context).designSize,
-          value: l.fontSize,
-          min: 8,
-          max: 48,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(fontSize: v)),
-        ),
-        const SizedBox(height: 8),
-        _FontFamilyPicker(
-          value: l.fontFamily,
-          onChanged: (f) => cubit.updateLayer(l.copyWith(fontFamily: f)),
-        ),
-        const SizedBox(height: 8),
-        _LayerAlignRow(
-          value: l.textAlign,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(textAlign: v)),
-        ),
-        const SizedBox(height: 8),
-        ColorField(
-          label: L10n.of(context).designColor,
-          value: l.textColor,
-          saved: cubit.state.palette,
-          fromPhoto: cubit.state.photoPalette,
-          against: cubit.state.backdrop,
-          onSave: cubit.saveColor,
-          onForget: cubit.forgetColor,
-          onChanged: (v) => cubit.updateLayer(l.copyWith(textColor: v)),
-        ),
-      ],
-    );
-  }
-}
-
-class _LayerSlider extends StatelessWidget {
-  const _LayerSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-    this.decimals = 0,
-  });
-  final String label;
-  final double value;
-  final double min, max;
-  final void Function(double) onChanged;
-  final int decimals;
-
-  String get _display => decimals > 0 ? value.toStringAsFixed(decimals) : value.round().toString();
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(label, style: const TextStyle(fontSize: 12)),
-      Expanded(
-        child: Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: ((max - min) * (decimals > 0 ? 10 : 0.5)).round().clamp(1, 200),
-          onChanged: onChanged,
-        ),
-      ),
-      SizedBox(
-        width: 32,
-        child: Text(_display, style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
-      ),
-    ],
-  );
-}
-
-class _LayerWeightRow extends StatelessWidget {
-  const _LayerWeightRow({required this.value, required this.onChanged});
-  final int value;
-  final void Function(int) onChanged;
-
-  static const _weights = [300, 400, 600, 700];
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(L10n.of(context).designWeight, style: const TextStyle(fontSize: 12)),
-      const SizedBox(width: 8),
-      Expanded(
-        child: DropdownButton<int>(
-          value: value,
-          isExpanded: true,
-          isDense: true,
-          items: _weights
-              .map(
-                (w) => DropdownMenuItem(value: w, child: Text(_weightLabel(L10n.of(context), w))),
-              )
-              .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-        ),
-      ),
-    ],
-  );
 }
 
 class _FontFamilyPicker extends StatelessWidget {
@@ -1934,85 +1400,49 @@ class _FontFamilyPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
     final current = _fonts.contains(value) ? value : null;
-    return Row(
-      children: [
-        Text(L10n.of(context).designFont, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButton<String?>(
-            value: current,
-            isExpanded: true,
-            isDense: true,
-            // The name was already drawn in its own font, but a family name at
-            // twelve points says almost nothing about how a verse will look in
-            // it. Each row carries a phrase at a size worth judging.
-            items: _fonts
-                .map(
-                  (f) => DropdownMenuItem<String?>(
-                    value: f,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            L10n.of(context).designSampleShortText,
-                            style: TextStyle(fontFamily: f, fontSize: 16),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpace.sm),
-                        Text(f ?? L10n.of(context).designFontSystem, style: AppText.rowSubtitle),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-            selectedItemBuilder: (_) => _fonts
-                .map(
-                  (f) => Align(
-                    alignment: Alignment.centerLeft,
+    return EditorField(
+      label: l.designFont,
+      child: EditorDropdown<String?>(
+        value: current,
+        // The name was already drawn in its own font, but a family name at
+        // twelve points says almost nothing about how a verse will look in
+        // it. Each row carries a phrase at a size worth judging.
+        items: [
+          for (final f in _fonts)
+            DropdownMenuItem<String?>(
+              value: f,
+              child: Row(
+                children: [
+                  Expanded(
                     child: Text(
-                      f ?? L10n.of(context).designFontSystem,
-                      style: TextStyle(fontFamily: f, fontSize: 13),
+                      l.designSampleShortText,
+                      style: TextStyle(fontFamily: f, fontSize: 16),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                )
-                .toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
+                  const SizedBox(width: AppSpace.sm),
+                  Text(f ?? l.designFontSystem, style: AppText.rowSubtitle),
+                ],
+              ),
+            ),
+        ],
+        selectedItemBuilder: (_) => [
+          for (final f in _fonts)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                f ?? l.designFontSystem,
+                style: TextStyle(fontFamily: f, fontSize: 12, color: AppColors.textPrimary),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
-}
-
-class _LayerAlignRow extends StatelessWidget {
-  const _LayerAlignRow({required this.value, required this.onChanged});
-  final TextAlign value;
-  final void Function(TextAlign) onChanged;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(L10n.of(context).designAlignment, style: const TextStyle(fontSize: 12)),
-      const Spacer(),
-      for (final (icon, align) in [
-        (Icons.format_align_left, TextAlign.left),
-        (Icons.format_align_center, TextAlign.center),
-        (Icons.format_align_right, TextAlign.right),
-      ])
-        IconButton(
-          icon: Icon(
-            icon,
-            size: 16,
-            color: value == align ? AppColors.accent : AppColors.textMuted,
-          ),
-          visualDensity: VisualDensity.compact,
-          onPressed: () => onChanged(align),
-        ),
-    ],
-  );
 }
 
 // ── Layer canvas (drag-and-drop center panel) ─────────────────────────────────
@@ -2467,8 +1897,6 @@ class _TransitionPicker extends StatelessWidget {
   final SlideTransitionType value;
   final void Function(SlideTransitionType) onChanged;
 
-  static const _options = SlideTransitionType.values;
-
   static String _label(L10n l, SlideTransitionType type) => switch (type) {
     SlideTransitionType.cut => l.designTransitionCut,
     SlideTransitionType.fade => l.designTransitionFade,
@@ -2479,29 +1907,17 @@ class _TransitionPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(L10n.of(context).designTransitionType, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButton<SlideTransitionType>(
-            value: value,
-            isExpanded: true,
-            isDense: true,
-            items: _options
-                .map(
-                  (o) => DropdownMenuItem(
-                    value: o,
-                    child: Text(_label(L10n.of(context), o), style: const TextStyle(fontSize: 12)),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              if (v != null) onChanged(v);
-            },
-          ),
-        ),
-      ],
+    final l = L10n.of(context);
+    return EditorField(
+      label: l.designTransitionType,
+      child: EditorDropdown<SlideTransitionType>(
+        value: value,
+        items: [
+          for (final option in SlideTransitionType.values)
+            DropdownMenuItem(value: option, child: Text(_label(l, option))),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
 }

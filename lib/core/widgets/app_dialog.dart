@@ -38,6 +38,8 @@ class AppDialog extends StatelessWidget {
     this.iconColor = kAccent,
     this.contentPadding = const EdgeInsets.all(20),
     this.showClose = true,
+    this.headerActions = const [],
+    this.onClose,
   });
 
   final String title;
@@ -50,13 +52,27 @@ class AppDialog extends StatelessWidget {
   final EdgeInsets contentPadding;
   final bool showClose;
 
+  /// Controls that belong to the whole dialog, beside the close button.
+  final List<Widget> headerActions;
+
+  /// What the close button does. Defaults to closing; a dialog that can lose
+  /// work passes its own, which asks first.
+  final VoidCallback? onClose;
+
   @override
   Widget build(BuildContext context) {
     final body = Column(
       mainAxisSize: height != null ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _AppDialogHeader(title: title, icon: icon, iconColor: iconColor, showClose: showClose),
+        _AppDialogHeader(
+          title: title,
+          icon: icon,
+          iconColor: iconColor,
+          showClose: showClose,
+          actions: headerActions,
+          onClose: onClose,
+        ),
         if (height != null)
           Expanded(
             child: Padding(padding: contentPadding, child: child),
@@ -102,12 +118,16 @@ class _AppDialogHeader extends StatelessWidget {
     this.icon,
     this.iconColor = kAccent,
     this.showClose = true,
+    this.actions = const [],
+    this.onClose,
   });
 
   final String title;
   final IconData? icon;
   final Color iconColor;
   final bool showClose;
+  final List<Widget> actions;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +167,8 @@ class _AppDialogHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          ...actions,
+          if (actions.isNotEmpty && showClose) const SizedBox(width: 8),
           if (showClose)
             SizedBox(
               width: 28,
@@ -154,7 +176,7 @@ class _AppDialogHeader extends StatelessWidget {
               child: IconButton(
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.close, size: 16, color: kTextSecondary),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: onClose ?? () => Navigator.of(context).pop(),
                 style: IconButton.styleFrom(
                   backgroundColor: kDialogSurface,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
