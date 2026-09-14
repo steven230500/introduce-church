@@ -92,8 +92,12 @@ class SongFormSavedState extends SongFormState {
 }
 
 class SongFormErrorState extends SongFormState {
-  const SongFormErrorState(this.message);
+  const SongFormErrorState(this.message, {this.error, this.whileImporting = false});
   final String message;
+
+  /// The failure itself, so the form can word it in the operator's language.
+  final Object? error;
+  final bool whileImporting;
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, error, whileImporting];
 }

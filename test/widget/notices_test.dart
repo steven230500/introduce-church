@@ -44,10 +44,10 @@ void main() {
     control.selectCollection(model().collections.first);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: BlocProvider.value(
+      localizedApp(
+        BlocProvider.value(
           value: control,
-          child: Scaffold(body: NoticesDialog(repository: org)),
+          child: NoticesDialog(repository: org),
         ),
       ),
     );

@@ -21,7 +21,8 @@ class OrgSetupState extends Equatable {
   final bool loading;
   final List<Organization> searchResults;
   final String? pendingOrgName; // non-null = waiting for approval
-  final String? error;
+  /// The last failure, kept whole so the page can word it by its code.
+  final Object? error;
 
   bool get isPending => pendingOrgName != null;
 
@@ -36,7 +37,7 @@ class OrgSetupState extends Equatable {
     loading: loading ?? this.loading,
     searchResults: searchResults ?? this.searchResults,
     pendingOrgName: pendingOrgName == _unset ? this.pendingOrgName : pendingOrgName as String?,
-    error: error == _unset ? this.error : error as String?,
+    error: error == _unset ? this.error : error,
   );
 
   static const _unset = Object();
@@ -88,7 +89,7 @@ class OrgSetupCubit extends Cubit<OrgSetupState> {
       final results = await _repo.searchOrganizations(query);
       emit(state.copyWith(searchResults: results));
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      emit(state.copyWith(error: e));
     }
   }
 
@@ -101,7 +102,7 @@ class OrgSetupCubit extends Cubit<OrgSetupState> {
       emit(state.copyWith(loading: false));
       return true;
     } catch (e) {
-      emit(state.copyWith(loading: false, error: e.toString()));
+      emit(state.copyWith(loading: false, error: e));
       return false;
     }
   }
@@ -112,7 +113,7 @@ class OrgSetupCubit extends Cubit<OrgSetupState> {
       await _repo.requestJoin(org.id);
       emit(state.copyWith(loading: false, pendingOrgName: org.name));
     } catch (e) {
-      emit(state.copyWith(loading: false, error: e.toString()));
+      emit(state.copyWith(loading: false, error: e));
     }
   }
 

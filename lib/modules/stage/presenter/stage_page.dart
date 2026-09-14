@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/widgets/slide_view.dart';
+import '../../../l10n/l10n.dart';
 import '../../../core/timing/item_timer.dart';
 import 'stage_cubit.dart';
 import '../../../core/theme/app_colors.dart';
@@ -32,12 +33,12 @@ class _StageLayout extends StatelessWidget {
         // Above everything, because it is the one thing here that somebody
         // typed on purpose for the person reading this screen.
         if (message != null && message.isNotEmpty) _StageMessage(text: message),
-        Expanded(child: _panels()),
+        Expanded(child: _panels(L10n.of(context))),
       ],
     );
   }
 
-  Widget _panels() {
+  Widget _panels(L10n t) {
     return Row(
       children: [
         // Left: current slide (large)
@@ -45,7 +46,7 @@ class _StageLayout extends StatelessWidget {
           flex: 3,
           child: Column(
             children: [
-              _SectionLabel('ACTUAL', isLive: state.isLive),
+              _SectionLabel(t.stageCurrent, isLive: state.isLive),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 6, 12),
@@ -67,7 +68,7 @@ class _StageLayout extends StatelessWidget {
           width: 300,
           child: Column(
             children: [
-              _SectionLabel('SIGUIENTE', isLive: false),
+              _SectionLabel(t.stageNext, isLive: false),
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Padding(
@@ -163,8 +164,8 @@ class _SectionLabel extends StatelessWidget {
                 color: const Color(0xFFFF3B30),
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: const Text(
-                '● EN VIVO',
+              child: Text(
+                L10n.of(context).liveBadge,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 9,
@@ -371,7 +372,7 @@ class _InfoPanelState extends State<_InfoPanel> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Slide ${current.slideIndex + 1} / ${current.slideCount}',
+              L10n.of(context).stageSlideOf(current.slideIndex + 1, current.slideCount),
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             // Large enough to read from the pulpit: this is the number the
@@ -397,8 +398,8 @@ class _InfoPanelState extends State<_InfoPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'ACORDES',
+                    Text(
+                      L10n.of(context).stageChords,
                       style: TextStyle(
                         color: AppColors.accent,
                         fontSize: 9,
@@ -445,8 +446,8 @@ class _InfoPanelState extends State<_InfoPanel> {
               ),
             ],
           ] else
-            const Text(
-              'Sin slide activo',
+            Text(
+              L10n.of(context).stageNoSlide,
               style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
             ),
 
@@ -560,8 +561,8 @@ class _RehearsalTag extends StatelessWidget {
       borderRadius: BorderRadius.circular(4),
       border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
     ),
-    child: const Text(
-      'ENSAYO',
+    child: Text(
+      L10n.of(context).rehearsalLabel,
       style: TextStyle(
         color: AppColors.warning,
         fontSize: 11,

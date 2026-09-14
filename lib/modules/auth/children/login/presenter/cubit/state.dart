@@ -29,10 +29,14 @@ final class LoginSuccessState extends LoginState {
 }
 
 final class LoginErrorState extends LoginState {
-  const LoginErrorState(super.model, this.message);
+  const LoginErrorState(super.model, this.error);
 
-  final String message;
+  /// What went wrong, kept whole so the screen can say it in the operator's
+  /// language by its code.
+  final Object error;
+
+  String get message => error is ApiException ? (error as ApiException).message : '$error';
 
   @override
-  List<Object?> get props => [model, message];
+  List<Object?> get props => [model, error];
 }

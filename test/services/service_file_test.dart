@@ -136,14 +136,26 @@ void main() {
     test('a file that is not JSON says so, not a decoding error', () {
       expect(
         () => decodeService('esto no es json'),
-        throwsA(isA<ServiceFileError>().having((e) => e.message, 'message', contains('leer'))),
+        throwsA(
+          isA<ServiceFileError>().having(
+            (e) => e.problem,
+            'problem',
+            ServiceFileProblem.unreadable,
+          ),
+        ),
       );
     });
 
     test('somebody else\'s JSON is refused by name', () {
       expect(
         () => decodeService('{"hello": "world"}'),
-        throwsA(isA<ServiceFileError>().having((e) => e.message, 'message', contains('Introduce'))),
+        throwsA(
+          isA<ServiceFileError>().having(
+            (e) => e.problem,
+            'problem',
+            ServiceFileProblem.notIntroduce,
+          ),
+        ),
       );
     });
 
@@ -153,7 +165,9 @@ void main() {
 
       expect(
         () => decodeService(jsonEncode(future)),
-        throwsA(isA<ServiceFileError>().having((e) => e.message, 'message', contains('Actualiza'))),
+        throwsA(
+          isA<ServiceFileError>().having((e) => e.problem, 'problem', ServiceFileProblem.tooNew),
+        ),
       );
     });
 

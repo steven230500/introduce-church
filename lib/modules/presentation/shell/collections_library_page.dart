@@ -16,6 +16,7 @@ import '../../../core/widgets/ui/empty_state.dart';
 import '../../../core/widgets/ui/page_header.dart';
 import '../children/control/presenter/cubit/cubit.dart';
 import 'widgets/collection_dialog.dart';
+import '../../../l10n/l10n.dart';
 
 /// Every planned service, newest work first. Opening one switches the
 /// presenter to it and returns there, because planning and running a service
@@ -33,10 +34,13 @@ class CollectionsLibraryPage extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (state is ControlErrorState) {
-          return ErrorStateView(message: state.message, onRetry: context.read<ControlCubit>().load);
+          return ErrorStateView(
+            message: state.describe(L10n.of(context)),
+            onRetry: context.read<ControlCubit>().load,
+          );
         }
         if (state is! ControlLoadedState) {
-          return const ErrorStateView(message: 'No se pudieron cargar las colecciones.');
+          return ErrorStateView(message: L10n.of(context).collectionsLoadFailed);
         }
 
         final cubit = context.read<ControlCubit>();
@@ -46,17 +50,15 @@ class CollectionsLibraryPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PageHeader(
-              title: 'Colecciones',
+              title: L10n.of(context).sideCollections,
               subtitle: model.collections.isEmpty
                   ? null
-                  : '${model.collections.length} servicio'
-                        '${model.collections.length == 1 ? '' : 's'} planificado'
-                        '${model.collections.length == 1 ? '' : 's'}',
+                  : L10n.of(context).collectionsPlanned(model.collections.length),
               actions: [
                 FilledButton.icon(
                   onPressed: () => _create(context, cubit, onOpenCollection),
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Nueva colección'),
+                  label: Text(L10n.of(context).newCollection),
                 ),
               ],
             ),
@@ -64,11 +66,9 @@ class CollectionsLibraryPage extends StatelessWidget {
               child: model.collections.isEmpty
                   ? EmptyState(
                       icon: Icons.folder_open_outlined,
-                      title: 'Sin colecciones',
-                      message:
-                          'Una colección es el plan de un servicio: '
-                          'canciones, versículos y media en orden.',
-                      actionLabel: 'Crear la primera',
+                      title: L10n.of(context).collectionsEmptyTitle,
+                      message: L10n.of(context).collectionsEmptyMessage,
+                      actionLabel: L10n.of(context).collectionsCreateFirst,
                       onAction: () => _create(context, cubit, onOpenCollection),
                     )
                   : GridView.builder(
@@ -148,9 +148,10 @@ class CollectionsLibraryPage extends StatelessWidget {
   Future<void> _delete(BuildContext context, ControlCubit cubit, Collection collection) async {
     final ok = await showAppConfirmDialog(
       context,
-      title: 'Eliminar colección',
-      message: '¿Eliminar "${collection.name}"? Se eliminan todos sus elementos.',
-      confirmLabel: 'Eliminar',
+      title: L10n.of(context).deleteCollection,
+      message:
+          '${L10n.of(context).deleteCollectionQuestion(collection.name)} ${L10n.of(context).deleteCollectionBody}',
+      confirmLabel: L10n.of(context).delete,
       destructive: true,
       icon: Icons.delete_outline,
     );
@@ -288,7 +289,7 @@ class _CollectionCardState extends State<_CollectionCard> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _meta(collection),
+                            _meta(L10n.of(context), collection),
                             style: AppText.rowSubtitle,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -298,20 +299,23 @@ class _CollectionCardState extends State<_CollectionCard> {
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert, size: 16, color: AppColors.textDisabled),
                       padding: EdgeInsets.zero,
-                      tooltip: 'Opciones',
+                      tooltip: L10n.of(context).options,
                       color: AppColors.surfaceControl,
-                      itemBuilder: (_) => const [
+                      itemBuilder: (_) => [
                         PopupMenuItem(
                           value: 'rename',
                           height: 38,
-                          child: AppMenuRow(icon: Icons.edit_outlined, label: 'Nombre y fecha'),
+                          child: AppMenuRow(
+                            icon: Icons.edit_outlined,
+                            label: L10n.of(context).nameAndDate,
+                          ),
                         ),
                         PopupMenuItem(
                           value: 'duplicate',
                           height: 38,
                           child: AppMenuRow(
                             icon: Icons.copy_all_outlined,
-                            label: 'Duplicar para otro domingo',
+                            label: L10n.of(context).duplicateForAnotherSunday,
                           ),
                         ),
                         PopupMenuItem(
@@ -319,16 +323,16 @@ class _CollectionCardState extends State<_CollectionCard> {
                           height: 38,
                           child: AppMenuRow(
                             icon: Icons.palette_outlined,
-                            label: 'Diseño de los slides',
+                            label: L10n.of(context).slideDesign,
                           ),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 'delete',
                           height: 38,
                           child: AppMenuRow(
                             icon: Icons.delete_outline,
-                            label: 'Eliminar',
+                            label: L10n.of(context).delete,
                             danger: true,
                           ),
                         ),
@@ -351,9 +355,9 @@ class _CollectionCardState extends State<_CollectionCard> {
     );
   }
 
-  static String _meta(Collection collection) {
+  static String _meta(L10n t, Collection collection) {
     final count = collection.items.length;
-    final items = '$count elemento${count == 1 ? '' : 's'}';
+    final items = t.itemCount(count);
     final date = collection.serviceDate;
     if (date == null) return items;
     return '$items  •  ${date.day}/${date.month}/${date.year}';

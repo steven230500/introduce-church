@@ -14,6 +14,7 @@ import '../../../../core/widgets/ui/folding_row.dart';
 import 'stream_dialog.dart';
 import 'waiting_dialog.dart';
 import 'projector_picker_dialog.dart';
+import '../../../../core/models/labels.dart';
 
 /// The always-visible control bar at the top of the window.
 ///
@@ -341,7 +342,7 @@ class _NowShowing extends StatelessWidget {
               style: TextStyle(color: AppColors.textDisabled),
             ),
             TextSpan(
-              text: item.displayTitle,
+              text: item.titleIn(t),
               style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
             ),
             if (position.isNotEmpty)

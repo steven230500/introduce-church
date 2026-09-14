@@ -4,6 +4,7 @@ import '../../../../core/models/collection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../l10n/l10n.dart';
 
 /// What the collection dialog returns.
 typedef CollectionDraft = ({String name, DateTime? date});
@@ -42,11 +43,18 @@ class _CollectionDialogState extends State<_CollectionDialog> {
   late final TextEditingController _nameCtrl;
   DateTime? _date;
 
+  bool _ready = false;
+
+  // The suggested name is worded in the operator's language, which initState
+  // cannot read yet.
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_ready) return;
+    _ready = true;
     final copying = widget.duplicating;
-    final suggested = widget.existing?.name ?? (copying == null ? '' : '${copying.name} (copia)');
+    final suggested =
+        widget.existing?.name ?? (copying == null ? '' : L10n.of(context).copySuffix(copying.name));
     _nameCtrl = TextEditingController(text: suggested)
       // Selected, not just filled, so the suggestion can be typed over.
       ..selection = TextSelection(baseOffset: 0, extentOffset: suggested.length);
@@ -84,15 +92,21 @@ class _CollectionDialogState extends State<_CollectionDialog> {
     final isCopy = widget.duplicating != null;
     final isNew = widget.existing == null;
     return AppDialog(
-      title: isCopy ? 'Duplicar colección' : (isNew ? 'Nueva colección' : 'Editar colección'),
+      title: isCopy
+          ? L10n.of(context).collectionDuplicateTitle
+          : (isNew ? L10n.of(context).newCollection : L10n.of(context).collectionEditTitle),
       icon: isCopy ? Icons.copy_all_outlined : Icons.folder_outlined,
       width: 400,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
         const SizedBox(width: AppSpace.sm),
         FilledButton(
           onPressed: _save,
-          child: Text(isCopy ? 'Duplicar' : (isNew ? 'Crear' : 'Guardar')),
+          child: Text(
+            isCopy
+                ? L10n.of(context).duplicate
+                : (isNew ? L10n.of(context).create : L10n.of(context).save),
+          ),
         ),
       ],
       child: Column(
@@ -101,8 +115,8 @@ class _CollectionDialogState extends State<_CollectionDialog> {
         children: [
           AppTextField(
             controller: _nameCtrl,
-            hintText: 'Culto del domingo',
-            label: 'Nombre',
+            hintText: L10n.of(context).collectionNameHint,
+            label: L10n.of(context).name,
             autofocus: true,
             onSubmitted: (_) => _save(),
           ),
@@ -129,7 +143,7 @@ class _CollectionDialogState extends State<_CollectionDialog> {
                   ),
                   const SizedBox(width: AppSpace.md - 2),
                   Text(
-                    _date != null ? _formatDate(_date!) : 'Fecha del servicio (opcional)',
+                    _date != null ? _formatDate(_date!) : L10n.of(context).collectionDateOptional,
                     style: TextStyle(
                       color: _date != null ? AppColors.textPrimary : AppColors.textDisabled,
                       fontSize: 13,

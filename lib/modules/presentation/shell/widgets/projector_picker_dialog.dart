@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Asks which screen the congregation is looking at.
 ///
@@ -20,10 +21,12 @@ Future<Display?> showProjectorPicker(
   return showDialog<Display>(
     context: context,
     builder: (_) => AppDialog(
-      title: '¿En qué pantalla se proyecta?',
+      title: L10n.of(context).projectorPickerTitle,
       icon: Icons.present_to_all_outlined,
       width: 420,
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
+      ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -35,10 +38,7 @@ Future<Display?> showProjectorPicker(
               selected: displays[i].id == current?.id,
             ),
           const SizedBox(height: AppSpace.md),
-          const Text(
-            'Se recuerda para la próxima. Clic derecho en Proyector para cambiarla.',
-            style: AppText.rowSubtitle,
-          ),
+          Text(L10n.of(context).projectorPickerRemembered, style: AppText.rowSubtitle),
         ],
       ),
     ),
@@ -84,13 +84,15 @@ class _DisplayRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        name == null || name.isEmpty ? 'Pantalla $position' : name,
+                        name == null || name.isEmpty
+                            ? L10n.of(context).projectorScreenNumber(position)
+                            : name,
                         style: AppText.rowTitle,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${size.width.round()} × ${size.height.round()}'
-                        '${position == 1 ? '  ·  la del operador' : ''}',
+                        '${position == 1 ? '  ·  ${L10n.of(context).projectorOperatorScreen}' : ''}',
                         style: AppText.rowSubtitle,
                       ),
                     ],

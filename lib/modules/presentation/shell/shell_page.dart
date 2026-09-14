@@ -232,9 +232,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
                       Expanded(child: _body(context, shell.section)),
                       if (showDock)
                         PanelResizer(
-                          tooltip:
-                              'Arrastra para cambiar el ancho. '
-                              'Doble clic para volver al original.',
+                          tooltip: L10n.of(context).resizeHint,
                           // The dock's edge is on its left, so dragging left
                           // is what makes it wider.
                           onDrag: (dx) => layout.resizePanel(ShellPanel.dock, -dx),
@@ -303,13 +301,13 @@ class _Sidebar extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           _SideButton(
             icon: Icons.slideshow_rounded,
-            label: 'Presentador',
+            label: L10n.of(context).sidePresenter,
             active: current == ShellSection.presenter,
             onTap: () => shell.goTo(ShellSection.presenter),
           ),
           _SideButton(
             icon: Icons.folder_open_rounded,
-            label: 'Colecciones',
+            label: L10n.of(context).sideCollections,
             active: current == ShellSection.collections,
             onTap: () => shell.goTo(ShellSection.collections),
           ),
@@ -333,13 +331,13 @@ class _Sidebar extends StatelessWidget {
           ),
           _SideButton(
             icon: Icons.keyboard_outlined,
-            label: 'Atajos de teclado',
+            label: L10n.of(context).shortcutsTitle,
             active: false,
             onTap: () => showShortcutsDialog(context),
           ),
           _SideButton(
             icon: Icons.people_rounded,
-            label: 'Organización',
+            label: L10n.of(context).sideOrganization,
             active: false,
             onTap: () => showOrgAdminDialog(context),
           ),

@@ -14,6 +14,7 @@ import '../../../core/widgets/app_dialog.dart';
 import '../../../l10n/l10n.dart';
 import '../children/songs_list/repository/repository.dart';
 import 'song_import_cubit.dart';
+import '../../../core/models/labels.dart';
 
 /// Brings songs over from other programs. Returns how many were added.
 Future<int> showSongImportDialog(BuildContext context) async {
@@ -414,7 +415,7 @@ class _Preview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    verse.type.label.toUpperCase(),
+                    verse.type.labelIn(t).toUpperCase(),
                     style: AppText.sectionLabel.copyWith(
                       color: verse.type == VerseType.chorus ? AppColors.accentLight : null,
                     ),

@@ -72,7 +72,7 @@ void main() {
       cubit.onPasswordChanged('corta');
 
       expect(model().isValid, isFalse);
-      expect(model().hint, contains('8'));
+      expect(model().hint, LoginHint.password);
     });
 
     test('rejects an address with no @', () {
@@ -80,7 +80,7 @@ void main() {
       cubit.onPasswordChanged('clave-segura-123');
 
       expect(model().isValid, isFalse);
-      expect(model().hint, contains('correo'));
+      expect(model().hint, LoginHint.email);
     });
 
     test('accepts a filled sign-in form', () {
@@ -99,7 +99,7 @@ void main() {
       cubit.onConfirmPasswordChanged('clave-distinta-9');
 
       expect(model().isValid, isFalse);
-      expect(model().hint, contains('no coinciden'));
+      expect(model().hint, LoginHint.mismatch);
 
       cubit.onConfirmPasswordChanged('clave-segura-123');
       expect(model().isValid, isTrue);

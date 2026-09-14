@@ -89,6 +89,13 @@ class Session extends Equatable {
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode, this.code});
 
+  /// Codes for failures that never reached the server, which has no code of
+  /// its own to send for them.
+  static const timeout = 'timeout';
+  static const noConnection = 'no_connection';
+  static const serverError = 'server_error';
+  static const network = 'network';
+
   final String message;
   final int? statusCode;
   final String? code;

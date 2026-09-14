@@ -8,6 +8,7 @@ import '../../../../core/timing/service_clock.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../l10n/l10n.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
+import '../../../../core/models/labels.dart';
 
 /// Ends the rehearsal and offers to keep what it measured as the plan.
 Future<void> finishRehearsal(BuildContext context) async {
@@ -103,7 +104,7 @@ class _RehearsalSummaryDialogState extends State<RehearsalSummaryDialog> {
               children: [
                 for (final entry in items)
                   _Row(
-                    title: entry.item.displayTitle,
+                    title: entry.item.titleIn(t),
                     rehearsed: entry.spent,
                     planned: entry.item.plannedSecs,
                     keep: _keep.contains(entry.item.id),

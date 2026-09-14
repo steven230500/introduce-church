@@ -69,7 +69,7 @@ enum SongFileProblem {
   empty,
 }
 
-class SongFileFailure extends Equatable {
+class SongFileFailure extends Equatable implements Exception {
   const SongFileFailure(this.source, this.problem);
 
   final String source;

@@ -3,7 +3,6 @@ import 'package:archive/archive_io.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:xml/xml.dart';
 import '../models/song.dart';
-import '../song_import/imported_song.dart';
 import '../song_import/song_files.dart';
 
 class ParsedVerse {
@@ -40,11 +39,9 @@ class LyricImportService {
     final result = readSongBytes(filePath, await File(filePath).readAsBytes());
     final song = result.song;
     if (song == null) {
-      throw UnsupportedError(switch (result.failure!.problem) {
-        SongFileProblem.unsupported => 'Formato no soportado.',
-        SongFileProblem.unreadable => 'El archivo está dañado o no es lo que dice su nombre.',
-        SongFileProblem.empty => 'El archivo no tiene letra.',
-      });
+      // Thrown as it is, so the form can say what is wrong in the operator's
+      // language rather than in the one this was written in.
+      throw result.failure!;
     }
     return LyricImportResult(
       verses: [for (final v in song.verses) ParsedVerse(v.content, v.type)],

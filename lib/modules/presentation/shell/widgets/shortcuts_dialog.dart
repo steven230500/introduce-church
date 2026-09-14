@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Keyboard reference.
 ///
@@ -16,45 +17,40 @@ Future<void> showShortcutsDialog(BuildContext context) {
 class _ShortcutsDialog extends StatelessWidget {
   const _ShortcutsDialog();
 
-  static const _groups = <String, List<(String, String)>>{
-    'Avanzar slides': [
-      ('→   ·   ↓   ·   Espacio', 'Siguiente slide'),
-      ('←   ·   ↑', 'Slide anterior'),
-      ('Inicio   ·   Fin', 'Primer o último slide del elemento'),
-      ('1 … 9', 'Saltar a ese elemento del set list'),
+  static Map<String, List<(String, String)>> _groups(L10n t) => {
+    t.shortcutsGroupSlides: [
+      ('→   ·   ↓   ·   ${t.shortcutsKeySpace}', t.shortcutsNextSlide),
+      ('←   ·   ↑', t.shortcutsPreviousSlide),
+      (t.shortcutsKeyHomeEnd, t.shortcutsFirstLast),
+      ('1 … 9', t.shortcutsJump),
     ],
-    'Proyección': [
-      ('L', 'Entrar o salir de vivo'),
-      ('B', 'Pantalla negra'),
-      ('W', 'Pantalla de espera: la última elegida'),
-      ('Esc', 'Quitar la pantalla negra'),
+    t.shortcutsGroupProjection: [
+      ('L', t.shortcutsLive),
+      ('B', t.shortcutsBlack),
+      ('W', t.shortcutsWaiting),
+      ('Esc', t.shortcutsUnblank),
     ],
-    'Contenido': [
-      ('⌘K', 'Buscar en todo: canciones, pasajes, diseños, acciones'),
-      ('V', 'Versículo rápido: escribe "jn 3:16" y Enter'),
-    ],
-    'Buscar sin cortar': [
-      ('K', 'Retener la pantalla, o volver a seguirte'),
-      ('Enter', 'Enviar a la pantalla lo que estás viendo'),
-    ],
-    'Vista': [
-      ('G', 'Alternar cuadrícula y slide grande'),
-      ('F', 'Mostrar u ocultar la biblioteca'),
-      ('Shift + /', 'Abrir esta ayuda'),
+    t.shortcutsGroupContent: [('⌘K', t.shortcutsSearch), ('V', t.shortcutsQuickVerse)],
+    t.shortcutsGroupHold: [('K', t.shortcutsHold), ('Enter', t.shortcutsSend)],
+    t.shortcutsGroupView: [
+      ('G', t.shortcutsToggleView),
+      ('F', t.shortcutsToggleLibrary),
+      ('Shift + /', t.shortcutsHelp),
     ],
   };
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
     return AppDialog(
-      title: 'Atajos de teclado',
+      title: t.shortcutsTitle,
       icon: Icons.keyboard_outlined,
       width: 420,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final entry in _groups.entries) ...[
+          for (final entry in _groups(t).entries) ...[
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.sm),
               child: Text(entry.key.toUpperCase(), style: AppText.sectionLabel),
@@ -72,10 +68,7 @@ class _ShortcutsDialog extends StatelessWidget {
               ),
           ],
           const SizedBox(height: AppSpace.sm),
-          const Text(
-            'Los atajos no se activan mientras escribes en un campo de texto.',
-            style: AppText.rowSubtitle,
-          ),
+          Text(t.shortcutsNotWhileTyping, style: AppText.rowSubtitle),
         ],
       ),
     );

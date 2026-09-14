@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../theme/app_colors.dart';
 
 // ── Dialog color aliases ──────────────────────────────────────────────────────
@@ -242,11 +243,12 @@ Future<bool> showAppConfirmDialog(
   BuildContext context, {
   required String title,
   String? message,
-  String confirmLabel = 'Confirmar',
-  String cancelLabel = 'Cancelar',
+  String? confirmLabel,
+  String? cancelLabel,
   bool destructive = false,
   IconData? icon,
 }) async {
+  final t = L10n.of(context);
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AppDialog(
@@ -258,12 +260,15 @@ Future<bool> showAppConfirmDialog(
           ? const EdgeInsets.fromLTRB(20, 16, 20, 4)
           : const EdgeInsets.fromLTRB(20, 0, 20, 0),
       actions: [
-        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(cancelLabel)),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(cancelLabel ?? t.cancel),
+        ),
         const SizedBox(width: 8),
         FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
           style: destructive ? FilledButton.styleFrom(backgroundColor: kDestructive) : null,
-          child: Text(confirmLabel),
+          child: Text(confirmLabel ?? t.confirm),
         ),
       ],
       child: message != null

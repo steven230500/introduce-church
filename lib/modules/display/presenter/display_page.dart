@@ -12,6 +12,7 @@ import '../../../core/motion/motion_scenes.dart';
 import '../../../core/waiting/waiting_screen.dart';
 import 'display_cubit.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/l10n.dart';
 
 class DisplayPage extends StatelessWidget {
   const DisplayPage({super.key});
@@ -202,8 +203,8 @@ class _AnnouncementViewState extends State<_AnnouncementView> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'El servicio comienza pronto',
+                Text(
+                  L10n.of(context).countdownStartsSoon,
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 24,
@@ -276,8 +277,8 @@ class _CountdownViewState extends State<_CountdownView> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'El servicio comienza pronto',
+            Text(
+              L10n.of(context).countdownStartsSoon,
               style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 28,

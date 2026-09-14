@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimens.dart';
 
@@ -8,14 +9,16 @@ class AppSearchField extends StatefulWidget {
   const AppSearchField({
     super.key,
     required this.onChanged,
-    this.hintText = 'Buscar...',
+    this.hintText,
     this.autofocus = false,
     this.dense = false,
     this.debounce = const Duration(milliseconds: 250),
   });
 
   final ValueChanged<String> onChanged;
-  final String hintText;
+
+  /// Null says "Search..." in the operator's language.
+  final String? hintText;
   final bool autofocus;
 
   /// Compact height, for use inside a narrow dock panel.
@@ -67,7 +70,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
       },
       decoration: InputDecoration(
         isDense: true,
-        hintText: widget.hintText,
+        hintText: widget.hintText ?? L10n.of(context).searchFieldHint,
         hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: widget.dense ? 12 : 14),
         prefixIcon: Icon(Icons.search, color: AppColors.textMuted, size: widget.dense ? 16 : 18),
         prefixIconConstraints: BoxConstraints(
@@ -79,7 +82,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
             : IconButton(
                 icon: Icon(Icons.close, size: widget.dense ? 14 : 16, color: AppColors.textMuted),
                 onPressed: _clear,
-                tooltip: 'Limpiar',
+                tooltip: L10n.of(context).clearSearch,
               ),
         filled: true,
         fillColor: AppColors.surface,

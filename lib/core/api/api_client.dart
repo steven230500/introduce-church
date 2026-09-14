@@ -260,14 +260,25 @@ class ApiClient {
       );
     }
 
-    final message = switch (e.type) {
+    final (message, code) = switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.receiveTimeout ||
-      DioExceptionType.sendTimeout => 'El servidor tardó demasiado en responder.',
-      DioExceptionType.connectionError => 'No hay conexión con el servidor.',
-      _ => status != null ? 'Error del servidor ($status).' : 'Error de red.',
+      DioExceptionType.sendTimeout => (
+        'El servidor tardó demasiado en responder.',
+        ApiException.timeout,
+      ),
+      DioExceptionType.connectionError => (
+        'No hay conexión con el servidor.',
+        ApiException.noConnection,
+      ),
+      _ =>
+        status != null
+            ? ('Error del servidor ($status).', ApiException.serverError)
+            : ('Error de red.', ApiException.network),
     };
-    return ApiException(message, statusCode: status);
+    // The Spanish stays as the message for logs and older callers; the code is
+    // what errorText() reads to say it in the operator's language.
+    return ApiException(message, statusCode: status, code: code);
   }
 
   void dispose() => _signedOut.close();

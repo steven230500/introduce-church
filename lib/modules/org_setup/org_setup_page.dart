@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/api/error_text.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import '../../core/api/api_client.dart';
@@ -6,6 +7,7 @@ import '../../core/models/organization.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/utils/navigator.dart';
 import 'org_setup_cubit.dart';
+import '../../l10n/l10n.dart';
 
 class OrgSetupPage extends StatelessWidget {
   const OrgSetupPage({super.key});
@@ -51,7 +53,7 @@ class _SignOutButton extends StatelessWidget {
         const SizedBox(width: 8),
         TextButton.icon(
           icon: const Icon(Icons.logout_rounded, size: 15),
-          label: const Text('Cambiar de cuenta'),
+          label: Text(L10n.of(context).orgSwitchAccount),
           style: TextButton.styleFrom(foregroundColor: AppColors.textTertiary),
           onPressed: () async {
             await Modular.get<ApiClient>().signOut();
@@ -108,13 +110,13 @@ class _InitialView extends StatelessWidget {
             child: const Icon(Icons.church, color: AppColors.accent, size: 30),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Bienvenido',
+          Text(
+            L10n.of(context).orgWelcome,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Para empezar, crea una organización para tu iglesia\no únete a una existente.',
+          Text(
+            L10n.of(context).orgWelcomeBody,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: AppColors.textTertiary, height: 1.5),
           ),
@@ -123,7 +125,7 @@ class _InitialView extends StatelessWidget {
             width: double.infinity,
             child: FilledButton.icon(
               icon: const Icon(Icons.add_circle_outline, size: 18),
-              label: const Text('Crear organización'),
+              label: Text(L10n.of(context).orgCreate),
               onPressed: cubit.showCreate,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -136,7 +138,7 @@ class _InitialView extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               icon: const Icon(Icons.search, size: 18),
-              label: const Text('Unirme a una organización'),
+              label: Text(L10n.of(context).orgJoin),
               onPressed: cubit.showJoin,
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -185,13 +187,13 @@ class _CreateViewState extends State<_CreateView> {
                 onPressed: widget.cubit.goBack,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Nueva organización',
+              Text(
+                L10n.of(context).orgNewTitle,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Dale un nombre a tu iglesia u organización.',
+              Text(
+                L10n.of(context).orgNewBody,
                 style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
               ),
               const SizedBox(height: 32),
@@ -200,8 +202,8 @@ class _CreateViewState extends State<_CreateView> {
                 autofocus: true,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'Nombre de la organización',
-                  hintText: 'Ej. Iglesia Cristiana Central',
+                  labelText: L10n.of(context).orgNameLabel,
+                  hintText: L10n.of(context).orgNameHint,
                   hintStyle: const TextStyle(color: AppColors.textDisabled),
                   filled: true,
                   fillColor: AppColors.surface,
@@ -214,7 +216,7 @@ class _CreateViewState extends State<_CreateView> {
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: AppColors.accent),
                   ),
-                  errorText: state.error,
+                  errorText: state.error == null ? null : errorText(L10n.of(context), state.error),
                 ),
                 onSubmitted: (_) => _submit(),
               ),
@@ -230,7 +232,7 @@ class _CreateViewState extends State<_CreateView> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Crear'),
+                      : Text(L10n.of(context).create),
                 ),
               ),
             ],
@@ -281,13 +283,13 @@ class _JoinViewState extends State<_JoinView> {
                 onPressed: widget.cubit.goBack,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Buscar organización',
+              Text(
+                L10n.of(context).orgSearchTitle,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Busca tu iglesia y envía una solicitud.\nUn administrador deberá aprobarla.',
+              Text(
+                L10n.of(context).orgSearchBody,
                 style: TextStyle(fontSize: 13, color: AppColors.textTertiary, height: 1.5),
               ),
               const SizedBox(height: 32),
@@ -296,7 +298,7 @@ class _JoinViewState extends State<_JoinView> {
                 autofocus: true,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'Nombre de la organización',
+                  labelText: L10n.of(context).orgNameLabel,
                   prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
                   filled: true,
                   fillColor: AppColors.surface,
@@ -316,15 +318,15 @@ class _JoinViewState extends State<_JoinView> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    state.error!,
+                    errorText(L10n.of(context), state.error),
                     style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 12),
                   ),
                 ),
               const SizedBox(height: 16),
               if (state.searchResults.isEmpty && _ctrl.text.isNotEmpty && !state.loading)
-                const Center(
+                Center(
                   child: Text(
-                    'Sin resultados',
+                    L10n.of(context).orgNoResults,
                     style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
                   ),
                 )
@@ -373,7 +375,7 @@ class _OrgResultTile extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               textStyle: const TextStyle(fontSize: 12),
             ),
-            child: const Text('Solicitar'),
+            child: Text(L10n.of(context).orgRequest),
           ),
         ],
       ),
@@ -406,20 +408,19 @@ class _PendingView extends StatelessWidget {
                 child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFF9500), size: 30),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Solicitud enviada',
+              Text(
+                L10n.of(context).orgRequestSent,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               const SizedBox(height: 8),
               Text(
-                'Tu solicitud para unirte a "${state.pendingOrgName}" está pendiente de aprobación.',
+                L10n.of(context).orgRequestPending(state.pendingOrgName ?? ''),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: AppColors.textTertiary, height: 1.5),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Un administrador de la organización tiene que aceptarla desde '
-                'Organización, en la barra lateral.',
+              Text(
+                L10n.of(context).orgRequestHowToApprove,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
               ),
@@ -434,7 +435,7 @@ class _PendingView extends StatelessWidget {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Verificar aprobación'),
+                      : Text(L10n.of(context).orgCheckApproval),
                   onPressed: state.loading ? null : () => _check(context),
                   style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
@@ -454,7 +455,7 @@ class _PendingView extends StatelessWidget {
     } else {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Aún pendiente. Contacta al administrador.')));
+      ).showSnackBar(SnackBar(content: Text(L10n.of(context).orgStillPending)));
     }
   }
 }

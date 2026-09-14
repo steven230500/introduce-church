@@ -5,7 +5,9 @@ import 'package:introduce_church/core/widgets/ui/app_search_field.dart';
 import 'package:introduce_church/core/widgets/ui/empty_state.dart';
 import 'package:introduce_church/core/widgets/ui/page_header.dart';
 
-Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
+import '../helpers/builders.dart';
+
+Widget host(Widget child) => localizedApp(child);
 
 void main() {
   group('PageHeader', () {

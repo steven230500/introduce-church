@@ -551,7 +551,7 @@ Future<void> _removeWithUndo(
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
-      content: Text(t.itemRemoved(item.displayTitle)),
+      content: Text(t.itemRemoved(item.titleIn(t))),
       duration: const Duration(seconds: 8),
       behavior: SnackBarBehavior.floating,
       width: 420,
@@ -627,7 +627,7 @@ Future<void> _showAutoAdvanceDialog(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item.displayTitle, style: const TextStyle(color: kTextSecondary, fontSize: 12)),
+            Text(item.titleIn(t), style: const TextStyle(color: kTextSecondary, fontSize: 12)),
             const SizedBox(height: 12),
             Text(t.advanceAfter, style: TextStyle(color: kTextSecondary, fontSize: 12)),
             const SizedBox(height: 10),
@@ -686,7 +686,7 @@ Future<void> _showNotesDialog(BuildContext context, CollectionItem item, Control
     builder: (_) => TextControllerScope(
       text: item.notes ?? '',
       builder: (ctx, ctrl) => AppDialog(
-        title: t.noteFor(item.displayTitle),
+        title: t.noteFor(item.titleIn(t)),
         icon: Icons.sticky_note_2_outlined,
         width: 380,
         actions: [
@@ -787,10 +787,7 @@ class _PlannedDialogState extends State<_PlannedDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.item.displayTitle,
-            style: const TextStyle(color: kTextSecondary, fontSize: 12),
-          ),
+          Text(widget.item.titleIn(t), style: const TextStyle(color: kTextSecondary, fontSize: 12)),
           const SizedBox(height: AppSpace.sm),
           Text(t.plannedIntro, style: AppText.body),
           const SizedBox(height: AppSpace.md),

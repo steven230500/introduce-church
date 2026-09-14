@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 
 import '../../../../core/api/api_client.dart';
+import '../../../../core/api/error_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../auth/utils/navigator.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Changes the operator's password.
 ///
@@ -35,7 +37,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   final _confirm = TextEditingController();
 
   bool _saving = false;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() {
@@ -55,13 +57,13 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
 
   String? get _hint {
     if (_next.text.isNotEmpty && _next.text.length < _minLength) {
-      return 'La nueva necesita al menos $_minLength caracteres.';
+      return L10n.of(context).passwordNewTooShort(_minLength);
     }
     if (_confirm.text.isNotEmpty && _next.text != _confirm.text) {
-      return 'Las contraseñas no coinciden.';
+      return L10n.of(context).loginHintMismatch;
     }
     if (_next.text.isNotEmpty && _next.text == _current.text) {
-      return 'La nueva tiene que ser distinta de la actual.';
+      return L10n.of(context).passwordNewSameAsCurrent;
     }
     return null;
   }
@@ -91,7 +93,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = e;
       });
     }
   }
@@ -99,14 +101,14 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Cambiar contraseña',
+      title: L10n.of(context).menuChangePassword,
       icon: Icons.key_outlined,
       width: 420,
       showClose: !_saving,
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Cancelar'),
+          child: Text(L10n.of(context).cancel),
         ),
         const SizedBox(width: AppSpace.sm),
         FilledButton(
@@ -117,7 +119,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Cambiar'),
+              : Text(L10n.of(context).passwordChangeAction),
         ),
       ],
       child: Column(
@@ -126,23 +128,23 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         children: [
           AppTextField(
             controller: _current,
-            hintText: 'La que usas hoy',
-            label: 'Contraseña actual',
+            hintText: L10n.of(context).passwordCurrentHint,
+            label: L10n.of(context).passwordCurrent,
             obscureText: true,
             autofocus: true,
           ),
           const SizedBox(height: AppSpace.md),
           AppTextField(
             controller: _next,
-            hintText: 'Al menos $_minLength caracteres',
-            label: 'Nueva contraseña',
+            hintText: L10n.of(context).passwordNewHint(_minLength),
+            label: L10n.of(context).passwordNew,
             obscureText: true,
           ),
           const SizedBox(height: AppSpace.md),
           AppTextField(
             controller: _confirm,
-            hintText: 'Repite la nueva',
-            label: 'Confirmar',
+            hintText: L10n.of(context).passwordRepeatHint,
+            label: L10n.of(context).passwordConfirm,
             obscureText: true,
             onSubmitted: (_) => _canSave ? _save() : null,
           ),
@@ -152,14 +154,17 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           ],
           if (_error != null) ...[
             const SizedBox(height: AppSpace.md),
-            _Notice(text: _error!, color: AppColors.danger, icon: Icons.error_outline),
+            _Notice(
+              // Here a refused password is the current one, not an email and password.
+              text: _error is ApiException && (_error as ApiException).code == 'invalid_credentials'
+                  ? L10n.of(context).passwordCurrentWrong
+                  : errorText(L10n.of(context), _error),
+              color: AppColors.danger,
+              icon: Icons.error_outline,
+            ),
           ],
           const SizedBox(height: AppSpace.md),
-          const Text(
-            'Cambiarla cierra la sesión en todas las ventanas, incluido el '
-            'proyector. Tendrás que entrar de nuevo.',
-            style: AppText.rowSubtitle,
-          ),
+          Text(L10n.of(context).passwordSignsOutEverywhere, style: AppText.rowSubtitle),
         ],
       ),
     );

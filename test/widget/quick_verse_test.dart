@@ -77,10 +77,10 @@ void main() {
     control.selectCollection((control.state as ControlLoadedState).model.collections.first);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: BlocProvider.value(
+      localizedApp(
+        BlocProvider.value(
           value: control,
-          child: Scaffold(body: QuickVerseDialog(repository: _FakeBible())),
+          child: QuickVerseDialog(repository: _FakeBible()),
         ),
       ),
     );

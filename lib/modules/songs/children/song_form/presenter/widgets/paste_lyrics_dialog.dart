@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../../core/services/lyric_import_service.dart';
 import '../../../../../../core/widgets/app_dialog.dart';
+import '../../../../../../l10n/l10n.dart';
 import '../../../../../../core/theme/app_colors.dart';
 
 // ── Cubit ─────────────────────────────────────────────────────────────────────
@@ -67,13 +68,16 @@ class _PasteLyricsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Pegar letra',
+      title: L10n.of(context).songPasteLyrics,
       icon: Icons.lyrics_outlined,
       width: 720,
       height: 580,
       contentPadding: EdgeInsets.zero,
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(L10n.of(context).cancel),
+        ),
         const SizedBox(width: 8),
         BlocBuilder<PasteLyricsCubit, PasteLyricsState>(
           buildWhen: (a, b) => a.segments.length != b.segments.length,
@@ -81,9 +85,7 @@ class _PasteLyricsDialog extends StatelessWidget {
             onPressed: state.segments.isEmpty
                 ? null
                 : () => Navigator.of(context).pop(state.segments),
-            child: Text(
-              state.segments.isEmpty ? 'Cargar versos' : 'Cargar ${state.segments.length} versos',
-            ),
+            child: Text(L10n.of(context).pasteLoadVerses(state.segments.length)),
           ),
         ),
       ],
@@ -126,8 +128,8 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Pega la letra aquí',
+          Text(
+            L10n.of(context).pasteHere,
             style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -140,7 +142,7 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
               style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.6),
               textAlignVertical: TextAlignVertical.top,
               decoration: InputDecoration(
-                hintText: 'Copia la letra desde cualquier sitio y pégala aquí...',
+                hintText: L10n.of(context).pasteHint,
                 hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 13),
                 filled: true,
                 fillColor: AppColors.background,
@@ -176,7 +178,7 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
                   disabledBackgroundColor: AppColors.surfaceControl,
                 ),
                 icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
-                label: const Text('Sugerir divisiones'),
+                label: Text(L10n.of(context).pasteSuggest),
               ),
             ),
           ),
@@ -188,7 +190,10 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
             buildWhen: (a, b) => a.hasText != b.hasText,
             builder: (context, state) => Row(
               children: [
-                const Text('o cada', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                Text(
+                  L10n.of(context).pasteOrEvery,
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                ),
                 const SizedBox(width: 8),
                 _LinesStepper(
                   value: _linesPerVerse,
@@ -196,7 +201,10 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
                   onChanged: (v) => setState(() => _linesPerVerse = v),
                 ),
                 const SizedBox(width: 8),
-                const Text('líneas', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                Text(
+                  L10n.of(context).pasteLines,
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                ),
                 const Spacer(),
                 FilledButton(
                   onPressed: state.hasText
@@ -209,7 +217,7 @@ class _PasteInputAreaState extends State<_PasteInputArea> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
-                  child: const Text('Dividir'),
+                  child: Text(L10n.of(context).pasteSplit),
                 ),
               ],
             ),
@@ -307,14 +315,14 @@ class _SegmentsPreview extends StatelessWidget {
                 children: [
                   Text(
                     count == 0
-                        ? 'Vista previa'
-                        : '$count ${count == 1 ? 'verso' : 'versos'} detectados',
+                        ? L10n.of(context).pastePreview
+                        : L10n.of(context).pasteDetected(count),
                     style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
                   ),
                   if (isOnlyOne) ...[
                     const SizedBox(height: 4),
-                    const Text(
-                      'Sin líneas en blanco — usa "Dividir cada N líneas" →',
+                    Text(
+                      L10n.of(context).pasteNoBlankLines,
                       style: TextStyle(color: AppColors.warning, fontSize: 11),
                     ),
                   ],
@@ -326,7 +334,7 @@ class _SegmentsPreview extends StatelessWidget {
           Expanded(
             child: BlocBuilder<PasteLyricsCubit, PasteLyricsState>(
               builder: (_, state) => state.segments.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -337,7 +345,7 @@ class _SegmentsPreview extends StatelessWidget {
                           ),
                           SizedBox(height: 10),
                           Text(
-                            'Pega la letra y presiona\n"Sugerir divisiones"',
+                            L10n.of(context).pasteEmpty,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                           ),

@@ -1,7 +1,12 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../core/api/error_text.dart';
+import '../../../../../core/models/labels.dart';
 import '../../../../../core/models/song.dart';
+import '../../../../../core/song_import/imported_song.dart';
+import '../../../../../l10n/l10n.dart';
+import '../../../import/song_import_dialog.dart' show problemText;
 import '../../../../../core/services/lyric_import_service.dart';
 import 'cubit/cubit.dart';
 import 'widgets/paste_lyrics_dialog.dart';
@@ -9,6 +14,14 @@ import '../../../../../core/theme/app_colors.dart';
 
 part 'widgets/body.dart';
 part 'widgets/verse_editor.dart';
+
+/// A song form failure in the operator's language.
+String songFormErrorText(L10n t, SongFormErrorState state) {
+  final error = state.error;
+  if (error is SongFileFailure) return t.songImportFailed(problemText(t, error.problem));
+  final text = errorText(t, error ?? state.message);
+  return state.whileImporting ? t.songImportFailed(text) : text;
+}
 
 class SongFormPage extends StatelessWidget {
   const SongFormPage({super.key});
@@ -19,9 +32,12 @@ class SongFormPage extends StatelessWidget {
       listener: (context, state) {
         if (state is SongFormSavedState) Navigator.of(context).pop(true);
         if (state is SongFormErrorState) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(songFormErrorText(L10n.of(context), state)),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -35,7 +51,7 @@ class SongFormPage extends StatelessWidget {
             builder: (_, state) {
               final isEditing = state is SongFormReadyState && state.model.isEditing;
               return Text(
-                isEditing ? 'Editar canción' : 'Nueva canción',
+                isEditing ? L10n.of(context).songEditTitle : L10n.of(context).songsNew,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 17,
@@ -69,7 +85,7 @@ class SongFormPage extends StatelessWidget {
                       : TextButton(
                           onPressed: canSave ? () => context.read<SongFormCubit>().save() : null,
                           child: Text(
-                            'Guardar',
+                            L10n.of(context).save,
                             style: TextStyle(
                               color: canSave ? AppColors.accent : AppColors.textDisabled,
                               fontWeight: FontWeight.w600,

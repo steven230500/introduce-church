@@ -13,6 +13,7 @@
 library;
 
 import 'dart:convert';
+import '../../l10n/l10n.dart';
 import '../models/collection.dart';
 import '../models/collection_item_type.dart';
 import '../models/slide_template.dart';
@@ -106,10 +107,31 @@ String encodeService(
   });
 }
 
-/// Thrown when a file cannot be read, carrying a sentence worth showing.
+/// Why a file could not be opened as a service.
+enum ServiceFileProblem { unreadable, notIntroduce, tooNew, noName }
+
+/// Thrown when a file cannot be read, carrying what is wrong with it.
+///
+/// [message] is the Spanish sentence for logs; the screen words [problem] in
+/// the operator's language through [describeIn].
 class ServiceFileError implements Exception {
-  const ServiceFileError(this.message);
-  final String message;
+  const ServiceFileError(this.problem);
+  final ServiceFileProblem problem;
+
+  String get message => switch (problem) {
+    ServiceFileProblem.unreadable => 'El archivo no se puede leer.',
+    ServiceFileProblem.notIntroduce => 'Ese archivo no es un servicio de Introduce.',
+    ServiceFileProblem.tooNew =>
+      'El archivo viene de una versión más nueva de Introduce. Actualiza la app para abrirlo.',
+    ServiceFileProblem.noName => 'El archivo no dice de qué servicio es.',
+  };
+
+  String describeIn(L10n t) => switch (problem) {
+    ServiceFileProblem.unreadable => t.serviceFileUnreadable,
+    ServiceFileProblem.notIntroduce => t.serviceFileNotIntroduce,
+    ServiceFileProblem.tooNew => t.serviceFileTooNew,
+    ServiceFileProblem.noName => t.serviceFileNoName,
+  };
 
   @override
   String toString() => message;
@@ -122,24 +144,22 @@ ServiceFile decodeService(String source) {
   try {
     raw = jsonDecode(source);
   } catch (_) {
-    throw const ServiceFileError('El archivo no se puede leer.');
+    throw const ServiceFileError(ServiceFileProblem.unreadable);
   }
   if (raw is! Map<String, dynamic>) {
-    throw const ServiceFileError('El archivo no se puede leer.');
+    throw const ServiceFileError(ServiceFileProblem.unreadable);
   }
   if (raw['format'] != kServiceFileFormat) {
-    throw const ServiceFileError('Ese archivo no es un servicio de Introduce.');
+    throw const ServiceFileError(ServiceFileProblem.notIntroduce);
   }
   final version = (raw['version'] as num?)?.toInt() ?? 0;
   if (version > kServiceFileVersion) {
-    throw const ServiceFileError(
-      'El archivo viene de una versión más nueva de Introduce. Actualiza la app para abrirlo.',
-    );
+    throw const ServiceFileError(ServiceFileProblem.tooNew);
   }
 
   final name = (raw['name'] as String?)?.trim();
   if (name == null || name.isEmpty) {
-    throw const ServiceFileError('El archivo no dice de qué servicio es.');
+    throw const ServiceFileError(ServiceFileProblem.noName);
   }
 
   final date = raw['serviceDate'] as String?;

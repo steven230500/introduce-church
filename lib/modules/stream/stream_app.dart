@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/api/bootstrap.dart';
+import '../../core/services/locale_controller.dart';
+import '../../core/windows/window_locale.dart';
 import '../../core/stream/stream_style.dart';
 import '../../core/stream/stream_view.dart';
 import '../display/presenter/display_cubit.dart';
@@ -10,7 +12,10 @@ import 'stream_cubit.dart';
 /// The window a streaming program captures: the words of the service over a
 /// key colour, for laying over a camera.
 class StreamApp extends StatelessWidget {
-  const StreamApp({super.key, required this.initial});
+  const StreamApp({super.key, required this.initial, this.locale});
+
+  /// The saved language, read before the window opened. Null follows the computer.
+  final Locale? locale;
 
   final StreamStyle initial;
 
@@ -18,6 +23,9 @@ class StreamApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: LocaleController.supported,
+      localizationsDelegates: windowLocalizationsDelegates,
       home: FutureBuilder<WindowClients>(
         future: bootstrapWindowClients(),
         builder: (context, snapshot) {

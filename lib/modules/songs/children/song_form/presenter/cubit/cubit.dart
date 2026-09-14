@@ -114,7 +114,7 @@ class SongFormCubit extends Cubit<SongFormState> {
       return verses.length;
     } catch (e) {
       _update((m) => m.copyWith(isImporting: false));
-      emit(SongFormErrorState('Error al importar: $e'));
+      emit(SongFormErrorState('Error al importar: $e', error: e, whileImporting: true));
       return 0;
     }
   }
@@ -153,7 +153,7 @@ class SongFormCubit extends Cubit<SongFormState> {
     } catch (e) {
       final current = (state as SongFormReadyState).model;
       emit(SongFormReadyState(current.copyWith(isSaving: false)));
-      emit(SongFormErrorState(e.toString()));
+      emit(SongFormErrorState(e.toString(), error: e));
     }
   }
 

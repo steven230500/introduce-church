@@ -8,8 +8,11 @@ class _Body extends StatelessWidget {
     return BlocBuilder<SongFormCubit, SongFormState>(
       builder: (context, state) => switch (state) {
         SongFormLoadingState() => const Center(child: CircularProgressIndicator()),
-        SongFormErrorState(:final message) => Center(
-          child: Text(message, style: const TextStyle(color: Colors.red)),
+        SongFormErrorState() => Center(
+          child: Text(
+            songFormErrorText(L10n.of(context), state),
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
         SongFormSavedState() => const SizedBox.shrink(),
         SongFormReadyState(:final model) => _Form(model: model),
@@ -82,7 +85,7 @@ class _FormState extends State<_Form> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${segments.length} versos cargados'),
+        content: Text(L10n.of(context).songVersesLoaded(segments.length)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -103,7 +106,10 @@ class _FormState extends State<_Form> {
     if (!context.mounted) return;
     if (count > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$count versos importados'), duration: const Duration(seconds: 2)),
+        SnackBar(
+          content: Text(L10n.of(context).songVersesImported(count)),
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -121,7 +127,7 @@ class _FormState extends State<_Form> {
               flex: 2,
               child: _DarkField(
                 controller: _titleCtrl,
-                label: 'Título',
+                label: L10n.of(context).songTitle,
                 required: true,
                 onChanged: cubit.updateTitle,
               ),
@@ -130,7 +136,7 @@ class _FormState extends State<_Form> {
             Expanded(
               child: _DarkField(
                 controller: _authorCtrl,
-                label: 'Autor',
+                label: L10n.of(context).songAuthor,
                 onChanged: cubit.updateAuthor,
               ),
             ),
@@ -151,7 +157,7 @@ class _FormState extends State<_Form> {
             Expanded(
               child: _DarkField(
                 controller: _ccliCtrl,
-                label: 'Número CCLI',
+                label: L10n.of(context).songCcli,
                 onChanged: cubit.updateCcliNumber,
               ),
             ),
@@ -165,8 +171,8 @@ class _FormState extends State<_Form> {
         // ── Verses header ─────────────────────────────────────────────────
         Row(
           children: [
-            const Text(
-              'Versos',
+            Text(
+              L10n.of(context).songVerses,
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const Spacer(),
@@ -179,7 +185,7 @@ class _FormState extends State<_Form> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               icon: const Icon(Icons.content_paste_rounded, size: 16),
-              label: const Text('Pegar letra', style: TextStyle(fontSize: 13)),
+              label: Text(L10n.of(context).songPasteLyrics, style: const TextStyle(fontSize: 13)),
             ),
             const SizedBox(width: 8),
             // Import from file
@@ -208,7 +214,7 @@ class _FormState extends State<_Form> {
                         )
                       : const Icon(Icons.upload_file_rounded, size: 16),
                   label: Text(
-                    importing ? 'Importando...' : 'Importar archivo',
+                    importing ? L10n.of(context).songImporting : L10n.of(context).songImportFile,
                     style: const TextStyle(fontSize: 13),
                   ),
                 );
@@ -224,7 +230,7 @@ class _FormState extends State<_Form> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               ),
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Agregar verso', style: TextStyle(fontSize: 13)),
+              label: Text(L10n.of(context).songAddVerse, style: const TextStyle(fontSize: 13)),
             ),
           ],
         ),
@@ -248,14 +254,14 @@ class _FormState extends State<_Form> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.surfaceControl),
                 ),
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.queue_music_rounded, size: 36, color: AppColors.textDisabled),
                       SizedBox(height: 10),
                       Text(
-                        'Sin versos. Agrega manualmente o importa un archivo.',
+                        L10n.of(context).songNoVerses,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),

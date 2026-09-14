@@ -10,6 +10,7 @@ import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/ui/hover_builder.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Everything an operator says in the middle of a service.
 ///
@@ -105,10 +106,12 @@ class _NoticesDialogState extends State<NoticesDialog> {
     );
 
     return AppDialog(
-      title: 'Avisos',
+      title: L10n.of(context).barNotices,
       icon: Icons.campaign_outlined,
       width: 520,
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).close)),
+      ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,15 +126,15 @@ class _NoticesDialogState extends State<NoticesDialog> {
                 Navigator.pop(context);
               },
             ),
-          const _Heading(
+          _Heading(
             icon: Icons.tv_rounded,
-            title: 'Sobre el slide',
-            hint: 'lo lee la congregación',
+            title: L10n.of(context).noticesOnSlide,
+            hint: L10n.of(context).noticesOnSlideHint,
             tone: AppColors.accent,
           ),
           const SizedBox(height: AppSpace.md),
           if (_loading)
-            const Text('Cargando...', style: AppText.rowSubtitle)
+            Text(L10n.of(context).loading, style: AppText.rowSubtitle)
           else if (_saved.isNotEmpty) ...[
             Wrap(
               spacing: AppSpace.sm,
@@ -150,15 +153,17 @@ class _NoticesDialogState extends State<NoticesDialog> {
           ],
           _Composer(
             controller: _compose,
-            hint: _saved.isEmpty ? 'Ofrenda, bienvenida, los niños al salón...' : 'Otro aviso...',
+            hint: _saved.isEmpty
+                ? L10n.of(context).noticesComposeFirst
+                : L10n.of(context).noticesComposeAnother,
             onShow: () => _show(cubit, _compose.text),
             onRemember: _remember,
           ),
           const SizedBox(height: AppSpace.xl),
-          const _Heading(
+          _Heading(
             icon: Icons.co_present_outlined,
-            title: 'Solo al escenario',
-            hint: 'lo ve el equipo, la congregación no',
+            title: L10n.of(context).noticesStageOnly,
+            hint: L10n.of(context).noticesStageOnlyHint,
             tone: AppColors.warning,
           ),
           const SizedBox(height: AppSpace.md),
@@ -210,7 +215,7 @@ class _NowShowing extends StatelessWidget {
               style: AppText.rowTitle,
             ),
           ),
-          TextButton(onPressed: onHide, child: const Text('Quitar')),
+          TextButton(onPressed: onHide, child: Text(L10n.of(context).remove)),
         ],
       ),
     );
@@ -315,7 +320,7 @@ class _NoticeCard extends StatelessWidget {
               child: GestureDetector(
                 onTap: onForget,
                 child: Tooltip(
-                  message: 'Quitar de los guardados',
+                  message: L10n.of(context).noticesForget,
                   child: Container(
                     width: 17,
                     height: 17,
@@ -344,7 +349,7 @@ class _Duration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<int>(
-      tooltip: 'Cuánto se queda en pantalla',
+      tooltip: L10n.of(context).noticesHowLong,
       color: AppColors.surfaceControl,
       itemBuilder: (_) => [
         for (final seconds in _NoticeCard._durations)
@@ -352,7 +357,9 @@ class _Duration extends StatelessWidget {
             value: seconds,
             height: 34,
             child: Text(
-              seconds == 0 ? 'Hasta que lo quite' : '$seconds segundos',
+              seconds == 0
+                  ? L10n.of(context).noticesUntilRemoved
+                  : L10n.of(context).noticesSeconds(seconds),
               style: AppText.body,
             ),
           ),
@@ -368,7 +375,9 @@ class _Duration extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            notice.hides ? '${notice.autoHideSecs} s' : 'hasta quitarlo',
+            notice.hides
+                ? L10n.of(context).noticesSecondsShort(notice.autoHideSecs)
+                : L10n.of(context).noticesUntilRemovedShort,
             style: AppText.rowSubtitle,
           ),
         ],
@@ -402,10 +411,10 @@ class _Composer extends StatelessWidget {
         TextButton.icon(
           onPressed: onRemember,
           icon: const Icon(Icons.bookmark_add_outlined, size: 15),
-          label: const Text('Guardar'),
+          label: Text(L10n.of(context).save),
         ),
         const SizedBox(width: AppSpace.xs),
-        FilledButton(onPressed: onShow, child: const Text('Mostrar')),
+        FilledButton(onPressed: onShow, child: Text(L10n.of(context).noticesShow)),
       ],
     );
   }
@@ -439,13 +448,13 @@ class _StageLine extends StatelessWidget {
           Expanded(
             child: AppTextField(
               controller: controller,
-              hintText: 'Quedan 5 minutos',
+              hintText: L10n.of(context).noticesStageHint,
               onSubmitted: (_) => onSend(),
             ),
           ),
           const SizedBox(width: AppSpace.sm),
-          if (active) TextButton(onPressed: onClear, child: const Text('Quitar')),
-          FilledButton(onPressed: onSend, child: const Text('Enviar')),
+          if (active) TextButton(onPressed: onClear, child: Text(L10n.of(context).remove)),
+          FilledButton(onPressed: onSend, child: Text(L10n.of(context).send)),
         ],
       ),
     );

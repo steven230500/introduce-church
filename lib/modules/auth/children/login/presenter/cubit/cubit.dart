@@ -1,11 +1,15 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../../core/api/session.dart';
 import '../../repository/repository.dart';
 
 part 'state.dart';
 
 /// Whether the form signs in or opens a new account.
 enum LoginMode { signIn, register }
+
+/// What is wrong with the form as it stands.
+enum LoginHint { email, password, mismatch }
 
 class LoginModel extends Equatable {
   const LoginModel({
@@ -42,14 +46,12 @@ class LoginModel extends Equatable {
   /// What to tell the operator about the form as it stands, or null when the
   /// form is fine. Shown under the fields rather than only on submit, so a
   /// mismatch is visible while they are still typing.
-  String? get hint {
+  LoginHint? get hint {
     if (email.isEmpty && password.isEmpty) return null;
-    if (email.isNotEmpty && !emailLooksValid) return 'El correo no parece válido.';
-    if (password.isNotEmpty && password.length < minPasswordLength) {
-      return 'La contraseña necesita al menos $minPasswordLength caracteres.';
-    }
+    if (email.isNotEmpty && !emailLooksValid) return LoginHint.email;
+    if (password.isNotEmpty && password.length < minPasswordLength) return LoginHint.password;
     if (isRegistering && confirmPassword.isNotEmpty && !passwordsMatch) {
-      return 'Las contraseñas no coinciden.';
+      return LoginHint.mismatch;
     }
     return null;
   }
@@ -123,7 +125,7 @@ class LoginCubit extends Cubit<LoginState> {
           : await _repository.signIn(email: email, password: model.password);
       emit(LoginSuccessState(model, hasOrg: result.hasOrg));
     } catch (e) {
-      emit(LoginErrorState(model, e.toString()));
+      emit(LoginErrorState(model, e));
     }
   }
 }

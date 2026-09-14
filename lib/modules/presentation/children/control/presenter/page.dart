@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../../../../core/api/error_text.dart';
 import '../../../../../core/services/service_file.dart';
 import '../../../../../core/waiting/waiting_screen.dart';
 import '../../../../../l10n/l10n.dart';

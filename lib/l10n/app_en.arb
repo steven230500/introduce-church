@@ -852,5 +852,375 @@
   "presetDarkClassic": "Classic dark",
   "presetBlueNight": "Night blue",
   "presetLowerThird": "Lower third",
-  "presetLight": "Light"
+  "presetLight": "Light",
+  "errorInvalidCredentials": "Wrong email or password.",
+  "errorEmailTaken": "There is already an account with that email.",
+  "errorWeakPassword": "The password needs at least 8 characters.",
+  "errorSessionExpired": "The session expired. Sign in again.",
+  "errorTimeout": "The server took too long to answer.",
+  "errorNoConnection": "Can't reach the server.",
+  "errorServer": "Server error ({status}).",
+  "@errorServer": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "errorNetwork": "Network error.",
+  "loginTitle": "Sign in",
+  "loginCreateAccount": "Create account",
+  "loginNameOptional": "Name (optional)",
+  "loginEmail": "Email",
+  "loginPassword": "Password",
+  "loginShowPassword": "Show",
+  "loginHidePassword": "Hide",
+  "loginRepeatPassword": "Repeat password",
+  "loginSubmit": "Sign in",
+  "loginHaveAccount": "Already have an account? Sign in",
+  "loginFirstTime": "First time? Create an account",
+  "loginHintEmail": "That email doesn't look right.",
+  "loginHintPassword": "The password needs at least {count} characters.",
+  "@loginHintPassword": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loginHintMismatch": "The passwords don't match.",
+  "orgSwitchAccount": "Switch account",
+  "orgWelcome": "Welcome",
+  "orgWelcomeBody": "To begin, create an organisation for your church\nor join one that exists.",
+  "orgCreate": "Create an organisation",
+  "orgJoin": "Join an organisation",
+  "orgNewTitle": "New organisation",
+  "orgNewBody": "Give your church or organisation a name.",
+  "orgNameLabel": "Organisation name",
+  "orgNameHint": "e.g. Central Christian Church",
+  "create": "Create",
+  "orgSearchTitle": "Find an organisation",
+  "orgSearchBody": "Find your church and send a request.\nAn administrator has to approve it.",
+  "orgNoResults": "No results",
+  "orgRequest": "Request",
+  "orgRequestSent": "Request sent",
+  "orgRequestPending": "Your request to join \"{name}\" is waiting for approval.",
+  "@orgRequestPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "orgRequestHowToApprove": "An administrator of the organisation has to accept it from Organisation, in the sidebar.",
+  "orgCheckApproval": "Check approval",
+  "orgStillPending": "Still pending. Get in touch with the administrator.",
+  "passwordNewTooShort": "The new one needs at least {count} characters.",
+  "@passwordNewTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "passwordNewSameAsCurrent": "The new one has to be different from the current one.",
+  "passwordCurrentWrong": "The current password is wrong.",
+  "passwordChangeAction": "Change",
+  "passwordCurrentHint": "The one you use today",
+  "passwordCurrent": "Current password",
+  "passwordNewHint": "At least {count} characters",
+  "@passwordNewHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "passwordNew": "New password",
+  "passwordRepeatHint": "Repeat the new one",
+  "passwordConfirm": "Confirm",
+  "passwordSignsOutEverywhere": "Changing it signs out every window, the projector included. You will have to sign in again.",
+  "orgNone": "No organisation",
+  "orgRequests": "Requests",
+  "orgRequestsCount": "Requests ({count})",
+  "@orgRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "orgMembers": "Members",
+  "orgTitle": "Organisation",
+  "orgRoleAdmin": "Administrator",
+  "orgRoleMember": "Member",
+  "orgRoleAdminShort": "Admin",
+  "orgOnlyAdminsSeeRequests": "Only administrators can see requests.",
+  "orgNoPendingRequests": "No pending requests.",
+  "orgApprove": "Approve",
+  "orgReject": "Decline",
+  "orgNoMembers": "No members.",
+  "orgYou": "(you)",
+  "shortcutsTitle": "Keyboard shortcuts",
+  "shortcutsGroupSlides": "Moving through slides",
+  "shortcutsGroupProjection": "Projection",
+  "shortcutsGroupContent": "Content",
+  "shortcutsGroupHold": "Look ahead without cutting",
+  "shortcutsGroupView": "View",
+  "shortcutsKeySpace": "Space",
+  "shortcutsKeyHomeEnd": "Home   ·   End",
+  "shortcutsNextSlide": "Next slide",
+  "shortcutsPreviousSlide": "Previous slide",
+  "shortcutsFirstLast": "First or last slide of the item",
+  "shortcutsJump": "Jump to that item in the running order",
+  "shortcutsLive": "Go live or leave live",
+  "shortcutsBlack": "Black screen",
+  "shortcutsWaiting": "Waiting screen: the last one chosen",
+  "shortcutsUnblank": "Take the black screen off",
+  "shortcutsSearch": "Search everything: songs, passages, designs, actions",
+  "shortcutsQuickVerse": "Quick verse: type \"jn 3:16\" and Enter",
+  "shortcutsHold": "Hold the screen, or follow you again",
+  "shortcutsSend": "Send what you are looking at to the screen",
+  "shortcutsToggleView": "Switch between grid and big slide",
+  "shortcutsToggleLibrary": "Show or hide the library",
+  "shortcutsHelp": "Open this help",
+  "shortcutsNotWhileTyping": "Shortcuts do nothing while you are typing in a text field.",
+  "sidePresenter": "Presenter",
+  "sideCollections": "Services",
+  "sideOrganization": "Organisation",
+  "collectionsLoadFailed": "The services couldn't be loaded.",
+  "collectionsPlanned": "{count, plural, =1{1 service planned} other{{count} services planned}}",
+  "@collectionsPlanned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionsEmptyTitle": "No services yet",
+  "collectionsEmptyMessage": "A service is the plan for a gathering: songs, readings and media, in order.",
+  "collectionsCreateFirst": "Create the first one",
+  "options": "Options",
+  "errorOfflineNoCache": "No connection, and nothing saved on this computer yet.",
+  "errorLoading": "Couldn't load: {error}",
+  "@errorLoading": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionDuplicateTitle": "Duplicate service",
+  "collectionEditTitle": "Edit service",
+  "duplicate": "Duplicate",
+  "collectionNameHint": "Sunday service",
+  "name": "Name",
+  "collectionDateOptional": "Service date (optional)",
+  "copySuffix": "{name} (copy)",
+  "@copySuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "projectorPickerTitle": "Which screen is the projector?",
+  "projectorPickerRemembered": "It is remembered for next time. Right-click Projector to change it.",
+  "projectorScreenNumber": "Screen {number}",
+  "@projectorScreenNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "projectorOperatorScreen": "the operator's",
+  "noticesOnSlide": "On the slide",
+  "noticesOnSlideHint": "the congregation reads it",
+  "loading": "Loading...",
+  "noticesComposeFirst": "Offering, welcome, children to their room...",
+  "noticesComposeAnother": "Another announcement...",
+  "noticesStageOnly": "Stage only",
+  "noticesStageOnlyHint": "the team sees it, the congregation doesn't",
+  "noticesForget": "Remove from saved",
+  "noticesHowLong": "How long it stays on screen",
+  "noticesUntilRemoved": "Until I take it down",
+  "noticesSeconds": "{count} seconds",
+  "@noticesSeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticesSecondsShort": "{count} s",
+  "@noticesSecondsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticesUntilRemovedShort": "until taken down",
+  "noticesShow": "Show",
+  "noticesStageHint": "5 minutes left",
+  "send": "Send",
+  "quickVerseNoBible": "No Bible version is installed.",
+  "quickVerseNoChapter": "{book} has no chapter {chapter}.",
+  "@quickVerseNoChapter": {
+    "placeholders": {
+      "book": {
+        "type": "String"
+      },
+      "chapter": {
+        "type": "int"
+      }
+    }
+  },
+  "quickVerseNotFound": "Couldn't find {reference} in {version}.",
+  "@quickVerseNotFound": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "quickVerseReadFailed": "Couldn't read the passage: {error}",
+  "@quickVerseReadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "searching": "Searching...",
+  "quickVerseAddsAfter": "It goes right after what is on screen.",
+  "quickVerseExamples": "Examples:  {examples}",
+  "@quickVerseExamples": {
+    "placeholders": {
+      "examples": {
+        "type": "String"
+      }
+    }
+  },
+  "quickVerseTypeBook": "Type the book and the chapter.",
+  "quickVerseMissingChapter": "The chapter is missing.",
+  "quickVerseUnknownBook": "I don't know the book \"{typed}\".",
+  "@quickVerseUnknownBook": {
+    "placeholders": {
+      "typed": {
+        "type": "String"
+      }
+    }
+  },
+  "quickVerseAmbiguous": "\"{typed}\" could be several books. Type a little more.",
+  "@quickVerseAmbiguous": {
+    "placeholders": {
+      "typed": {
+        "type": "String"
+      }
+    }
+  },
+  "songEditTitle": "Edit song",
+  "songVersesLoaded": "{count, plural, =1{1 verse loaded} other{{count} verses loaded}}",
+  "@songVersesLoaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "songVersesImported": "{count, plural, =1{1 verse imported} other{{count} verses imported}}",
+  "@songVersesImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "songTitle": "Title",
+  "songAuthor": "Author",
+  "songCopyright": "Copyright",
+  "songCcli": "CCLI number",
+  "songVerses": "Verses",
+  "songPasteLyrics": "Paste lyrics",
+  "songImporting": "Importing...",
+  "songImportFile": "Import a file",
+  "songAddVerse": "Add verse",
+  "songNoVerses": "No verses yet. Add them by hand or import a file.",
+  "songDeleteVerse": "Delete verse",
+  "songVerseHint": "Words of the verse...",
+  "songChords": "Chords",
+  "songImportFailed": "Couldn't import: {error}",
+  "@songImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pasteLoadVerses": "{count, plural, =0{Load verses} =1{Load 1 verse} other{Load {count} verses}}",
+  "@pasteLoadVerses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pasteHere": "Paste the lyrics here",
+  "pasteHint": "Copy the lyrics from anywhere and paste them here...",
+  "pasteSuggest": "Suggest where to split",
+  "pasteOrEvery": "or every",
+  "pasteLines": "lines",
+  "pasteSplit": "Split",
+  "pastePreview": "Preview",
+  "pasteDetected": "{count, plural, =1{1 verse found} other{{count} verses found}}",
+  "@pasteDetected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pasteNoBlankLines": "No blank lines — use \"or every N lines\" →",
+  "pasteEmpty": "Paste the lyrics and press\n\"Suggest where to split\"",
+  "stageCurrent": "NOW",
+  "stageNext": "NEXT",
+  "stageChords": "CHORDS",
+  "stageNoSlide": "No slide on screen",
+  "stageSlideOf": "Slide {current} / {total}",
+  "@stageSlideOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "countdownStartsSoon": "The service begins soon",
+  "serviceFileUnreadable": "The file can't be read.",
+  "serviceFileNotIntroduce": "That file isn't an Introduce service.",
+  "serviceFileTooNew": "The file comes from a newer version of Introduce. Update the app to open it.",
+  "serviceFileNoName": "The file doesn't say which service it is.",
+  "bibleVersionsTitle": "Bible versions",
+  "bibleVersionBundled": "{code} • Included",
+  "@bibleVersionBundled": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleLocalFile": "local file",
+  "download": "Download",
+  "retry": "Try again",
+  "bibleLocalFileNote": "Versions marked \"local file\" need you to import your own JSON file in the thiagobodruk/bible format.",
+  "confirm": "Confirm",
+  "clearSearch": "Clear",
+  "searchFieldHint": "Search..."
 }

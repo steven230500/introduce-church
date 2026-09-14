@@ -11,8 +11,8 @@ class _Body extends StatelessWidget {
         ControlLoadingState() => const Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
-        ControlErrorState(:final message) => ErrorStateView(
-          message: message,
+        ControlErrorState() => ErrorStateView(
+          message: state.describe(L10n.of(context)),
           onRetry: context.read<ControlCubit>().load,
         ),
         // With nothing open there is nothing for three columns to show, and

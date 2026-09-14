@@ -81,7 +81,10 @@ class _VerseEditorState extends State<_VerseEditor> {
                     style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
                     dropdownColor: AppColors.surfaceControl,
                     items: VerseType.values
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                        .map(
+                          (t) =>
+                              DropdownMenuItem(value: t, child: Text(t.labelIn(L10n.of(context)))),
+                        )
                         .toList(),
                     onChanged: (t) {
                       if (t != null) cubit.updateVerseType(widget.index, t);
@@ -93,7 +96,7 @@ class _VerseEditorState extends State<_VerseEditor> {
 
                 IconButton(
                   icon: Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
-                  tooltip: 'Eliminar verso',
+                  tooltip: L10n.of(context).songDeleteVerse,
                   onPressed: () => cubit.removeVerse(widget.index),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -114,7 +117,7 @@ class _VerseEditorState extends State<_VerseEditor> {
               minLines: 4,
               style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
               decoration: InputDecoration(
-                hintText: 'Letra del verso...',
+                hintText: L10n.of(context).songVerseHint,
                 hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 14),
                 filled: true,
                 fillColor: AppColors.background,
@@ -154,7 +157,7 @@ class _VerseEditorState extends State<_VerseEditor> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Acordes',
+                        L10n.of(context).songChords,
                         style: TextStyle(
                           fontSize: 11,
                           color: _showChords ? AppColors.accent : AppColors.textDisabled,

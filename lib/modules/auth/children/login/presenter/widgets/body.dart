@@ -1,5 +1,11 @@
 part of '../page.dart';
 
+String _hintText(L10n t, LoginHint hint) => switch (hint) {
+  LoginHint.email => t.loginHintEmail,
+  LoginHint.password => t.loginHintPassword(LoginModel.minPasswordLength),
+  LoginHint.mismatch => t.loginHintMismatch,
+};
+
 class _Body extends StatefulWidget {
   const _Body();
 
@@ -23,7 +29,10 @@ class _BodyState extends State<_Body> {
         }
         if (state is LoginErrorState) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFFF453A)),
+            SnackBar(
+              content: Text(errorText(L10n.of(context), state.error)),
+              backgroundColor: const Color(0xFFFF453A),
+            ),
           );
         }
       },
@@ -60,7 +69,9 @@ class _BodyState extends State<_Body> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      model.isRegistering ? 'Crear cuenta' : 'Iniciar sesión',
+                      model.isRegistering
+                          ? L10n.of(context).loginCreateAccount
+                          : L10n.of(context).loginTitle,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -71,7 +82,10 @@ class _BodyState extends State<_Body> {
 
                     if (model.isRegistering) ...[
                       _Field(
-                        label: 'Nombre (opcional)',
+                        // Keyed: the name field appears above these when registering, and
+                        // without keys each field would inherit the text of the one above it.
+                        key: const ValueKey('name'),
+                        label: L10n.of(context).loginNameOptional,
                         icon: Icons.person_outline,
                         enabled: !isLoading,
                         onChanged: cubit.onDisplayNameChanged,
@@ -81,7 +95,8 @@ class _BodyState extends State<_Body> {
 
                     // Email
                     _Field(
-                      label: 'Email',
+                      key: const ValueKey('email'),
+                      label: L10n.of(context).loginEmail,
                       icon: Icons.mail_outline,
                       keyboardType: TextInputType.emailAddress,
                       enabled: !isLoading,
@@ -91,7 +106,8 @@ class _BodyState extends State<_Body> {
 
                     // Password
                     _Field(
-                      label: 'Contraseña',
+                      key: const ValueKey('password'),
+                      label: L10n.of(context).loginPassword,
                       icon: Icons.lock_outline,
                       obscureText: _obscure,
                       enabled: !isLoading,
@@ -103,7 +119,9 @@ class _BodyState extends State<_Body> {
                           size: 18,
                           color: AppColors.textMuted,
                         ),
-                        tooltip: _obscure ? 'Mostrar' : 'Ocultar',
+                        tooltip: _obscure
+                            ? L10n.of(context).loginShowPassword
+                            : L10n.of(context).loginHidePassword,
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
@@ -111,7 +129,8 @@ class _BodyState extends State<_Body> {
                     if (model.isRegistering) ...[
                       const SizedBox(height: 14),
                       _Field(
-                        label: 'Repetir contraseña',
+                        key: const ValueKey('confirm'),
+                        label: L10n.of(context).loginRepeatPassword,
                         icon: Icons.lock_outline,
                         obscureText: _obscure,
                         enabled: !isLoading,
@@ -130,7 +149,7 @@ class _BodyState extends State<_Body> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              model.hint!,
+                              _hintText(L10n.of(context), model.hint!),
                               style: const TextStyle(color: AppColors.warning, fontSize: 12),
                             ),
                           ),
@@ -160,7 +179,9 @@ class _BodyState extends State<_Body> {
                                 ),
                               )
                             : Text(
-                                model.isRegistering ? 'Crear cuenta' : 'Entrar',
+                                model.isRegistering
+                                    ? L10n.of(context).loginCreateAccount
+                                    : L10n.of(context).loginSubmit,
                                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                               ),
                       ),
@@ -172,8 +193,8 @@ class _BodyState extends State<_Body> {
                         onPressed: isLoading ? null : cubit.toggleMode,
                         child: Text(
                           model.isRegistering
-                              ? '¿Ya tienes cuenta? Inicia sesión'
-                              : '¿Primera vez? Crea una cuenta',
+                              ? L10n.of(context).loginHaveAccount
+                              : L10n.of(context).loginFirstTime,
                           style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
                         ),
                       ),
@@ -191,6 +212,7 @@ class _BodyState extends State<_Body> {
 
 class _Field extends StatelessWidget {
   const _Field({
+    super.key,
     required this.label,
     required this.icon,
     required this.onChanged,

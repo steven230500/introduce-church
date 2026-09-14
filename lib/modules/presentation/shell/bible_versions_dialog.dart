@@ -5,6 +5,7 @@ import '../../../core/services/bible_download_service.dart';
 import '../../../core/widgets/app_dialog.dart';
 import 'bible_versions_cubit.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/l10n.dart';
 
 Future<void> showBibleVersionsDialog(BuildContext context) {
   return showDialog(
@@ -22,7 +23,7 @@ class _BibleVersionsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: 'Versiones de la Biblia',
+      title: L10n.of(context).bibleVersionsTitle,
       icon: Icons.book_outlined,
       width: 480,
       contentPadding: EdgeInsets.zero,
@@ -89,7 +90,9 @@ class _VersionRow extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    state.meta.bundled ? '${state.meta.code} • Incluida' : state.meta.code,
+                    state.meta.bundled
+                        ? L10n.of(context).bibleVersionBundled(state.meta.code)
+                        : state.meta.code,
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                   if (state.meta.localImport && !installed) ...[
@@ -115,7 +118,8 @@ class _LocalImportBadge extends StatelessWidget {
   const _LocalImportBadge();
 
   @override
-  Widget build(BuildContext context) => _Badge('archivo local', AppColors.textDisabled);
+  Widget build(BuildContext context) =>
+      _Badge(L10n.of(context).bibleLocalFile, AppColors.textDisabled);
 }
 
 class _ApiBadge extends StatelessWidget {
@@ -165,7 +169,7 @@ class _VersionAction extends StatelessWidget {
             ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22)
             : IconButton(
                 icon: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade400),
-                tooltip: 'Eliminar',
+                tooltip: L10n.of(context).delete,
                 onPressed: () => cubit.delete(state.meta.code),
               ),
 
@@ -180,7 +184,7 @@ class _VersionAction extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 ),
                 icon: const Icon(Icons.folder_open_rounded, size: 16),
-                label: const Text('Importar', style: TextStyle(fontSize: 13)),
+                label: Text(L10n.of(context).import, style: const TextStyle(fontSize: 13)),
               )
             : state.meta.canDownload
             ? FilledButton.icon(
@@ -190,13 +194,13 @@ class _VersionAction extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 ),
                 icon: const Icon(Icons.download_rounded, size: 16),
-                label: const Text('Descargar', style: TextStyle(fontSize: 13)),
+                label: Text(L10n.of(context).download, style: const TextStyle(fontSize: 13)),
               )
             : const SizedBox.shrink(),
 
       VersionStatus.downloading => _ProgressBar(progress: state.progress),
 
-      VersionStatus.importing => const SizedBox(
+      VersionStatus.importing => SizedBox(
         width: 100,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -207,7 +211,10 @@ class _VersionAction extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
             ),
             SizedBox(width: 8),
-            Text('Importando...', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text(
+              L10n.of(context).songImporting,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
           ],
         ),
       ),
@@ -221,8 +228,8 @@ class _VersionAction extends StatelessWidget {
             onPressed: () => state.meta.localImport
                 ? cubit.importFromFile(state.meta.code)
                 : cubit.download(state.meta.code),
-            child: const Text(
-              'Reintentar',
+            child: Text(
+              L10n.of(context).retry,
               style: TextStyle(color: AppColors.accent, fontSize: 13),
             ),
           ),
@@ -279,14 +286,14 @@ class _ImportNote extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Las versiones marcadas como "archivo local" requieren que importes tu propio archivo JSON en formato thiagobodruk/bible.',
+              L10n.of(context).bibleLocalFileNote,
               style: TextStyle(color: AppColors.textMuted, fontSize: 11),
             ),
           ),

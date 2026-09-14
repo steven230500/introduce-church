@@ -72,7 +72,7 @@ class _RehearsalBarState extends State<_RehearsalBar> {
             const SizedBox(width: AppSpace.lg),
             Flexible(
               child: Text(
-                t.rehearsalOn(item.displayTitle, clockText(cubit.rehearsedOn(item.id))),
+                t.rehearsalOn(item.titleIn(t), clockText(cubit.rehearsedOn(item.id))),
                 style: AppText.rowSubtitle.copyWith(fontSize: 12),
                 overflow: TextOverflow.ellipsis,
               ),

@@ -12,6 +12,7 @@ import 'package:introduce_church/modules/display/presenter/display_page.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../helpers/fakes.dart';
+import '../helpers/builders.dart';
 
 /// A projector whose state the test sets directly.
 class _Projector extends DisplayCubit {
@@ -81,8 +82,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(960, 540));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DisplayCubit>.value(value: projector, child: const DisplayPage()),
+        localizedApp(
+          BlocProvider<DisplayCubit>.value(value: projector, child: const DisplayPage()),
         ),
       );
       return projector;

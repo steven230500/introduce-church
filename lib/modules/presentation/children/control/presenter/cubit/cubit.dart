@@ -15,7 +15,9 @@ import '../../../../../../core/utils/app_logger.dart';
 import '../../../../../../core/utils/new_id.dart';
 import '../../../../../../core/windows/window_link.dart';
 import '../../../../../../core/api/api_client.dart';
+import '../../../../../../core/api/error_text.dart';
 import '../../../../../../core/api/network_failure.dart';
+import '../../../../../../l10n/l10n.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
 import '../../../../../../core/motion/motion_scenes.dart';
@@ -716,10 +718,12 @@ class ControlCubit extends Cubit<ControlState> {
           );
           return;
         }
-        emit(const ControlErrorState('Sin conexión y sin datos en caché.'));
+        emit(
+          const ControlErrorState('Sin conexión y sin datos en caché.', offlineWithoutCache: true),
+        );
         return;
       }
-      emit(ControlErrorState('Error al cargar: ${s.split('\n').first}'));
+      emit(ControlErrorState('Error al cargar: ${s.split('\n').first}', error: e));
     }
   }
 

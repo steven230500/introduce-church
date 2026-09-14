@@ -164,7 +164,10 @@ Future<void> _openServiceFile(BuildContext context) async {
     );
   } catch (e) {
     messenger.showSnackBar(
-      SnackBar(content: Text(t.openFailed('$e')), backgroundColor: AppColors.danger),
+      SnackBar(
+        content: Text(t.openFailed(e is ServiceFileError ? e.describeIn(t) : errorText(t, e))),
+        backgroundColor: AppColors.danger,
+      ),
     );
   }
 }

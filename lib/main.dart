@@ -16,6 +16,7 @@ import 'modules/display/display_app.dart';
 import 'modules/stage/stage_app.dart';
 import 'modules/stream/stream_app.dart';
 import 'core/stream/stream_style.dart';
+import 'core/windows/window_locale.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -137,7 +138,12 @@ Future<void> _runDisplayWindow(String argStr) async {
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
     });
-    runApp(StreamApp(initial: StreamStyle.fromJson(windowArgs['style'])));
+    runApp(
+      StreamApp(
+        initial: StreamStyle.fromJson(windowArgs['style']),
+        locale: await savedWindowLocale(),
+      ),
+    );
     return;
   }
 
@@ -153,7 +159,7 @@ Future<void> _runDisplayWindow(String argStr) async {
       await windowManager.show();
       await windowManager.focus();
     });
-    runApp(const StageApp());
+    runApp(StageApp(locale: await savedWindowLocale()));
     return;
   }
 
@@ -182,5 +188,5 @@ Future<void> _runDisplayWindow(String argStr) async {
     });
   }
 
-  runApp(const DisplayApp());
+  runApp(DisplayApp(locale: await savedWindowLocale()));
 }

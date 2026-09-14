@@ -10,6 +10,7 @@ import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
+import '../../../../l10n/l10n.dart';
 
 /// Puts a passage on deck from a line of text.
 ///
@@ -87,7 +88,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
       if (versions.isEmpty) {
         setState(() {
           _busy = false;
-          _failure = 'No hay ninguna versión de la Biblia instalada.';
+          _failure = L10n.of(context).quickVerseNoBible;
         });
         return;
       }
@@ -106,7 +107,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
         if (verses.isEmpty) {
           setState(() {
             _busy = false;
-            _failure = '${reference.bookName} no tiene capítulo ${reference.chapter}.';
+            _failure = L10n.of(context).quickVerseNoChapter(reference.bookName, reference.chapter);
           });
           return;
         }
@@ -125,7 +126,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
       if (verseRef == null) {
         setState(() {
           _busy = false;
-          _failure = 'No encontré $reference en ${version.name}.';
+          _failure = L10n.of(context).quickVerseNotFound('$reference', version.name);
         });
         return;
       }
@@ -135,7 +136,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     } catch (e) {
       setState(() {
         _busy = false;
-        _failure = 'No pude leer el pasaje: $e';
+        _failure = L10n.of(context).quickVerseReadFailed('$e');
       });
     }
   }
@@ -145,15 +146,15 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     final reference = _parsed.reference;
 
     return AppDialog(
-      title: 'Versículo rápido',
+      title: L10n.of(context).addQuickVerse,
       icon: Icons.bolt_rounded,
       width: 420,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
         const SizedBox(width: AppSpace.sm),
         FilledButton(
           onPressed: reference == null || _busy ? null : _submit,
-          child: Text(_busy ? 'Buscando...' : 'Agregar'),
+          child: Text(_busy ? L10n.of(context).searching : L10n.of(context).add),
         ),
       ],
       child: Column(
@@ -179,13 +180,10 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
           const SizedBox(height: AppSpace.md),
           _Feedback(result: _parsed, failure: _failure),
           const SizedBox(height: AppSpace.lg),
-          const Text(
-            'Se agrega justo después de lo que está en pantalla.',
-            style: AppText.rowSubtitle,
-          ),
+          Text(L10n.of(context).quickVerseAddsAfter, style: AppText.rowSubtitle),
           const SizedBox(height: AppSpace.xs),
-          const Text(
-            'Ejemplos:  jn 3:16   ·   1 co 13:4-7   ·   salmos 23',
+          Text(
+            L10n.of(context).quickVerseExamples('jn 3:16   ·   1 co 13:4-7   ·   salmos 23'),
             style: TextStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ],
@@ -213,17 +211,17 @@ class _Feedback extends StatelessWidget {
 
     return switch (result.problem) {
       ReferenceProblem.empty ||
-      null => const _Line(text: 'Escribe el libro y el capítulo.', color: AppColors.textMuted),
-      ReferenceProblem.noChapter => const _Line(
-        text: 'Falta el capítulo.',
+      null => _Line(text: L10n.of(context).quickVerseTypeBook, color: AppColors.textMuted),
+      ReferenceProblem.noChapter => _Line(
+        text: L10n.of(context).quickVerseMissingChapter,
         color: AppColors.textMuted,
       ),
       ReferenceProblem.noBook => _Line(
-        text: 'No conozco el libro "${result.typed}".',
+        text: L10n.of(context).quickVerseUnknownBook(result.typed ?? ''),
         color: AppColors.warning,
       ),
       ReferenceProblem.ambiguous => _Line(
-        text: '"${result.typed}" puede ser varios libros. Escribe un poco más.',
+        text: L10n.of(context).quickVerseAmbiguous(result.typed ?? ''),
         color: AppColors.warning,
       ),
     };

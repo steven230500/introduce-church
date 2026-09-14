@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
+import '../../../core/api/error_text.dart';
 import '../../../core/models/organization.dart';
 import '../../../core/repositories/organization_repository.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/l10n.dart';
 
 void showOrgAdminDialog(BuildContext context) {
   showDialog<void>(
@@ -27,7 +29,8 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
   List<OrgMember> _pending = [];
   List<OrgMember> _members = [];
   bool _loading = true;
-  String? _error;
+  Object? _error;
+  static const _noOrganization = Object();
 
   bool get _isAdmin => _me?.role == OrgMemberRole.admin;
 
@@ -54,7 +57,7 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
       if (membership == null) {
         setState(() {
           _loading = false;
-          _error = 'Sin organización';
+          _error = _noOrganization;
         });
         return;
       }
@@ -73,7 +76,7 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = e;
       });
     }
   }
@@ -105,7 +108,12 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
             else if (_error != null)
               Expanded(
                 child: Center(
-                  child: Text(_error!, style: const TextStyle(color: Color(0xFFFF3B30))),
+                  child: Text(
+                    _error == _noOrganization
+                        ? L10n.of(context).orgNone
+                        : errorText(L10n.of(context), _error),
+                    style: const TextStyle(color: Color(0xFFFF3B30)),
+                  ),
                 ),
               )
             else ...[
@@ -114,10 +122,12 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
                 tabs: [
                   Tab(
                     text: _isAdmin
-                        ? 'Solicitudes${_pending.isNotEmpty ? " (${_pending.length})" : ""}'
-                        : 'Solicitudes',
+                        ? (_pending.isNotEmpty
+                              ? L10n.of(context).orgRequestsCount(_pending.length)
+                              : L10n.of(context).orgRequests)
+                        : L10n.of(context).orgRequests,
                   ),
-                  const Tab(text: 'Miembros'),
+                  Tab(text: L10n.of(context).orgMembers),
                 ],
                 labelColor: AppColors.accent,
                 unselectedLabelColor: AppColors.textMuted,
@@ -161,7 +171,7 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _org?.name ?? 'Organización',
+                  _org?.name ?? L10n.of(context).orgTitle,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -170,7 +180,9 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
                 ),
                 if (_me != null)
                   Text(
-                    _me!.role == OrgMemberRole.admin ? 'Administrador' : 'Miembro',
+                    _me!.role == OrgMemberRole.admin
+                        ? L10n.of(context).orgRoleAdmin
+                        : L10n.of(context).orgRoleMember,
                     style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
                   ),
               ],
@@ -203,17 +215,17 @@ class _PendingTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isAdmin) {
-      return const Center(
+      return Center(
         child: Text(
-          'Solo los administradores pueden ver solicitudes.',
+          L10n.of(context).orgOnlyAdminsSeeRequests,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       );
     }
     if (requests.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Sin solicitudes pendientes.',
+          L10n.of(context).orgNoPendingRequests,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       );
@@ -266,7 +278,7 @@ class _PendingTab extends StatelessWidget {
                   textStyle: const TextStyle(fontSize: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                child: const Text('Aprobar'),
+                child: Text(L10n.of(context).orgApprove),
               ),
               const SizedBox(width: 8),
               OutlinedButton(
@@ -278,7 +290,7 @@ class _PendingTab extends StatelessWidget {
                   textStyle: const TextStyle(fontSize: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                child: const Text('Rechazar'),
+                child: Text(L10n.of(context).orgReject),
               ),
             ],
           ),
@@ -298,8 +310,11 @@ class _MembersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (members.isEmpty) {
-      return const Center(
-        child: Text('Sin miembros.', style: TextStyle(color: AppColors.textMuted)),
+      return Center(
+        child: Text(
+          L10n.of(context).orgNoMembers,
+          style: const TextStyle(color: AppColors.textMuted),
+        ),
       );
     }
     return ListView.separated(
@@ -339,10 +354,10 @@ class _MembersTab extends StatelessWidget {
                             style: const TextStyle(fontSize: 13, color: Colors.white),
                           ),
                         if (isMe)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(left: 6),
                             child: Text(
-                              '(tú)',
+                              L10n.of(context).orgYou,
                               style: TextStyle(fontSize: 11, color: AppColors.accent),
                             ),
                           ),
@@ -379,7 +394,7 @@ class _RoleBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        isAdmin ? 'Admin' : 'Miembro',
+        isAdmin ? L10n.of(context).orgRoleAdminShort : L10n.of(context).orgRoleMember,
         style: TextStyle(
           fontSize: 11,
           color: isAdmin ? AppColors.accent : AppColors.textTertiary,
