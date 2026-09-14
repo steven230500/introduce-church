@@ -4,6 +4,9 @@ Software de proyección para iglesias de habla hispana. Letras, versículos,
 avisos y videos en la pantalla del templo, manejados desde una sola ventana por
 la persona que está en la consola un domingo a las ocho de la mañana.
 
+**[introducechurch.com](https://introducechurch.com)** ·
+[Descargar para Mac](https://github.com/steven230500/introduce-church/releases/latest)
+
 Es una alternativa a ProPresenter pensada para el caso real de la mayoría de
 las iglesias: un portátil, un proyector, alguien que aprendió a usarlo hace dos
 semanas y una conexión a internet que a veces no está.
@@ -173,8 +176,9 @@ make dist-mac       # dist/Introduce-AAAAMMDD.zip
 make dist-windows   # correr esto en una máquina Windows
 ```
 
-La primera vez en un Mac ajeno hay que abrirla con clic derecho → Abrir,
-porque todavía no está firmada con certificado de Apple.
+La primera vez en un Mac ajeno macOS no la abre, porque todavía no está
+firmada con certificado de Apple: Ajustes del Sistema → Privacidad y seguridad
+→ Abrir igualmente (en macOS 14 o anterior basta clic derecho → Abrir).
 
 Borrar datos locales y empezar de cero:
 
