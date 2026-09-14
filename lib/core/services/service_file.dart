@@ -37,6 +37,7 @@ typedef ServiceFileItem = ({
   Map<String, dynamic>? content,
   String? notes,
   int? autoAdvanceSecs,
+  int? plannedSecs,
 });
 
 /// Marks the file as ours, so opening the wrong JSON says so instead of
@@ -99,6 +100,7 @@ String encodeService(
           'content': item.contentJson,
           'notes': item.notes,
           'autoAdvanceSecs': item.autoAdvanceSecs,
+          'plannedSecs': item.plannedSecs,
         },
     ],
   });
@@ -171,6 +173,7 @@ ServiceFile decodeService(String source) {
                 : Map<String, dynamic>.from(row['content'] as Map),
             notes: row['notes'] as String?,
             autoAdvanceSecs: (row['autoAdvanceSecs'] as num?)?.toInt(),
+            plannedSecs: (row['plannedSecs'] as num?)?.toInt(),
           ),
     ],
   );

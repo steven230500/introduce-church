@@ -195,6 +195,7 @@ class ControlRepository {
     'content_json': ?item.contentJson,
     'notes': ?item.notes,
     'auto_advance_secs': ?item.autoAdvanceSecs,
+    'planned_secs': ?item.plannedSecs,
   };
 
   /// Renames an item whose title lives in its own content.
@@ -214,6 +215,10 @@ class ControlRepository {
     await _api.patch<void>('/collections/items/$itemId', data: {'auto_advance_secs': secs});
   }
 
+  Future<void> updateItemPlanned(String itemId, int? secs) async {
+    await _api.patch<void>('/collections/items/$itemId', data: {'planned_secs': secs});
+  }
+
   /// Writes a whole new running order in one request, so the set list is never
   /// briefly left with two items claiming the same position.
   Future<void> reorderItems(String collectionId, List<String> orderedIds) async {
@@ -224,31 +229,14 @@ class ControlRepository {
 
   /// Fallback for when the websocket is down. During a service the socket
   /// carries these changes instead.
-  Future<void> upsertPresentationState({
-    required String? collectionId,
-    required int itemIndex,
-    required int slideIndex,
-    required bool isLive,
-    required bool blankScreen,
-    bool countdownActive = false,
-    DateTime? countdownEnd,
-    bool overlayVisible = false,
-    String? overlayText,
-  }) async {
-    await _api.put<void>(
-      '/presentation/state',
-      data: {
-        'collection_id': collectionId,
-        'current_item_index': itemIndex,
-        'current_slide_index': slideIndex,
-        'is_live': isLive,
-        'blank_screen': blankScreen,
-        'countdown_active': countdownActive,
-        'countdown_end': countdownEnd?.toUtc().toIso8601String(),
-        'overlay_visible': overlayVisible,
-        'overlay_text': overlayText,
-      },
-    );
+  /// Writes the live state as the socket would have carried it.
+  ///
+  /// The whole of it, not a chosen few fields: this path used to leave out the
+  /// stage message, the waiting screen and the timing, so a stage display on
+  /// another machine never heard about any of them unless the live link
+  /// happened to be connected.
+  Future<void> upsertPresentationState(Map<String, dynamic> state) async {
+    await _api.put<void>('/presentation/state', data: state);
   }
 
   Future<void> _addItems(String collectionId, List<Map<String, dynamic>> items) async {

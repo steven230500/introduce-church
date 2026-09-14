@@ -339,86 +339,86 @@ class _SermonDialogState extends State<_SermonDialog> {
 // ── Announcement ──────────────────────────────────────────────────────────────
 
 Future<void> _showAnnouncementDialog(BuildContext context, ControlCubit cubit) async {
-  final msgCtrl = TextEditingController();
   DateTime? timerTarget;
   var useTimer = false;
 
   await showDialog<void>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AppDialog(
-        title: 'Slide de anuncio',
-        icon: Icons.campaign_outlined,
-        width: 440,
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          const SizedBox(width: AppSpace.sm),
-          ValueListenableBuilder(
-            valueListenable: msgCtrl,
-            builder: (context, value, child) => FilledButton(
-              onPressed: value.text.trim().isEmpty
-                  ? null
-                  : () {
-                      Navigator.pop(ctx);
-                      cubit.addAnnouncement(
-                        msgCtrl.text.trim(),
-                        timerTarget: useTimer ? timerTarget : null,
-                      );
-                    },
-              child: const Text('Agregar'),
+    builder: (_) => TextControllerScope(
+      builder: (_, msgCtrl) => StatefulBuilder(
+        builder: (ctx, setState) => AppDialog(
+          title: 'Slide de anuncio',
+          icon: Icons.campaign_outlined,
+          width: 440,
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            const SizedBox(width: AppSpace.sm),
+            ValueListenableBuilder(
+              valueListenable: msgCtrl,
+              builder: (context, value, child) => FilledButton(
+                onPressed: value.text.trim().isEmpty
+                    ? null
+                    : () {
+                        Navigator.pop(ctx);
+                        cubit.addAnnouncement(
+                          msgCtrl.text.trim(),
+                          timerTarget: useTimer ? timerTarget : null,
+                        );
+                      },
+                child: const Text('Agregar'),
+              ),
             ),
-          ),
-        ],
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppTextField(
-              controller: msgCtrl,
-              hintText: 'Bienvenidos a la iglesia...',
-              label: 'Mensaje',
-              maxLines: 3,
-              autofocus: true,
-            ),
-            const SizedBox(height: AppSpace.lg),
-            Row(
-              children: [
-                Switch(value: useTimer, onChanged: (v) => setState(() => useTimer = v)),
-                const SizedBox(width: AppSpace.sm),
-                const Text(
-                  'Mostrar cuenta regresiva',
-                  style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppTextField(
+                controller: msgCtrl,
+                hintText: 'Bienvenidos a la iglesia...',
+                label: 'Mensaje',
+                maxLines: 3,
+                autofocus: true,
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Row(
+                children: [
+                  Switch(value: useTimer, onChanged: (v) => setState(() => useTimer = v)),
+                  const SizedBox(width: AppSpace.sm),
+                  const Text(
+                    'Mostrar cuenta regresiva',
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                  ),
+                ],
+              ),
+              if (useTimer) ...[
+                const SizedBox(height: AppSpace.sm),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time, size: 16),
+                  label: Text(
+                    timerTarget == null
+                        ? 'Seleccionar hora de inicio'
+                        : '${timerTarget!.hour.toString().padLeft(2, '0')}:'
+                              '${timerTarget!.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(context: ctx, initialTime: TimeOfDay.now());
+                    if (picked == null) return;
+                    final now = DateTime.now();
+                    var target = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+                    // A time already past today means the operator meant tomorrow.
+                    if (target.isBefore(now)) {
+                      target = target.add(const Duration(days: 1));
+                    }
+                    setState(() => timerTarget = target);
+                  },
                 ),
               ],
-            ),
-            if (useTimer) ...[
-              const SizedBox(height: AppSpace.sm),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.access_time, size: 16),
-                label: Text(
-                  timerTarget == null
-                      ? 'Seleccionar hora de inicio'
-                      : '${timerTarget!.hour.toString().padLeft(2, '0')}:'
-                            '${timerTarget!.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 13),
-                ),
-                onPressed: () async {
-                  final picked = await showTimePicker(context: ctx, initialTime: TimeOfDay.now());
-                  if (picked == null) return;
-                  final now = DateTime.now();
-                  var target = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
-                  // A time already past today means the operator meant tomorrow.
-                  if (target.isBefore(now)) {
-                    target = target.add(const Duration(days: 1));
-                  }
-                  setState(() => timerTarget = target);
-                },
-              ),
             ],
-          ],
+          ),
         ),
       ),
     ),
   );
-  msgCtrl.dispose();
 }

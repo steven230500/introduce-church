@@ -21,6 +21,7 @@ class CollectionItem extends Equatable {
     this.contentJson,
     this.notes,
     this.autoAdvanceSecs,
+    this.plannedSecs,
   });
 
   final String id;
@@ -32,6 +33,10 @@ class CollectionItem extends Equatable {
   final Map<String, dynamic>? contentJson;
   final String? notes;
   final int? autoAdvanceSecs;
+
+  /// How long this part of the service is meant to take, usually as timed in
+  /// a rehearsal. What the stage display counts the item against.
+  final int? plannedSecs;
 
   // Slides a proyectar según el tipo
   List<String> get slides => switch (type) {
@@ -145,6 +150,7 @@ class CollectionItem extends Equatable {
     contentJson: contentJson,
     notes: notes,
     autoAdvanceSecs: autoAdvanceSecs,
+    plannedSecs: plannedSecs,
   );
 
   CollectionItem copyWith({
@@ -155,6 +161,8 @@ class CollectionItem extends Equatable {
     bool clearNotes = false,
     int? autoAdvanceSecs,
     bool clearAutoAdvance = false,
+    int? plannedSecs,
+    bool clearPlanned = false,
   }) => CollectionItem(
     id: id,
     collectionId: collectionId,
@@ -165,6 +173,7 @@ class CollectionItem extends Equatable {
     contentJson: contentJson ?? this.contentJson,
     notes: clearNotes ? null : notes ?? this.notes,
     autoAdvanceSecs: clearAutoAdvance ? null : autoAdvanceSecs ?? this.autoAdvanceSecs,
+    plannedSecs: clearPlanned ? null : plannedSecs ?? this.plannedSecs,
   );
 
   /// The same item under a new name.
@@ -183,6 +192,7 @@ class CollectionItem extends Equatable {
     contentJson: _parseContentJson(json['content_json']),
     notes: json['notes'] as String?,
     autoAdvanceSecs: json['auto_advance_secs'] as int?,
+    plannedSecs: (json['planned_secs'] as num?)?.toInt(),
   );
 
   @override
@@ -195,6 +205,7 @@ class CollectionItem extends Equatable {
     templateId,
     notes,
     autoAdvanceSecs,
+    plannedSecs,
   ];
 }
 

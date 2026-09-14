@@ -160,20 +160,14 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
-  Future<void> upsertPresentationState({
-    required String? collectionId,
-    required int itemIndex,
-    required int slideIndex,
-    required bool isLive,
-    required bool blankScreen,
-    bool countdownActive = false,
-    DateTime? countdownEnd,
-    bool overlayVisible = false,
-    String? overlayText,
-  }) async {
+  Future<void> upsertPresentationState(Map<String, dynamic> state) async {
     syncs++;
-    lastSync = (itemIndex, slideIndex);
+    lastSync = (state['current_item_index'] as int, state['current_slide_index'] as int);
+    lastState = state;
   }
+
+  /// Everything the last write carried.
+  Map<String, dynamic>? lastState;
 
   // Writes mutate `rows` so the next read returns different data, the way a
   // real backend would. Without this a reload emits a state equal to the
@@ -224,6 +218,7 @@ class FakeControlRepository extends ControlRepository {
         'content_json': item.contentJson,
         'notes': item.notes,
         'auto_advance_secs': item.autoAdvanceSecs,
+        'planned_secs': item.plannedSecs,
         'songs': ?_songRow(item.song),
       });
     }
@@ -293,6 +288,18 @@ class FakeControlRepository extends ControlRepository {
   void _checkNetwork() {
     final failure = failWritesWith;
     if (failure != null) throw failure;
+  }
+
+  @override
+  Future<void> updateItemAutoAdvance(String itemId, int? secs) async {
+    _checkNetwork();
+    calls.add('autoAdvance:$itemId:$secs');
+  }
+
+  @override
+  Future<void> updateItemPlanned(String itemId, int? secs) async {
+    _checkNetwork();
+    calls.add('planned:$itemId:$secs');
   }
 
   @override

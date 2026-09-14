@@ -28,7 +28,7 @@ class _Body extends StatelessWidget {
           buildWhen: (a, b) => a.widths != b.widths,
           builder: (context, shell) {
             final layout = context.read<ShellCubit>();
-            return Row(
+            final columns = Row(
               children: [
                 _SetListPanel(model: model, width: shell.widthOf(ShellPanel.setList)),
                 PanelResizer(
@@ -51,6 +51,13 @@ class _Body extends StatelessWidget {
                   _SidePreviewPanel(model: model, width: shell.widthOf(ShellPanel.queue))
                 else
                   _SlideQueue(model: model, width: shell.widthOf(ShellPanel.queue)),
+              ],
+            );
+            if (!model.rehearsing) return columns;
+            return Column(
+              children: [
+                _RehearsalBar(model: model),
+                Expanded(child: columns),
               ],
             );
           },

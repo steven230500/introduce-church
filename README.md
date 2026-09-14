@@ -99,6 +99,14 @@ guardan y quedan a un clic.
 **Pantalla de escenario.** Ventana aparte para el predicador o el músico: lo
 que está en pantalla, lo que sigue, y los mensajes del equipo.
 
+**Ensayo y tiempos.** Cada elemento del servicio puede tener una duración
+planeada. Durante el culto, la salida del operador y la pantalla de escenario
+cuentan cuánto lleva el elemento en pantalla contra ese plan: normal, ámbar al
+acercarse al final, rojo con cuánto se pasó ("4:42 / 4:00 +0:42"). Los tiempos
+no hace falta escribirlos: se ensaya el servicio de corrido, la app cronometra
+cada elemento, y al terminar se eligen cuáles guardar como plan. Lo que se
+proyecta durante un ensayo no cuenta para el reporte de licencias.
+
 **Modo sin internet.** El servicio arranca y funciona sin red. La sesión
 sobrevive, los diseños quedan en caché y la app avisa cuando no alcanza el
 servidor en vez de quedarse callada.

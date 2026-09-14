@@ -73,10 +73,11 @@ class _SetListHeader extends StatelessWidget {
 
   static String _subtitle(L10n t, Collection? collection) {
     if (collection == null) return t.noCollectionOpen;
-    final items = t.itemCount(collection.items.length);
     final date = collection.serviceDate;
-    if (date == null) return items;
-    return '$items  •  ${date.day}/${date.month}/${date.year}';
+    return [
+      t.itemCount(collection.items.length),
+      if (date != null) '${date.day}/${date.month}/${date.year}',
+    ].join('  •  ');
   }
 }
 
@@ -159,6 +160,14 @@ class _CollectionMenu extends StatelessWidget {
             child: AppMenuRow(icon: Icons.palette_outlined, label: t.slideDesign),
           ),
           PopupMenuItem(
+            value: model.rehearsing ? 'end_rehearsal' : 'rehearse',
+            height: 38,
+            child: AppMenuRow(
+              icon: model.rehearsing ? Icons.stop_rounded : Icons.timer_outlined,
+              label: model.rehearsing ? t.rehearsalEnd : t.rehearsalStart,
+            ),
+          ),
+          PopupMenuItem(
             value: 'audio',
             height: 38,
             child: AppMenuRow(
@@ -220,6 +229,12 @@ class _CollectionMenu extends StatelessWidget {
         if (copy != null) {
           await cubit.duplicateCollection(collection, name: copy.name, serviceDate: copy.date);
         }
+
+      case 'rehearse':
+        cubit.startRehearsal();
+
+      case 'end_rehearsal':
+        await finishRehearsal(context);
 
       case 'template':
         final templateId = await showTemplatePicker(

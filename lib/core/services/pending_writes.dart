@@ -23,6 +23,7 @@ enum PendingKind {
   itemNotes,
   itemAutoAdvance,
   itemOrder,
+  itemPlanned,
 }
 
 /// One change the operator made that the server has not been told about yet.
@@ -171,6 +172,7 @@ Collection applyPendingWrite(Collection collection, PendingWrite write) {
     case PendingKind.itemTitle:
     case PendingKind.itemNotes:
     case PendingKind.itemAutoAdvance:
+    case PendingKind.itemPlanned:
       return collection.copyWith(
         items: [
           for (final item in collection.items)
@@ -189,6 +191,10 @@ CollectionItem _applyToItem(CollectionItem item, PendingWrite write) => switch (
   PendingKind.itemAutoAdvance => item.copyWith(
     autoAdvanceSecs: write.args['auto_advance_secs'] as int?,
     clearAutoAdvance: write.args['auto_advance_secs'] == null,
+  ),
+  PendingKind.itemPlanned => item.copyWith(
+    plannedSecs: write.args['planned_secs'] as int?,
+    clearPlanned: write.args['planned_secs'] == null,
   ),
   _ => item,
 };

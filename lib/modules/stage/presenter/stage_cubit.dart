@@ -60,6 +60,9 @@ class StageState extends Equatable {
     this.overlayVisible = false,
     this.overlayText,
     this.stageMessage,
+    this.itemStartedAt,
+    this.plannedSecs,
+    this.rehearsal = false,
   });
 
   final StageSlide? current;
@@ -74,6 +77,14 @@ class StageState extends Equatable {
   /// A line from the operator that only this window shows.
   final String? stageMessage;
 
+  /// When the item on the screen went on it, and how long it is meant to
+  /// take: the preacher's clock.
+  final DateTime? itemStartedAt;
+  final int? plannedSecs;
+
+  /// The band is rehearsing, not leading a service.
+  final bool rehearsal;
+
   @override
   List<Object?> get props => [
     current,
@@ -85,6 +96,9 @@ class StageState extends Equatable {
     overlayVisible,
     overlayText,
     stageMessage,
+    itemStartedAt,
+    plannedSecs,
+    rehearsal,
   ];
 }
 
@@ -127,6 +141,10 @@ class StageCubit extends Cubit<StageState> {
     final overlayVisible = row['overlay_visible'] as bool? ?? false;
     final overlayText = row['overlay_text'] as String?;
     final stageMessage = row['stage_message'] as String?;
+    final timing = row['timing'] is Map ? row['timing'] as Map : const {};
+    final itemStartedAt = DateTime.tryParse(timing['item_started_at'] as String? ?? '')?.toLocal();
+    final plannedSecs = (timing['planned_secs'] as num?)?.toInt();
+    final rehearsal = timing['rehearsal'] == true;
 
     DateTime? countdownEnd;
     if (countdownActive && countdownEndStr != null) {
@@ -147,6 +165,7 @@ class StageCubit extends Cubit<StageState> {
           overlayVisible: overlayVisible,
           overlayText: overlayText,
           stageMessage: stageMessage,
+          rehearsal: rehearsal,
         ),
       );
       return;
@@ -172,6 +191,9 @@ class StageCubit extends Cubit<StageState> {
           overlayVisible: overlayVisible,
           overlayText: overlayText,
           stageMessage: stageMessage,
+          itemStartedAt: itemStartedAt,
+          plannedSecs: plannedSecs,
+          rehearsal: rehearsal,
         ),
       );
     } catch (_) {

@@ -186,6 +186,9 @@ OnAir? onAirIn(ControlState state) {
   // A waiting scene is not an item of the service, and a loop left up for
   // twenty minutes before the service is not twenty minutes of a song.
   if (model.waiting.active) return null;
+  // Songs sung while rehearsing are not sung in a service, and the report is
+  // what the church signs to say what it used.
+  if (model.rehearsing) return null;
   final collection = model.activeCollection;
   if (collection == null) return null;
   final index = model.liveItemIndex;

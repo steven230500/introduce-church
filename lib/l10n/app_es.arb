@@ -631,5 +631,67 @@
         "type": "String"
       }
     }
-  }
+  },
+  "rehearsalStart": "Ensayar este servicio",
+  "rehearsalEnd": "Terminar ensayo",
+  "rehearsalLabel": "ENSAYO",
+  "rehearsalNote": "No cuenta para el reporte de licencias",
+  "rehearsalOn": "{title}: {time}",
+  "@rehearsalOn": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rehearsalSummaryTitle": "Tiempos del ensayo",
+  "rehearsalSummaryIntro": "Marca los elementos cuyo tiempo quieres guardar como duración planeada. La pantalla de escenario la usa para avisar cuando algo se alarga.",
+  "rehearsalColItem": "Elemento",
+  "rehearsalColRehearsed": "En el ensayo",
+  "rehearsalColPlanned": "Plan actual",
+  "rehearsalTotal": "El ensayo duró {time}",
+  "@rehearsalTotal": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rehearsalSave": "{count, plural, =0{Guardar} one{Guardar 1 tiempo} other{Guardar {count} tiempos}}",
+  "@rehearsalSave": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rehearsalDiscard": "Cerrar sin guardar",
+  "plannedDuration": "Duración planeada",
+  "plannedNone": "sin plan",
+  "plannedHint": "Minutos y segundos, por ejemplo 4:30",
+  "plannedIntro": "Cuánto debería durar. La pantalla de escenario cuenta el tiempo contra esto.",
+  "plannedInvalid": "Escribe minutos y segundos, como 4:30, o solo minutos.",
+  "plannedTotal": "≈ {time}",
+  "@plannedTotal": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "plannedTotalPartial": "≈ {time} · {count} sin tiempo",
+  "@plannedTotalPartial": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plannedMenu": "Duración"
 }

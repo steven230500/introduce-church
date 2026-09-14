@@ -17,6 +17,7 @@ import '../../../../../../core/api/api_client.dart';
 import '../../../../../../core/api/presentation_socket.dart';
 import '../../../../../../core/services/pending_writes.dart';
 import '../../../../../../core/motion/motion_scenes.dart';
+import '../../../../../../core/timing/service_clock.dart';
 import '../../../../../../core/waiting/waiting_screen.dart';
 import '../../../../../../core/services/service_file.dart';
 import '../../../../../songs/children/songs_list/repository/repository.dart';
@@ -52,6 +53,7 @@ class ControlModel extends Equatable {
     this.waiting = const WaitingConfig(),
     this.offline = false,
     this.pendingWrites = 0,
+    this.rehearsing = false,
   });
 
   final List<Collection> collections;
@@ -99,6 +101,11 @@ class ControlModel extends Equatable {
   /// Changes made with no network, waiting to be sent. Shown next to the
   /// offline mark so the operator knows there is work that has not landed yet.
   final int pendingWrites;
+
+  /// A rehearsal is running: time goes on each item as the band works through
+  /// the plan, and nothing that goes on the screen counts towards the licence
+  /// report, because nobody is singing it in a service.
+  final bool rehearsing;
 
   SlideTemplate? findTemplate(String id) =>
       SlideTemplate.findPreset(id) ?? userTemplates.where((t) => t.id == id).firstOrNull;
@@ -239,6 +246,7 @@ class ControlModel extends Equatable {
     bool clearStageMessage = false,
     bool? offline,
     int? pendingWrites,
+    bool? rehearsing,
   }) {
     return ControlModel(
       collections: collections ?? this.collections,
@@ -260,6 +268,7 @@ class ControlModel extends Equatable {
       waiting: waiting ?? this.waiting,
       offline: offline ?? this.offline,
       pendingWrites: pendingWrites ?? this.pendingWrites,
+      rehearsing: rehearsing ?? this.rehearsing,
     );
   }
 
@@ -284,6 +293,7 @@ class ControlModel extends Equatable {
     waiting,
     offline,
     pendingWrites,
+    rehearsing,
   ];
 }
 
@@ -305,8 +315,12 @@ class ControlCubit extends Cubit<ControlState> {
     this._socket, {
     PendingWrites? pending,
     SongsListRepository? songs,
+    ServiceClock? clock,
+    DateTime Function()? now,
   }) : _pending = pending ?? PendingWrites(),
        _songs = songs,
+       _clock = clock ?? ServiceClock(),
+       _now = now ?? DateTime.now,
        super(const ControlLoadingState());
 
   final ControlRepository _repository;
@@ -321,6 +335,90 @@ class ControlCubit extends Cubit<ControlState> {
   /// rather than held by every presenter that never imports anything.
   final SongsListRepository? _songs;
   SongsListRepository get _songLibrary => _songs ?? Modular.get<SongsListRepository>();
+
+  final ServiceClock _clock;
+  final DateTime Function() _now;
+
+  /// When the item on the screen went on it; null while nothing is live.
+  DateTime? get itemStartedAt => _clock.itemStartedAt;
+
+  DateTime? get rehearsalStartedAt => _clock.rehearsalStartedAt;
+
+  /// Time spent on [itemId] in the rehearsal running now.
+  Duration rehearsedOn(String itemId) => _clock.spentOn(itemId, _now());
+
+  /// Every change of state passes through here, so the clock sees each move
+  /// of the output without every method that moves it having to remember to
+  /// say so.
+  @override
+  void onChange(Change<ControlState> change) {
+    super.onChange(change);
+    final next = change.nextState;
+    if (next is! ControlLoadedState) return;
+    final model = next.model;
+    final live = model.isLive ? model.liveItem : null;
+    _clock.observe(
+      collection: model.activeCollection,
+      onAir: live,
+      rehearsed: live ?? model.currentItem,
+      now: _now(),
+    );
+  }
+
+  // ── Rehearsal ─────────────────────────────────────────────────────────────
+
+  /// Starts timing a rehearsal of the open plan.
+  void startRehearsal() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final collection = model.activeCollection;
+    if (collection == null || model.rehearsing) return;
+    _clock.startRehearsal(collection, _now());
+    emit(ControlLoadedState(model.copyWith(rehearsing: true)));
+    _syncState();
+  }
+
+  /// Stops the rehearsal and returns what it measured.
+  RehearsalResult? endRehearsal() {
+    if (state is! ControlLoadedState) return null;
+    final model = (state as ControlLoadedState).model;
+    final result = _clock.endRehearsal(_now());
+    emit(ControlLoadedState(model.copyWith(rehearsing: false)));
+    _syncState();
+    return result;
+  }
+
+  /// Keeps rehearsed lengths as the plan: [planned] maps item ids to seconds.
+  Future<void> setPlannedTimes(Map<String, int?> planned) async {
+    for (final entry in planned.entries) {
+      await setItemPlanned(entry.key, entry.value);
+    }
+  }
+
+  Future<void> setItemPlanned(String itemId, int? secs) async {
+    await _write(
+      PendingWrite(kind: PendingKind.itemPlanned, target: itemId, args: {'planned_secs': secs}),
+      () => _repository.updateItemPlanned(itemId, secs),
+      reload: false,
+    );
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    CollectionItem apply(CollectionItem i) =>
+        i.id == itemId ? i.copyWith(plannedSecs: secs, clearPlanned: secs == null) : i;
+    Collection applyTo(Collection c) => c.copyWith(items: [for (final i in c.items) apply(i)]);
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          collections: [for (final c in model.collections) applyTo(c)],
+          activeCollection: model.activeCollection == null
+              ? null
+              : applyTo(model.activeCollection!),
+        ),
+      ),
+    );
+    // The stage display counts the item on the screen against this.
+    _syncState();
+  }
 
   WindowController? _displayController;
   Timer? _autoAdvanceTimer;
@@ -446,6 +544,8 @@ class ControlCubit extends Cubit<ControlState> {
         await _repository.updateItemNotes(change.target, args['notes'] as String?);
       case PendingKind.itemAutoAdvance:
         await _repository.updateItemAutoAdvance(change.target, args['auto_advance_secs'] as int?);
+      case PendingKind.itemPlanned:
+        await _repository.updateItemPlanned(change.target, args['planned_secs'] as int?);
       case PendingKind.itemOrder:
         await _repository.reorderItems(
           change.target,
@@ -521,6 +621,7 @@ class ControlCubit extends Cubit<ControlState> {
             overlayVisible: previous?.overlayVisible ?? false,
             overlayText: previous?.overlayText,
             waiting: previous?.waiting ?? const WaitingConfig(),
+            rehearsing: previous?.rehearsing ?? false,
           ),
         ),
       );
@@ -558,6 +659,7 @@ class ControlCubit extends Cubit<ControlState> {
                 blankScreen: previous?.blankScreen ?? false,
                 gridView: previous?.gridView ?? true,
                 waiting: previous?.waiting ?? const WaitingConfig(),
+                rehearsing: previous?.rehearsing ?? false,
               ),
             ),
           );
@@ -900,6 +1002,7 @@ class ControlCubit extends Cubit<ControlState> {
           contentJson: item.content,
           notes: item.notes,
           autoAdvanceSecs: item.autoAdvanceSecs,
+          plannedSecs: item.plannedSecs,
         ),
     ]);
 
@@ -1591,6 +1694,11 @@ class ControlCubit extends Cubit<ControlState> {
       'overlay_text': model.overlayText,
       'stage_message': model.stageMessage,
       'waiting': model.waiting.toJson(),
+      'timing': {
+        'item_started_at': _clock.itemStartedAt?.toUtc().toIso8601String(),
+        'planned_secs': model.isLive ? model.liveItem?.plannedSecs : null,
+        'rehearsal': model.rehearsing,
+      },
     };
 
     // The other windows first, and over the local link, which is the only path
@@ -1616,21 +1724,9 @@ class ControlCubit extends Cubit<ControlState> {
     // is. Offline this always fails, and a slide change is not the moment to
     // tell anyone about it.
     unawaited(
-      _repository
-          .upsertPresentationState(
-            collectionId: model.activeCollection?.id,
-            itemIndex: model.liveItemIndex,
-            slideIndex: model.liveSlideIndex,
-            isLive: model.isLive,
-            blankScreen: model.blankScreen,
-            countdownActive: model.countdownActive,
-            countdownEnd: model.countdownEnd,
-            overlayVisible: model.overlayVisible,
-            overlayText: model.overlayText,
-          )
-          .catchError((Object e) {
-            appLogger.w('ControlCubit._syncState | state not written: $e');
-          }),
+      _repository.upsertPresentationState(position).catchError((Object e) {
+        appLogger.w('ControlCubit._syncState | state not written: $e');
+      }),
     );
   }
 

@@ -261,6 +261,30 @@ void main() {
       expect(find.text('Renombrar'), findsOneWidget);
     });
 
+    for (final (entry, typed) in [
+      ('Renombrar', 'Anuncios del mes'),
+      ('Duración', '4:30'),
+      ('Auto-avance', '12'),
+    ]) {
+      testWidgets('$entry: Enter in the field saves and closes cleanly', (tester) async {
+        // The controller was disposed the moment the dialog returned, while the
+        // dialog was still animating out with its field attached. Closing it
+        // from inside the field, with Enter, took the app down.
+        await pumpPresenter(tester);
+
+        await tester.tap(find.text('Anuncios'), buttons: kSecondaryButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(entry));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).last, typed);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(TextField), findsNothing, reason: 'the dialog closed');
+      });
+    }
+
     testWidgets('does not offer to rename a song from here', (tester) async {
       // Its name is the song's. Changing it here would either lie about the
       // library or have to be undone in two places.

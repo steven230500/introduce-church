@@ -35,6 +35,7 @@ Map<String, dynamic> songItemRow({
   String? templateId,
   String? notes,
   int? autoAdvanceSecs,
+  int? plannedSecs,
 }) => {
   'id': id,
   'collection_id': collectionId,
@@ -44,6 +45,7 @@ Map<String, dynamic> songItemRow({
   'content_json': null,
   'notes': notes,
   'auto_advance_secs': autoAdvanceSecs,
+  'planned_secs': plannedSecs,
   'songs': {
     'id': 'song-$id',
     'title': title,

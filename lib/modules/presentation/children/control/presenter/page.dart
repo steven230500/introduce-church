@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -30,12 +31,17 @@ import '../../../../../core/widgets/ui/empty_state.dart';
 import '../../../../../core/widgets/ui/hover_builder.dart';
 import '../../../../../core/widgets/ui/page_header.dart';
 import '../../../../../core/widgets/ui/panel_resizer.dart';
+import '../../../../../core/widgets/ui/text_controller_scope.dart';
 import '../../../shell/shell_cubit.dart';
 import '../../../shell/widgets/collection_dialog.dart';
 import '../../../shell/widgets/quick_verse_dialog.dart';
+import '../../../shell/widgets/rehearsal_summary_dialog.dart';
+import '../../../../../core/timing/item_timer.dart';
+import '../../../../../core/timing/service_clock.dart';
 import 'cubit/cubit.dart';
 
 part 'widgets/body.dart';
+part 'widgets/rehearsal_bar.dart';
 part 'widgets/set_list/panel.dart';
 part 'widgets/set_list/add_menu.dart';
 part 'widgets/set_list/importers.dart';

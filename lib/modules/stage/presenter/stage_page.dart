@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/widgets/slide_view.dart';
+import '../../../core/timing/item_timer.dart';
 import 'stage_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -339,14 +340,20 @@ class _InfoPanelState extends State<_InfoPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Clock
-          Text(
-            _time,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.w200,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
+          Row(
+            children: [
+              Text(
+                _time,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w200,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              const Spacer(),
+              if (state.rehearsal) const _RehearsalTag(),
+            ],
           ),
 
           const Divider(color: AppColors.surfaceControl, height: 24),
@@ -367,6 +374,16 @@ class _InfoPanelState extends State<_InfoPanel> {
               'Slide ${current.slideIndex + 1} / ${current.slideCount}',
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
+            // Large enough to read from the pulpit: this is the number the
+            // preacher is looking for.
+            if (state.isLive && state.itemStartedAt != null) ...[
+              const SizedBox(height: 10),
+              ItemTimer(
+                startedAt: state.itemStartedAt,
+                plannedSecs: state.plannedSecs,
+                fontSize: 22,
+              ),
+            ],
             if (current.chords?.isNotEmpty == true) ...[
               const SizedBox(height: 8),
               Container(
@@ -528,4 +545,29 @@ class _CountdownChipState extends State<_CountdownChip> {
       ),
     );
   }
+}
+
+/// Says a rehearsal is running, so nobody on the platform mistakes it for the
+/// service.
+class _RehearsalTag extends StatelessWidget {
+  const _RehearsalTag();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.warning.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
+    ),
+    child: const Text(
+      'ENSAYO',
+      style: TextStyle(
+        color: AppColors.warning,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1,
+      ),
+    ),
+  );
 }

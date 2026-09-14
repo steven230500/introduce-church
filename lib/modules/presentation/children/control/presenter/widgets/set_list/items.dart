@@ -64,6 +64,18 @@ class _SetListItems extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text(t.sectionItems, style: AppText.sectionLabel)),
+              // Beside the list it adds up, rather than in the subtitle above,
+              // where it was cut off after the date.
+              if (_plannedTotal(t, collection) case final total?)
+                Tooltip(
+                  message: t.plannedDuration,
+                  child: Text(
+                    total,
+                    style: AppText.rowSubtitle.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
               const _AddItemMenu(),
             ],
           ),
@@ -320,6 +332,12 @@ class _TileFlags extends StatelessWidget {
           label: '${item.autoAdvanceSecs}s',
           color: AppColors.success,
         ),
+      if (item.plannedSecs != null)
+        _Flag(
+          icon: Icons.schedule,
+          label: clockText(Duration(seconds: item.plannedSecs!)),
+          color: AppColors.textTertiary,
+        ),
       if (item.notes?.isNotEmpty == true)
         _Flag(icon: Icons.sticky_note_2_outlined, label: item.notes!, color: AppColors.note),
     ];
@@ -428,6 +446,17 @@ List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
     ),
   ),
   PopupMenuItem(
+    value: 'planned',
+    height: 38,
+    child: AppMenuRow(
+      icon: Icons.schedule,
+      label: t.plannedMenu,
+      trailing: item.plannedSecs != null
+          ? clockText(Duration(seconds: item.plannedSecs!))
+          : t.plannedNone,
+    ),
+  ),
+  PopupMenuItem(
     value: 'auto_advance',
     height: 38,
     child: AppMenuRow(
@@ -489,6 +518,8 @@ Future<void> _runItemAction(
       cubit.setItemTemplate(collectionId, item.id, null);
     case 'notes':
       await _showNotesDialog(context, item, cubit);
+    case 'planned':
+      await _showPlannedDialog(context, item, cubit);
     case 'auto_advance':
       await _showAutoAdvanceDialog(context, item, cubit);
     case 'remove':
@@ -535,30 +566,31 @@ Future<void> _showRenameDialog(
   ControlCubit cubit,
 ) async {
   final t = L10n.of(context);
-  // Selected, not just filled: every name worth changing is a long one that
-  // an import chose, and the operator should not have to clear it by hand.
-  final ctrl = TextEditingController(text: item.displayTitle)
-    ..selection = TextSelection(baseOffset: 0, extentOffset: item.displayTitle.length);
   final name = await showDialog<String>(
     context: context,
-    builder: (ctx) => AppDialog(
-      title: t.rename,
-      icon: Icons.drive_file_rename_outline,
-      width: 380,
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
-        const SizedBox(width: AppSpace.sm),
-        FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
-      ],
-      child: AppTextField(
-        controller: ctrl,
-        hintText: t.itemName,
-        autofocus: true,
-        onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+    // Selected, not just filled: every name worth changing is a long one that
+    // an import chose, and the operator should not have to clear it by hand.
+    builder: (_) => TextControllerScope(
+      text: item.displayTitle,
+      selectAll: true,
+      builder: (ctx, ctrl) => AppDialog(
+        title: t.rename,
+        icon: Icons.drive_file_rename_outline,
+        width: 380,
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
+          const SizedBox(width: AppSpace.sm),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
+        ],
+        child: AppTextField(
+          controller: ctrl,
+          hintText: t.itemName,
+          autofocus: true,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
       ),
     ),
   );
-  ctrl.dispose();
   // An empty name would leave the row with nothing to click on.
   if (name == null || name.isEmpty || name == item.displayTitle) return;
   await cubit.setItemTitle(item.id, name);
@@ -572,65 +604,73 @@ Future<void> _showAutoAdvanceDialog(
   ControlCubit cubit,
 ) async {
   final t = L10n.of(context);
-  final ctrl = TextEditingController(text: item.autoAdvanceSecs?.toString() ?? '');
   final result = await showDialog<int?>(
     context: context,
-    builder: (ctx) => AppDialog(
-      title: t.autoAdvance,
-      icon: Icons.timer_outlined,
-      width: 360,
-      actions: [
-        if (item.autoAdvanceSecs != null)
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, -1),
-            style: TextButton.styleFrom(foregroundColor: kDestructive),
-            child: Text(t.remove),
-          ),
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
-      ],
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(item.displayTitle, style: const TextStyle(color: kTextSecondary, fontSize: 12)),
-          const SizedBox(height: 12),
-          Text(t.advanceAfter, style: TextStyle(color: kTextSecondary, fontSize: 12)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [5, 10, 15, 20, 30, 60]
-                .map(
-                  (s) => ActionChip(
-                    label: Text('${s}s'),
-                    backgroundColor: kDialogSurface,
-                    labelStyle: const TextStyle(color: kTextPrimary, fontSize: 12),
-                    onPressed: () => Navigator.pop(ctx, s),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(controller: ctrl, hintText: t.customSeconds),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () {
-                  final v = int.tryParse(ctrl.text);
-                  if (v != null && v > 0) Navigator.pop(ctx, v);
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
+    builder: (_) => TextControllerScope(
+      text: item.autoAdvanceSecs?.toString() ?? '',
+      builder: (ctx, ctrl) => AppDialog(
+        title: t.autoAdvance,
+        icon: Icons.timer_outlined,
+        width: 360,
+        actions: [
+          if (item.autoAdvanceSecs != null)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, -1),
+              style: TextButton.styleFrom(foregroundColor: kDestructive),
+              child: Text(t.remove),
+            ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
         ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.displayTitle, style: const TextStyle(color: kTextSecondary, fontSize: 12)),
+            const SizedBox(height: 12),
+            Text(t.advanceAfter, style: TextStyle(color: kTextSecondary, fontSize: 12)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [5, 10, 15, 20, 30, 60]
+                  .map(
+                    (s) => ActionChip(
+                      label: Text('${s}s'),
+                      backgroundColor: kDialogSurface,
+                      labelStyle: const TextStyle(color: kTextPrimary, fontSize: 12),
+                      onPressed: () => Navigator.pop(ctx, s),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    controller: ctrl,
+                    hintText: t.customSeconds,
+                    onSubmitted: (text) {
+                      final v = int.tryParse(text);
+                      if (v != null && v > 0) Navigator.pop(ctx, v);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final v = int.tryParse(ctrl.text);
+                    if (v != null && v > 0) Navigator.pop(ctx, v);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
-  ctrl.dispose();
   if (result == null) return;
   await cubit.setItemAutoAdvance(item.id, result == -1 ? null : result);
 }
@@ -639,28 +679,141 @@ Future<void> _showAutoAdvanceDialog(
 
 Future<void> _showNotesDialog(BuildContext context, CollectionItem item, ControlCubit cubit) async {
   final t = L10n.of(context);
-  final ctrl = TextEditingController(text: item.notes ?? '');
   final saved = await showDialog<String?>(
     context: context,
-    builder: (ctx) => AppDialog(
-      title: t.noteFor(item.displayTitle),
-      icon: Icons.sticky_note_2_outlined,
-      width: 380,
-      actions: [
-        if (item.notes?.isNotEmpty == true)
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ''),
-            style: TextButton.styleFrom(foregroundColor: kDestructive),
-            child: Text(t.clear),
-          ),
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
-        const SizedBox(width: 8),
-        FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
-      ],
-      child: AppTextField(controller: ctrl, hintText: t.internalNote, maxLines: 5, autofocus: true),
+    builder: (_) => TextControllerScope(
+      text: item.notes ?? '',
+      builder: (ctx, ctrl) => AppDialog(
+        title: t.noteFor(item.displayTitle),
+        icon: Icons.sticky_note_2_outlined,
+        width: 380,
+        actions: [
+          if (item.notes?.isNotEmpty == true)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              style: TextButton.styleFrom(foregroundColor: kDestructive),
+              child: Text(t.clear),
+            ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
+          const SizedBox(width: 8),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.save)),
+        ],
+        child: AppTextField(
+          controller: ctrl,
+          hintText: t.internalNote,
+          maxLines: 5,
+          autofocus: true,
+        ),
+      ),
     ),
   );
-  ctrl.dispose();
   if (saved == null) return;
   cubit.updateItemNotes(item.id, saved.isEmpty ? null : saved);
+}
+
+/// Sets how long an item is meant to take, by typing it.
+Future<void> _showPlannedDialog(
+  BuildContext context,
+  CollectionItem item,
+  ControlCubit cubit,
+) async {
+  // -1 clears the plan; null is cancel.
+  final result = await showDialog<int>(
+    context: context,
+    builder: (_) => _PlannedDialog(item: item),
+  );
+  if (result == null) return;
+  await cubit.setItemPlanned(item.id, result == -1 ? null : result);
+}
+
+/// A widget of its own so the text field's controller lives exactly as long as
+/// the field does. Disposed by the caller as soon as the dialog returned, it
+/// was gone while the dialog was still animating out, and Enter to save took
+/// the app down with it.
+class _PlannedDialog extends StatefulWidget {
+  const _PlannedDialog({required this.item});
+
+  final CollectionItem item;
+
+  @override
+  State<_PlannedDialog> createState() => _PlannedDialogState();
+}
+
+class _PlannedDialogState extends State<_PlannedDialog> {
+  late final _ctrl = TextEditingController(
+    text: widget.item.plannedSecs == null
+        ? ''
+        : clockText(Duration(seconds: widget.item.plannedSecs!)),
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final secs = parseDuration(_ctrl.text);
+    if (secs == null) {
+      setState(() => _error = L10n.of(context).plannedInvalid);
+      return;
+    }
+    Navigator.pop(context, secs);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    return AppDialog(
+      title: t.plannedDuration,
+      icon: Icons.schedule,
+      width: 380,
+      actions: [
+        if (widget.item.plannedSecs != null)
+          TextButton(
+            onPressed: () => Navigator.pop(context, -1),
+            style: TextButton.styleFrom(foregroundColor: kDestructive),
+            child: Text(t.remove),
+          ),
+        const Spacer(),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.cancel)),
+        const SizedBox(width: AppSpace.sm),
+        FilledButton(onPressed: _submit, child: Text(t.save)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.item.displayTitle,
+            style: const TextStyle(color: kTextSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Text(t.plannedIntro, style: AppText.body),
+          const SizedBox(height: AppSpace.md),
+          AppTextField(
+            controller: _ctrl,
+            hintText: t.plannedHint,
+            autofocus: true,
+            onSubmitted: (_) => _submit(),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The planned length of the whole plan, or null when no item has one.
+String? _plannedTotal(L10n t, Collection collection) {
+  final length = plannedLength(collection);
+  if (length.total == Duration.zero) return null;
+  final time = clockText(length.total);
+  return length.unplanned == 0
+      ? t.plannedTotal(time)
+      : t.plannedTotalPartial(time, length.unplanned);
 }

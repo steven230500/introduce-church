@@ -361,6 +361,13 @@ class _SidePreviewPanel extends StatelessWidget {
                     '${model.liveSlideIndex + 1} de ${item.slides.length}',
                     style: AppText.rowSubtitle,
                   ),
+                  if (model.isLive) ...[
+                    const SizedBox(height: 4),
+                    ItemTimer(
+                      startedAt: context.read<ControlCubit>().itemStartedAt,
+                      plannedSecs: item.plannedSecs,
+                    ),
+                  ],
                 ],
               ),
             ),
