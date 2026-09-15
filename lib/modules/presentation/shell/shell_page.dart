@@ -17,6 +17,7 @@ import '../../../core/history/projection_recorder.dart';
 import '../../../core/remote/remote_control.dart';
 import '../../../core/services/app_prefs_service.dart';
 import '../../../core/services/update_checker.dart';
+import '../../../core/services/usage_reporter.dart';
 import '../../../l10n/l10n.dart';
 import '../../../core/widgets/ui/panel_resizer.dart';
 import 'org_admin_dialog.dart';
@@ -80,6 +81,10 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   /// is whenever the app is in use.
   final UpdateChecker _updates = Modular.get<UpdateChecker>();
 
+  /// The anonymous "a copy is in use" count. Started here, where there is a
+  /// session, so the count knows which church the copy belongs to.
+  final UsageReporter _usage = Modular.get<UsageReporter>();
+
   /// Quitting the app with a song still on the screen must still record that
   /// song, and dispose() is not guaranteed to run on the way out.
   late final AppLifecycleListener _lifecycle = AppLifecycleListener(
@@ -99,6 +104,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     unawaited(_remote.restore());
     _control.keepRetrying();
     _updates.start();
+    _usage.start();
   }
 
   /// Held rather than looked up again in dispose, where the tree it would be
@@ -109,6 +115,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   void dispose() {
     _control.stopRetrying();
     _updates.stop();
+    _usage.stop();
     unawaited(_recorder.stop());
     unawaited(_remote.dispose());
     _lifecycle.dispose();

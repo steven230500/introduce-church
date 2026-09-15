@@ -15,6 +15,7 @@ import 'services/app_prefs_service.dart';
 import 'services/locale_controller.dart';
 import 'services/bible_download_service.dart';
 import 'services/update_checker.dart';
+import 'services/usage_reporter.dart';
 
 class CoreModule extends Module {
   @override
@@ -52,5 +53,11 @@ class CoreModule extends Module {
     // One for the process, so the sidebar and the settings see the same answer
     // and GitHub is asked once, not once per screen.
     i.addLazySingleton<UpdateChecker>(() => UpdateChecker());
+    i.addLazySingleton<UsageReporter>(
+      () => UsageReporter(
+        send: (body) => Modular.get<ApiClient>().post<void>('/events', data: body),
+        installId: Modular.get<AppPrefsService>().installId,
+      ),
+    );
   }
 }

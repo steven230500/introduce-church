@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/new_id.dart';
+
 class AppPrefsService {
   Map<String, dynamic>? _cache;
 
@@ -159,6 +161,19 @@ class AppPrefsService {
     // the first-run question back.
     d['language_asked'] = true;
     await _write(d);
+  }
+
+  /// A random id for this computer, made the first time it is asked for.
+  ///
+  /// It lets the anonymous count of copies in use tell ten launches on one
+  /// laptop from ten laptops, without a name or an email attached to either.
+  Future<String> installId() async {
+    final d = await _read();
+    final existing = d['install_id'];
+    if (existing is String && existing.isNotEmpty) return existing;
+    final id = newId();
+    await _write(Map<String, dynamic>.from(d)..['install_id'] = id);
+    return id;
   }
 
   /// Whether this computer has been asked which language to use.
