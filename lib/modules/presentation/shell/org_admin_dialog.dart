@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../../core/api/error_text.dart';
 import '../../../core/models/organization.dart';
 import '../../../core/repositories/organization_repository.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_text.dart';
+import '../../../core/widgets/app_dialog.dart';
 import '../../../l10n/l10n.dart';
 
 void showOrgAdminDialog(BuildContext context) {
@@ -30,6 +34,10 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
   List<OrgMember> _members = [];
   bool _loading = true;
   Object? _error;
+
+  /// What went wrong with the last change asked for here, such as removing
+  /// the church's only administrator. Shown above the tabs until the next one.
+  Object? _actionError;
   static const _noOrganization = Object();
 
   bool get _isAdmin => _me?.role == OrgMemberRole.admin;
@@ -91,6 +99,46 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
     _load();
   }
 
+  Future<void> _act(Future<void> Function() change) async {
+    setState(() => _actionError = null);
+    try {
+      await change();
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _actionError = e);
+    }
+  }
+
+  Future<void> _setAdmin(OrgMember member, bool admin) =>
+      _act(() => widget.repo.setAdmin(member.id, admin: admin));
+
+  Future<void> _remove(OrgMember member) async {
+    final t = L10n.of(context);
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: t.orgRemoveMemberTitle,
+      message: t.orgRemoveMemberBody(member.label),
+      confirmLabel: t.orgRemoveMemberConfirm,
+      destructive: true,
+      icon: Icons.person_remove_outlined,
+    );
+    if (confirmed) await _act(() => widget.repo.removeMember(member.id));
+  }
+
+  Future<void> _resetCode(OrgMember member) async {
+    setState(() => _actionError = null);
+    try {
+      final code = await widget.repo.createResetCode(member.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => ResetCodeDialog(name: member.label, code: code),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _actionError = e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -117,6 +165,14 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
                 ),
               )
             else ...[
+              if (_actionError != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    errorText(L10n.of(context), _actionError),
+                    style: const TextStyle(color: AppColors.danger, fontSize: 12, height: 1.4),
+                  ),
+                ),
               TabBar(
                 controller: _tabs,
                 tabs: [
@@ -144,7 +200,14 @@ class _OrgAdminDialogState extends State<OrgAdminDialog> with SingleTickerProvid
                       onApprove: _approve,
                       onReject: _reject,
                     ),
-                    _MembersTab(members: _members, meId: _me?.userId ?? ''),
+                    _MembersTab(
+                      members: _members,
+                      meId: _me?.userId ?? '',
+                      isAdmin: _isAdmin,
+                      onSetAdmin: _setAdmin,
+                      onResetCode: _resetCode,
+                      onRemove: _remove,
+                    ),
                   ],
                 ),
               ),
@@ -303,9 +366,20 @@ class _PendingTab extends StatelessWidget {
 // ── Members tab ───────────────────────────────────────────────────────────────
 
 class _MembersTab extends StatelessWidget {
-  const _MembersTab({required this.members, required this.meId});
+  const _MembersTab({
+    required this.members,
+    required this.meId,
+    required this.isAdmin,
+    required this.onSetAdmin,
+    required this.onResetCode,
+    required this.onRemove,
+  });
   final List<OrgMember> members;
   final String meId;
+  final bool isAdmin;
+  final Future<void> Function(OrgMember, bool admin) onSetAdmin;
+  final Future<void> Function(OrgMember) onResetCode;
+  final Future<void> Function(OrgMember) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +446,14 @@ class _MembersTab extends StatelessWidget {
                 ),
               ),
               _RoleBadge(role: m.role),
+              if (isAdmin)
+                _MemberMenu(
+                  member: m,
+                  isMe: isMe,
+                  onSetAdmin: onSetAdmin,
+                  onResetCode: onResetCode,
+                  onRemove: onRemove,
+                ),
             ],
           ),
         );
@@ -400,6 +482,120 @@ class _RoleBadge extends StatelessWidget {
           color: isAdmin ? AppColors.accent : AppColors.textTertiary,
           fontWeight: isAdmin ? FontWeight.w600 : FontWeight.normal,
         ),
+      ),
+    );
+  }
+}
+
+enum _MemberAction { makeAdmin, removeAdmin, resetCode, remove }
+
+/// What an administrator can do to one member. Their own row offers only
+/// stepping down, and the server refuses even that for the last administrator.
+class _MemberMenu extends StatelessWidget {
+  const _MemberMenu({
+    required this.member,
+    required this.isMe,
+    required this.onSetAdmin,
+    required this.onResetCode,
+    required this.onRemove,
+  });
+
+  final OrgMember member;
+  final bool isMe;
+  final Future<void> Function(OrgMember, bool admin) onSetAdmin;
+  final Future<void> Function(OrgMember) onResetCode;
+  final Future<void> Function(OrgMember) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    final isAdmin = member.role == OrgMemberRole.admin;
+    return PopupMenuButton<_MemberAction>(
+      tooltip: t.orgMemberActions,
+      icon: const Icon(Icons.more_vert_rounded, size: 18, color: AppColors.textTertiary),
+      color: AppColors.surfaceRaised,
+      onSelected: (action) => switch (action) {
+        _MemberAction.makeAdmin => onSetAdmin(member, true),
+        _MemberAction.removeAdmin => onSetAdmin(member, false),
+        _MemberAction.resetCode => onResetCode(member),
+        _MemberAction.remove => onRemove(member),
+      },
+      itemBuilder: (_) => [
+        if (!isAdmin) PopupMenuItem(value: _MemberAction.makeAdmin, child: Text(t.orgMakeAdmin)),
+        if (isAdmin) PopupMenuItem(value: _MemberAction.removeAdmin, child: Text(t.orgRemoveAdmin)),
+        if (!isMe) PopupMenuItem(value: _MemberAction.resetCode, child: Text(t.orgResetCode)),
+        if (!isMe)
+          PopupMenuItem(
+            value: _MemberAction.remove,
+            child: Text(t.orgRemoveMember, style: const TextStyle(color: AppColors.danger)),
+          ),
+      ],
+    );
+  }
+}
+
+/// Shows a password code once, big enough to read out, with a way to copy it
+/// into a message.
+class ResetCodeDialog extends StatefulWidget {
+  const ResetCodeDialog({super.key, required this.name, required this.code});
+
+  final String name;
+  final String code;
+
+  @override
+  State<ResetCodeDialog> createState() => _ResetCodeDialogState();
+}
+
+class _ResetCodeDialogState extends State<ResetCodeDialog> {
+  bool _copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    return AppDialog(
+      title: t.resetCodeTitle(widget.name),
+      icon: Icons.key_outlined,
+      width: 420,
+      actions: [
+        TextButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: widget.code));
+            if (mounted) setState(() => _copied = true);
+          },
+          icon: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded, size: 16),
+          label: Text(_copied ? t.resetCodeCopied : t.resetCodeCopy),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        FilledButton(onPressed: () => Navigator.pop(context), child: Text(t.close)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceControl,
+              borderRadius: AppRadius.all(AppRadius.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: SelectableText(
+              widget.code,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 4,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Text(t.resetCodeBody(widget.name), style: AppText.body),
+          const SizedBox(height: AppSpace.sm),
+          Text(t.resetCodeExpires, style: AppText.rowSubtitle),
+        ],
       ),
     );
   }

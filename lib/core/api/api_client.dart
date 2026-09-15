@@ -85,6 +85,22 @@ class ApiClient {
     return session;
   }
 
+  /// Sets a new password with a code an administrator of the church created.
+  ///
+  /// Works without a session: the person asking is the one who cannot sign
+  /// in. Nothing is signed in afterwards; they sign in with the new password.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await post<void>(
+      '/auth/reset-password',
+      data: {'email': email.trim(), 'code': code.trim(), 'new_password': newPassword},
+      authenticated: false,
+    );
+  }
+
   /// Replaces the password and ends the session.
   ///
   /// The server revokes every session on a change, including this one, so the

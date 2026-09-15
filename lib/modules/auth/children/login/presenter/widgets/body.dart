@@ -7,7 +7,9 @@ String _hintText(L10n t, LoginHint hint) => switch (hint) {
 };
 
 class _Body extends StatefulWidget {
-  const _Body();
+  const _Body({this.resetPassword});
+
+  final ResetPassword? resetPassword;
 
   @override
   State<_Body> createState() => _BodyState();
@@ -15,6 +17,23 @@ class _Body extends StatefulWidget {
 
 class _BodyState extends State<_Body> {
   bool _obscure = true;
+
+  /// A volunteer who forgot the password gets back in with a code from an
+  /// administrator of their church; there is no email to send one to.
+  Future<void> _forgotPassword(String email) async {
+    final changed = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ResetPasswordDialog(
+        email: email,
+        reset: widget.resetPassword ?? Modular.get<ApiClient>().resetPassword,
+      ),
+    );
+    if (changed == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L10n.of(context).resetDone), backgroundColor: AppColors.success),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +206,17 @@ class _BodyState extends State<_Body> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    if (!model.isRegistering)
+                      Center(
+                        child: TextButton(
+                          onPressed: isLoading ? null : () => _forgotPassword(model.email),
+                          child: Text(
+                            L10n.of(context).loginForgotPassword,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+                          ),
+                        ),
+                      ),
 
                     Center(
                       child: TextButton(

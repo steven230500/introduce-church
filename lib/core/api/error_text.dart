@@ -14,6 +14,8 @@ String errorText(L10n t, Object? error) {
       'invalid_credentials' => t.errorInvalidCredentials,
       'email_taken' => t.errorEmailTaken,
       'weak_password' => t.errorWeakPassword,
+      'last_admin' => t.errorLastAdmin,
+      'invalid_reset_code' => t.errorInvalidResetCode,
       'invalid_refresh' || 'invalid_token' => t.errorSessionExpired,
       ApiException.timeout => t.errorTimeout,
       ApiException.noConnection => t.errorNoConnection,

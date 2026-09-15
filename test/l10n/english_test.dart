@@ -62,6 +62,7 @@ const _swept = [
   'lib/core/widgets/template_picker/editor_controls.dart',
   'lib/modules/presentation/shell/widgets/update_dialog.dart',
   'lib/core/services/update_checker.dart',
+  'lib/modules/auth/children/login/presenter/widgets/reset_password_dialog.dart',
 ];
 
 /// Spanish that gives itself away: an accent or an opening mark, or one of the

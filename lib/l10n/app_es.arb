@@ -1249,6 +1249,48 @@
   "orgReject": "Rechazar",
   "orgNoMembers": "Sin miembros.",
   "orgYou": "(tú)",
+  "orgMemberActions": "Opciones",
+  "orgMakeAdmin": "Hacer administrador",
+  "orgRemoveAdmin": "Quitar administrador",
+  "orgResetCode": "Código para cambiar contraseña",
+  "orgRemoveMember": "Quitar de la iglesia",
+  "orgRemoveMemberTitle": "Quitar de la iglesia",
+  "orgRemoveMemberBody": "{name} deja de ver las canciones, los servicios y los diseños de la iglesia, y su sesión se cierra. Puede volver a pedir unirse.",
+  "@orgRemoveMemberBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "orgRemoveMemberConfirm": "Quitar",
+  "resetCodeTitle": "Código para {name}",
+  "@resetCodeTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resetCodeBody": "Dáselo a {name} en persona o por mensaje. En la pantalla de entrar, pulsa «¿Olvidaste tu contraseña?» y escribe su correo, este código y una contraseña nueva.",
+  "@resetCodeBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resetCodeExpires": "Sirve una sola vez y vence en 24 horas.",
+  "resetCodeCopy": "Copiar",
+  "resetCodeCopied": "Copiado",
+  "loginForgotPassword": "¿Olvidaste tu contraseña?",
+  "resetTitle": "Recuperar la contraseña",
+  "resetIntro": "Pide un código a un administrador de tu iglesia. Lo crea en Organización, junto a tu nombre.",
+  "resetCode": "Código",
+  "resetCodeHint": "ABCD-EFGH",
+  "resetDone": "Contraseña cambiada. Ya puedes entrar con la nueva.",
+  "errorLastAdmin": "La iglesia necesita al menos un administrador. Haz administrador a otra persona primero.",
+  "errorInvalidResetCode": "El código no es correcto o ya venció. Pide uno nuevo a un administrador.",
   "shortcutsTitle": "Atajos de teclado",
   "shortcutsGroupSlides": "Avanzar slides",
   "shortcutsGroupProjection": "Proyección",

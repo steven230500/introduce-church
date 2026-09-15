@@ -127,6 +127,23 @@ class OrganizationRepository {
     await _api.post<void>('/org/members/$memberId/reject');
   }
 
+  /// Makes a member an administrator, or takes the role away. The server
+  /// refuses to take it from the church's last administrator.
+  Future<void> setAdmin(String memberId, {required bool admin}) async {
+    await _api.put<void>('/org/members/$memberId/role', data: {'role': admin ? 'admin' : 'member'});
+  }
+
+  /// Takes someone out of the church and ends their sessions.
+  Future<void> removeMember(String memberId) async {
+    await _api.delete<void>('/org/members/$memberId');
+  }
+
+  /// A one-time code the member uses, with their email, to set a new password.
+  Future<String> createResetCode(String memberId) async {
+    final body = await _api.post<Map<String, dynamic>>('/org/members/$memberId/reset-code');
+    return body!['code'] as String;
+  }
+
   Future<List<OrgMember>> _members(String path) async {
     final rows = await _api.get<List<dynamic>>(path);
     return (rows ?? []).map((r) => OrgMember.fromJson(r as Map<String, dynamic>)).toList();

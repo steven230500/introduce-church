@@ -50,6 +50,20 @@ void main() {
     expect(find.text('Entrar'), findsOneWidget);
   });
 
+  testWidgets('someone who forgot the password is offered a way back in', (tester) async {
+    await pumpLogin(tester);
+
+    expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
+
+    await tester.tap(find.text('¿Primera vez? Crea una cuenta'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('¿Olvidaste tu contraseña?'),
+      findsNothing,
+      reason: 'a new account has no password to forget',
+    );
+  });
+
   testWidgets('the submit button stays disabled until the form is valid', (tester) async {
     await pumpLogin(tester);
 
