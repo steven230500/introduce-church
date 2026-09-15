@@ -56,6 +56,14 @@ class LiveBar extends StatelessWidget {
               const SizedBox(width: AppSpace.md),
             ],
 
+            // A passage on the screen that is not in the service. Without this
+            // the operator has no sign of why the projector is not following
+            // the set list, and no way back.
+            if (model?.looseActive == true) ...[
+              _LooseChip(onReturn: cubit.clearLoose),
+              const SizedBox(width: AppSpace.md),
+            ],
+
             // ── What the congregation sees ────────────────────────────
             AppButtonGroup(
               children: [
@@ -439,6 +447,50 @@ class _ProjectorButton extends StatelessWidget {
 /// the service runs from them. What it warns about is the other half, because
 /// an operator who removes an item and sees nothing happen has no other way to
 /// find out why.
+class _LooseChip extends StatelessWidget {
+  const _LooseChip({required this.onReturn});
+
+  final VoidCallback onReturn;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    return Tooltip(
+      message: t.looseHint,
+      child: Container(
+        padding: const EdgeInsets.only(left: AppSpace.sm, right: 4, top: 2, bottom: 2),
+        decoration: BoxDecoration(
+          color: AppColors.accentFill,
+          borderRadius: AppRadius.all(AppRadius.sm),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.menu_book_rounded, size: 13, color: AppColors.accentLight),
+            const SizedBox(width: AppSpace.xs),
+            Text(
+              t.looseOnScreen,
+              style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            TextButton(
+              onPressed: onReturn,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+              child: Text(t.looseReturn),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OfflineChip extends StatelessWidget {
   const _OfflineChip({required this.waiting, this.compact = false});
 

@@ -163,6 +163,19 @@ class AppPrefsService {
     await _write(d);
   }
 
+  /// Whether a passage goes on one slide instead of a slide per verse. The
+  /// operator sets it once and every passage after it follows.
+  Future<bool> versesTogether() async {
+    final d = await _read();
+    return d['verses_together'] == true;
+  }
+
+  Future<void> setVersesTogether(bool together) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['verses_together'] = together;
+    await _write(d);
+  }
+
   /// A random id for this computer, made the first time it is asked for.
   ///
   /// It lets the anonymous count of copies in use tell ten launches on one

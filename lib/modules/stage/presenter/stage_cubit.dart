@@ -183,8 +183,24 @@ class StageCubit extends Cubit<StageState> {
         emit(const StageState());
         return;
       }
-      final current = await _buildSlide(collection, itemIndex, slideIndex);
-      final next = await _buildNextSlide(collection, itemIndex, slideIndex);
+      // A passage projected without being added to the service: the musicians
+      // and the preacher see what the congregation sees, and nothing follows
+      // it until it comes down.
+      final loose = row['loose_verse'] is Map ? row['loose_verse'] as Map : null;
+      final looseContent = loose?['content'] as String? ?? '';
+      final current = looseContent.isNotEmpty
+          ? StageSlide(
+              content: looseContent,
+              reference: loose?['reference'] as String? ?? '',
+              template: await _templateById(collection.templateId),
+              itemTitle: loose?['reference'] as String? ?? '',
+              slideIndex: 0,
+              slideCount: 1,
+            )
+          : await _buildSlide(collection, itemIndex, slideIndex);
+      final next = looseContent.isNotEmpty
+          ? null
+          : await _buildNextSlide(collection, itemIndex, slideIndex);
 
       emit(
         StageState(
@@ -267,8 +283,10 @@ class StageCubit extends Cubit<StageState> {
     return _collections[id];
   }
 
-  Future<SlideTemplate> _resolveTemplate(Collection col, CollectionItem item) async {
-    final id = item.templateId ?? col.templateId;
+  Future<SlideTemplate> _resolveTemplate(Collection col, CollectionItem item) =>
+      _templateById(item.templateId ?? col.templateId);
+
+  Future<SlideTemplate> _templateById(String? id) async {
     if (id == null) return SlideTemplate.defaultTemplate;
     final preset = SlideTemplate.findPreset(id);
     if (preset != null) return preset;

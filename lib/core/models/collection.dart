@@ -107,6 +107,11 @@ class CollectionItem extends Equatable {
     _ => List.filled(slides.length, ''),
   };
 
+  /// Whether the church asked for the whole passage on one slide rather than
+  /// a slide per verse. A pastor reading three verses straight through does
+  /// not want the screen changing under him mid-sentence.
+  bool get versesTogether => contentJson?['together'] == true;
+
   List<String> get _bibleSlideRefs {
     final book = contentJson?['book'] ?? '';
     final chapter = contentJson?['chapter'] ?? '';
@@ -115,6 +120,9 @@ class CollectionItem extends Equatable {
     final suffix = version.isNotEmpty ? ' • $version' : '';
     final texts = contentJson?['texts'];
     if (texts is List && texts.isNotEmpty) {
+      if (versesTogether && texts.length > 1) {
+        return ['$book $chapter:$verseStart-${verseStart + texts.length - 1}$suffix'];
+      }
       return List.generate(texts.length, (i) => '$book $chapter:${verseStart + i}$suffix');
     }
     return ['$book $chapter:$verseStart$suffix'];
@@ -123,6 +131,7 @@ class CollectionItem extends Equatable {
   List<String> get _bibleSlides {
     final texts = contentJson?['texts'];
     if (texts is List && texts.isNotEmpty) {
+      if (versesTogether && texts.length > 1) return ['"${texts.join(' ')}"'];
       return texts.map((t) => '"$t"').toList();
     }
     final text = contentJson?['text'] as String? ?? '';

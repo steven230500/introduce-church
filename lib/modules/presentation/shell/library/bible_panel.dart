@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
@@ -9,7 +11,9 @@ import '../../../../core/theme/app_text.dart';
 import '../../../../core/widgets/bible_browser/bible_browser_cubit.dart';
 import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../../../core/widgets/ui/app_search_field.dart';
+import '../../../../core/services/app_prefs_service.dart';
 import '../../../../core/widgets/ui/empty_state.dart';
+import '../../../../core/widgets/ui/verse_layout_toggle.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../bible_versions_dialog.dart';
 import 'library_dock.dart';
@@ -382,7 +386,7 @@ class _BibleAddBar extends StatelessWidget {
             children: [
               Text(reference, style: AppText.rowTitle, overflow: TextOverflow.ellipsis),
               const SizedBox(height: AppSpace.sm),
-              _AddPassageButton(reference: reference, count: count),
+              _PassageActions(reference: reference, count: count),
             ],
           ),
         );
@@ -391,11 +395,65 @@ class _BibleAddBar extends StatelessWidget {
   }
 }
 
-class _AddPassageButton extends StatelessWidget {
-  const _AddPassageButton({required this.reference, required this.count});
+/// The choice of how the passage is projected, and the button that adds it.
+class _PassageActions extends StatefulWidget {
+  const _PassageActions({required this.reference, required this.count});
 
   final String reference;
   final int count;
+
+  @override
+  State<_PassageActions> createState() => _PassageActionsState();
+}
+
+class _PassageActionsState extends State<_PassageActions> {
+  /// Null in a test that pumps the panel on its own.
+  final _prefs = Modular.tryGet<AppPrefsService>();
+  bool _together = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefs?.versesTogether().then((value) {
+      if (mounted) setState(() => _together = value);
+    });
+  }
+
+  void _choose(bool together) {
+    setState(() => _together = together);
+    unawaited(_prefs?.setVersesTogether(together) ?? Future.value());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // One verse has nothing to join, so the choice only appears when it
+        // changes something.
+        if (widget.count > 1) ...[
+          VerseLayoutToggle(together: _together, onChanged: _choose),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        Row(
+          children: [
+            Expanded(child: _ProjectPassageButton(together: _together)),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: _AddPassageButton(count: widget.count, together: _together),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AddPassageButton extends StatelessWidget {
+  const _AddPassageButton({required this.count, required this.together});
+
+  final int count;
+  final bool together;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +469,7 @@ class _AddPassageButton extends StatelessWidget {
                   final control = context.read<ControlCubit>();
                   final ref = await browser.buildVerseRef();
                   if (ref == null || !context.mounted) return;
-                  await control.addBibleVerse(ref);
+                  await control.addBibleVerse(ref, together: together);
                   if (!context.mounted) return;
                   showAddedToast(context, ref.reference);
                 },
@@ -427,4 +485,35 @@ class _AddPassageButton extends StatelessWidget {
 
   static bool _hasTarget(ControlState s) =>
       s is ControlLoadedState && s.model.activeCollection != null;
+}
+
+/// Sends the passage to the screen and leaves the service alone. This is the
+/// button for the verse the pastor asks for in the middle of the sermon.
+class _ProjectPassageButton extends StatelessWidget {
+  const _ProjectPassageButton({required this.together});
+
+  final bool together;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: L10n.of(context).looseHint,
+      child: OutlinedButton.icon(
+        onPressed: () async {
+          final browser = context.read<BibleBrowserCubit>();
+          final control = context.read<ControlCubit>();
+          final ref = await browser.buildVerseRef();
+          if (ref == null) return;
+          control.projectLoose(ref, together: together);
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          side: const BorderSide(color: AppColors.border),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+        ),
+        icon: const Icon(Icons.present_to_all_rounded, size: 16),
+        label: Text(L10n.of(context).bibleProject, style: const TextStyle(fontSize: 12)),
+      ),
+    );
+  }
 }

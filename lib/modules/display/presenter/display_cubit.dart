@@ -196,6 +196,25 @@ class DisplayCubit extends Cubit<DisplayState> {
       return;
     }
 
+    // A passage the operator sent up without adding it to the service. It sits
+    // above the running order until it is taken down, and the service is
+    // untouched underneath.
+    if (row['loose_verse'] case final Map<dynamic, dynamic> loose) {
+      final content = loose['content'] as String? ?? '';
+      if (content.isNotEmpty) {
+        emit(
+          DisplaySlideState(
+            content: content,
+            reference: loose['reference'] as String? ?? '',
+            template: await _templateById(loose['template_id'] as String?),
+            overlayVisible: overlayVisible,
+            overlayText: overlayText,
+          ),
+        );
+        return;
+      }
+    }
+
     final collectionId = row['collection_id'] as String?;
     final itemIndex = (row['current_item_index'] as int?) ?? 0;
     final slideIndex = (row['current_slide_index'] as int?) ?? 0;
@@ -312,8 +331,10 @@ class DisplayCubit extends Cubit<DisplayState> {
   // Cache to avoid re-resolving the same custom design on every slide change.
   final Map<String, SlideTemplate> _templateCache = {};
 
-  Future<SlideTemplate> _resolveTemplate(Collection collection, CollectionItem item) async {
-    final id = item.templateId ?? collection.templateId;
+  Future<SlideTemplate> _resolveTemplate(Collection collection, CollectionItem item) =>
+      _templateById(item.templateId ?? collection.templateId);
+
+  Future<SlideTemplate> _templateById(String? id) async {
     if (id == null) return SlideTemplate.defaultTemplate;
 
     // Preset

@@ -7,6 +7,7 @@ import 'package:introduce_church/core/models/collection_item_type.dart';
 import '../helpers/builders.dart';
 
 void main() {
+  _versesTogether();
   group('content_json parsing', () {
     test('accepts a Map, which is what Supabase returns for a jsonb column', () {
       final item = CollectionItem.fromJson(
@@ -221,6 +222,62 @@ void main() {
 
       expect(item.copyWith(autoAdvanceSecs: null).autoAdvanceSecs, 15);
       expect(item.copyWith(clearAutoAdvance: true).autoAdvanceSecs, isNull);
+    });
+  });
+}
+
+void _versesTogether() {
+  group('a passage on one slide', () {
+    CollectionItem passage({required bool together}) => CollectionItem(
+      id: 'i1',
+      collectionId: 'c1',
+      type: CollectionItemType.bibleVerse,
+      order: 0,
+      contentJson: {
+        'book': 'Juan',
+        'chapter': 3,
+        'verse': 16,
+        'verseEnd': 17,
+        'version': 'RVR1960',
+        'texts': ['Porque de tal manera amó Dios al mundo', 'Porque no envió Dios a su Hijo'],
+        'together': together,
+      },
+    );
+
+    test('a verse at a time is what a passage does by default', () {
+      final item = passage(together: false);
+
+      expect(item.slides.length, 2);
+      expect(item.slideLabels, ['Juan 3:16 • RVR1960', 'Juan 3:17 • RVR1960']);
+    });
+
+    test('together, the whole passage is one slide with one reference', () {
+      final item = passage(together: true);
+
+      expect(item.slides, [
+        '"Porque de tal manera amó Dios al mundo Porque no envió Dios a su Hijo"',
+      ]);
+      expect(item.slideLabels, ['Juan 3:16-17 • RVR1960']);
+    });
+
+    test('a single verse is the same either way', () {
+      const one = CollectionItem(
+        id: 'i1',
+        collectionId: 'c1',
+        type: CollectionItemType.bibleVerse,
+        order: 0,
+        contentJson: {
+          'book': 'Juan',
+          'chapter': 3,
+          'verse': 16,
+          'version': 'RVR1960',
+          'texts': ['Porque de tal manera amó Dios al mundo'],
+          'together': true,
+        },
+      );
+
+      expect(one.slides.length, 1);
+      expect(one.slideLabels, ['Juan 3:16 • RVR1960']);
     });
   });
 }

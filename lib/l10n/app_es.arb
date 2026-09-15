@@ -799,6 +799,13 @@
   "bibleSearchBook": "Buscar libro...",
   "bibleNoBookMatches": "Ningún libro coincide",
   "bibleTapVerse": "Toca un versículo. Toca otro para elegir un pasaje.",
+  "bibleOnePerSlide": "Uno por slide",
+  "bibleTogether": "Todo junto",
+  "bibleProject": "Proyectar",
+  "looseOnScreen": "Versículo suelto",
+  "looseReturn": "Volver al servicio",
+  "looseHint": "Sale en pantalla sin entrar al servicio. Las flechas se mueven por el pasaje.",
+  "bibleSlideChoice": "Cómo se proyecta",
   "bibleAddPassage": "{count, plural, =1{Agregar versículo} other{Agregar pasaje ({count} versículos)}}",
   "@bibleAddPassage": {
     "placeholders": {

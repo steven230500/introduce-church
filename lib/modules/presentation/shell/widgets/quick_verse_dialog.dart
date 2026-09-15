@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +10,9 @@ import '../../../../core/local_db/bible_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text.dart';
+import '../../../../core/services/app_prefs_service.dart';
 import '../../../../core/widgets/app_dialog.dart';
+import '../../../../core/widgets/ui/verse_layout_toggle.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -54,10 +58,24 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
   String? _failure;
   bool _busy = false;
 
+  /// Null in a test that pumps this dialog on its own.
+  final _prefs = Modular.tryGet<AppPrefsService>();
+
+  /// The whole passage on one slide. Remembered from the last time.
+  bool _together = false;
+
+  void _chooseLayout(bool together) {
+    setState(() => _together = together);
+    unawaited(_prefs?.setVersesTogether(together) ?? Future.value());
+  }
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(_reparse);
+    _prefs?.versesTogether().then((value) {
+      if (mounted) setState(() => _together = value);
+    });
     // A reference handed in from the palette is already a reference; show its
     // verdict without waiting for a keystroke.
     if (widget.initial?.isNotEmpty == true) _reparse();
@@ -76,7 +94,8 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     });
   }
 
-  Future<void> _submit() async {
+  /// Adds the passage to the service, or only puts it on the screen.
+  Future<void> _submit({bool project = false}) async {
     final reference = _parsed.reference;
     if (reference == null || _busy) return;
 
@@ -131,7 +150,11 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
         return;
       }
 
-      await cubit.addBibleVerseAfterCurrent(verseRef);
+      if (project) {
+        cubit.projectLoose(verseRef, together: _together);
+      } else {
+        await cubit.addBibleVerseAfterCurrent(verseRef, together: _together);
+      }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() {
@@ -148,9 +171,15 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     return AppDialog(
       title: L10n.of(context).addQuickVerse,
       icon: Icons.bolt_rounded,
-      width: 420,
+      width: 460,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
+        // Two actions and no Cancel: the X and Escape already close this, and
+        // a third button crowds the row.
+        // Straight to the screen, without leaving anything in the service.
+        OutlinedButton(
+          onPressed: reference == null || _busy ? null : () => _submit(project: true),
+          child: Text(L10n.of(context).bibleProject),
+        ),
         const SizedBox(width: AppSpace.sm),
         FilledButton(
           onPressed: reference == null || _busy ? null : _submit,
@@ -179,8 +208,17 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
           ),
           const SizedBox(height: AppSpace.md),
           _Feedback(result: _parsed, failure: _failure),
+          // Only worth asking when the reference covers more than one verse:
+          // a range, or a whole chapter, which names no verse at all.
+          if (_parsed.reference case final r?
+              when r.verseStart == null || r.verseEnd != r.verseStart) ...[
+            const SizedBox(height: AppSpace.md),
+            VerseLayoutToggle(together: _together, onChanged: _chooseLayout),
+          ],
           const SizedBox(height: AppSpace.lg),
           Text(L10n.of(context).quickVerseAddsAfter, style: AppText.rowSubtitle),
+          const SizedBox(height: AppSpace.xs),
+          Text(L10n.of(context).looseHint, style: AppText.rowSubtitle),
           const SizedBox(height: AppSpace.xs),
           Text(
             L10n.of(context).quickVerseExamples('jn 3:16   ·   1 co 13:4-7   ·   salmos 23'),

@@ -511,6 +511,13 @@
   "bibleSearchBook": "Search books...",
   "bibleNoBookMatches": "No book matches",
   "bibleTapVerse": "Tap a verse. Tap another to choose a passage.",
+  "bibleOnePerSlide": "One per slide",
+  "bibleTogether": "All together",
+  "bibleProject": "Project",
+  "looseOnScreen": "Loose verse",
+  "looseReturn": "Back to the service",
+  "looseHint": "Goes on screen without entering the service. The arrows move through the passage.",
+  "bibleSlideChoice": "How it goes on screen",
   "bibleAddPassage": "{count, plural, =1{Add verse} other{Add passage ({count} verses)}}",
   "@bibleAddPassage": {
     "placeholders": {

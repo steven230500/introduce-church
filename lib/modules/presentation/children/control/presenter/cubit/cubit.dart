@@ -59,10 +59,24 @@ class ControlModel extends Equatable {
     this.offline = false,
     this.pendingWrites = 0,
     this.rehearsing = false,
+    this.looseSlides = const [],
+    this.looseReferences = const [],
+    this.looseIndex = 0,
   });
 
   final List<Collection> collections;
   final Collection? activeCollection;
+
+  /// A passage put on the screen without being added to the service.
+  ///
+  /// The pastor asks for a verse nobody planned; the operator keeps the Bible
+  /// open and sends it up. It never enters the running order, and the screen
+  /// returns to the service the moment it is taken down.
+  final List<String> looseSlides;
+  final List<String> looseReferences;
+  final int looseIndex;
+
+  bool get looseActive => looseSlides.isNotEmpty;
 
   /// Where the operator is looking.
   final int currentItemIndex;
@@ -252,6 +266,10 @@ class ControlModel extends Equatable {
     bool? offline,
     int? pendingWrites,
     bool? rehearsing,
+    List<String>? looseSlides,
+    List<String>? looseReferences,
+    int? looseIndex,
+    bool clearLoose = false,
   }) {
     return ControlModel(
       collections: collections ?? this.collections,
@@ -273,12 +291,18 @@ class ControlModel extends Equatable {
       waiting: waiting ?? this.waiting,
       offline: offline ?? this.offline,
       pendingWrites: pendingWrites ?? this.pendingWrites,
+      looseSlides: clearLoose ? const [] : looseSlides ?? this.looseSlides,
+      looseReferences: clearLoose ? const [] : looseReferences ?? this.looseReferences,
+      looseIndex: clearLoose ? 0 : looseIndex ?? this.looseIndex,
       rehearsing: rehearsing ?? this.rehearsing,
     );
   }
 
   @override
   List<Object?> get props => [
+    looseSlides,
+    looseReferences,
+    looseIndex,
     collections,
     activeCollection,
     currentItemIndex,
@@ -803,6 +827,8 @@ class ControlCubit extends Cubit<ControlState> {
   /// the two are linked.
   void _moveCursor(ControlModel model, int itemIndex, int slideIndex) {
     final follows = model.followCursor;
+    // Going back to the service is how a loose passage ends.
+    if (model.looseActive) model = model.copyWith(clearLoose: true);
     emit(
       ControlLoadedState(
         model.copyWith(
@@ -892,6 +918,7 @@ class ControlCubit extends Cubit<ControlState> {
 
   void nextSlide() {
     if (state is! ControlLoadedState) return;
+    if (_moveLoose(1)) return;
     final model = (state as ControlLoadedState).model;
     if (!model.hasNextSlide) return;
 
@@ -904,6 +931,7 @@ class ControlCubit extends Cubit<ControlState> {
 
   void prevSlide() {
     if (state is! ControlLoadedState) return;
+    if (_moveLoose(-1)) return;
     final model = (state as ControlLoadedState).model;
     if (!model.hasPrevSlide) return;
 
@@ -1401,14 +1429,18 @@ class ControlCubit extends Cubit<ControlState> {
   /// it would land past the end of the service. This is the path a preacher
   /// naming a verse mid-sermon takes, so it has to come out where the service
   /// actually is.
-  Future<void> addBibleVerseAfterCurrent(BibleVerseRef ref) async {
+  Future<void> addBibleVerseAfterCurrent(BibleVerseRef ref, {bool together = false}) async {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     final collection = model.activeCollection;
     if (collection == null) return;
 
     final target = collection.items.isEmpty ? 0 : model.currentItemIndex + 1;
-    final verse = _draft(collection, CollectionItemType.bibleVerse, content: ref.toJson());
+    final verse = _draft(
+      collection,
+      CollectionItemType.bibleVerse,
+      content: {...ref.toJson(), 'together': together},
+    );
     await _addAt(collection, verse, target);
     selectItem(target);
   }
@@ -1427,11 +1459,69 @@ class ControlCubit extends Cubit<ControlState> {
     ]);
   }
 
-  Future<void> addBibleVerse(BibleVerseRef ref) async {
+  /// Puts a passage on the screen without adding it to the service.
+  ///
+  /// What the pastor asks for mid-sermon is not part of the plan and should
+  /// not end up in it. The slides are built exactly as they would be for an
+  /// item, so a projected loose passage looks like every other passage.
+  void projectLoose(BibleVerseRef ref, {bool together = false}) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final item = CollectionItem(
+      id: 'loose',
+      collectionId: model.activeCollection?.id ?? '',
+      type: CollectionItemType.bibleVerse,
+      order: 0,
+      contentJson: {...ref.toJson(), 'together': together},
+    );
+    if (item.slides.isEmpty) return;
+
+    emit(
+      ControlLoadedState(
+        model.copyWith(
+          looseSlides: item.slides,
+          looseReferences: item.slideReferences,
+          looseIndex: 0,
+          // A verse sent to a dark screen would look like the app ignored it.
+          isLive: true,
+          blankScreen: false,
+        ),
+      ),
+    );
+    _syncState();
+  }
+
+  /// Takes a loose passage down. The screen goes back to the service, exactly
+  /// where it was.
+  void clearLoose() {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    if (!model.looseActive) return;
+    emit(ControlLoadedState(model.copyWith(clearLoose: true)));
+    _syncState();
+  }
+
+  /// Moves inside a loose passage, and says whether it could.
+  bool _moveLoose(int delta) {
+    if (state is! ControlLoadedState) return false;
+    final model = (state as ControlLoadedState).model;
+    if (!model.looseActive) return false;
+    final next = model.looseIndex + delta;
+    if (next < 0 || next >= model.looseSlides.length) return true;
+    emit(ControlLoadedState(model.copyWith(looseIndex: next)));
+    _syncState();
+    return true;
+  }
+
+  Future<void> addBibleVerse(BibleVerseRef ref, {bool together = false}) async {
     final collection = _openCollection;
     if (collection == null) return;
     await _addItems(collection.id, [
-      _draft(collection, CollectionItemType.bibleVerse, content: ref.toJson()),
+      _draft(
+        collection,
+        CollectionItemType.bibleVerse,
+        content: {...ref.toJson(), 'together': together},
+      ),
     ]);
   }
 
@@ -1910,6 +2000,15 @@ class ControlCubit extends Cubit<ControlState> {
       'overlay_text': model.overlayText,
       'stage_message': model.stageMessage,
       'waiting': model.waiting.toJson(),
+      'loose_verse': model.looseActive
+          ? {
+              'content': model.looseSlides[model.looseIndex],
+              'reference': model.looseReferences.length > model.looseIndex
+                  ? model.looseReferences[model.looseIndex]
+                  : '',
+              'template_id': model.activeCollection?.templateId,
+            }
+          : null,
       'timing': {
         'item_started_at': _clock.itemStartedAt?.toUtc().toIso8601String(),
         'planned_secs': model.isLive ? model.liveItem?.plannedSecs : null,
