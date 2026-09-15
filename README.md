@@ -38,6 +38,7 @@ de licencias.
 | ProPresenter 7 | `.pro` (con los grupos y el arreglo elegido) |
 | ProPresenter 4, 5 y 6 | `.pro4`, `.pro5`, `.pro6` |
 | OpenLP y otros con OpenLyrics | `.xml` |
+| FreeShow | `.show` (con el arreglo de la canción) |
 | SongSelect de CCLI | `.usr`, `.bin`, `.txt` |
 | ChordPro | `.cho`, `.chordpro`, `.chopro`, `.crd` |
 | Texto | `.txt`, una canción por archivo |

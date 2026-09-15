@@ -3,7 +3,15 @@ import 'package:equatable/equatable.dart';
 import '../models/song.dart';
 
 /// The programs a song can be brought over from, by the file they leave.
-enum SongFormat { proPresenter7, proPresenter6, openLyrics, songSelect, chordPro, plainText }
+enum SongFormat {
+  proPresenter7,
+  proPresenter6,
+  openLyrics,
+  songSelect,
+  chordPro,
+  plainText,
+  freeShow,
+}
 
 class ImportedVerse extends Equatable {
   const ImportedVerse(this.type, this.content);
@@ -67,6 +75,11 @@ enum SongFileProblem {
 
   /// It was read, and there were no words in it.
   empty,
+
+  /// A FreeShow file that is a Bible passage or a slide deck. Both are worth
+  /// saying out loud: a church importing a folder of shows would otherwise
+  /// see them counted as failures with no reason given.
+  notASong,
 }
 
 class SongFileFailure extends Equatable implements Exception {

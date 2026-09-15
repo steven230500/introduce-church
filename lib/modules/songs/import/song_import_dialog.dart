@@ -130,6 +130,7 @@ class _Start extends StatelessWidget {
       ('ProPresenter 7', '.pro', t.importWherePro7),
       ('ProPresenter 4–6', '.pro6 · .pro5 · .pro4', t.importWherePro6),
       ('OpenLP · OpenLyrics', '.xml', t.importWhereOpenLyrics),
+      ('FreeShow', '.show', t.importWhereFreeShow),
       ('SongSelect (CCLI)', '.usr · .bin · .txt', t.importWhereSongSelect),
       ('ChordPro', '.cho · .chordpro', t.importWhereChordPro),
       (t.formatText, '.txt', t.importWhereText),
@@ -530,10 +531,12 @@ String formatName(L10n t, SongFormat format) => switch (format) {
   SongFormat.songSelect => 'SongSelect',
   SongFormat.chordPro => 'ChordPro',
   SongFormat.plainText => t.formatText,
+  SongFormat.freeShow => 'FreeShow',
 };
 
 String problemText(L10n t, SongFileProblem problem) => switch (problem) {
   SongFileProblem.unsupported => t.importProblemUnsupported,
   SongFileProblem.unreadable => t.importProblemUnreadable,
   SongFileProblem.empty => t.importProblemEmpty,
+  SongFileProblem.notASong => t.importProblemNotASong,
 };

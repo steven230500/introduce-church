@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 
 import 'formats/chordpro.dart';
+import 'formats/freeshow.dart';
 import 'formats/openlyrics.dart';
 import 'formats/plain_text.dart';
 import 'formats/propresenter.dart';
@@ -26,6 +27,7 @@ const songFileExtensions = [
   'chordpro',
   'chopro',
   'crd',
+  'show',
 ];
 
 /// A file read: a song, or why it is not one.
@@ -54,7 +56,15 @@ SongFileResult readSongBytes(String path, Uint8List bytes) {
     } else {
       final text = decodeText(bytes);
       final head = text.length > 2000 ? text.substring(0, 2000) : text;
-      if (head.contains('<RVPresentationDocument')) {
+      if (ext == 'show' || (head.trimLeft().startsWith('[') && looksLikeFreeShow(text))) {
+        // FreeShow keeps passages and slide decks in the same kind of file as
+        // songs, and neither belongs in a song library.
+        final category = freeShowCategory(text);
+        if (category == 'scripture' || category == 'presentation') {
+          return failed(SongFileProblem.notASong);
+        }
+        song = readFreeShow(text, source: path, name: name);
+      } else if (head.contains('<RVPresentationDocument')) {
         song = readProPresenter6(text, source: path, name: name);
       } else if (ext == 'xml' || head.trimLeft().startsWith('<?xml')) {
         song = readOpenLyrics(text, source: path, name: name);
