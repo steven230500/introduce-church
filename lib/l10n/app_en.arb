@@ -388,7 +388,7 @@
   "importStatusInLibrary": "Already there",
   "importStatusRepeated": "Repeated",
   "importSlides": "{count, plural, one{1 slide} other{{count} slides}}",
-  "importFailures": "{count, plural, one{1 file couldn't be read} other{{count} files couldn't be read}}",
+  "importFailures": "{count, plural, one{1 file stayed out} other{{count} files stayed out}}",
   "importProblemUnsupported": "Not a song format",
   "importProblemUnreadable": "Damaged, or not what its name says",
   "importProblemEmpty": "Has no lyrics",

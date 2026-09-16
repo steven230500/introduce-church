@@ -403,8 +403,9 @@ class _OutputThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L10n.of(context);
     final item = model.liveItem;
-    final isImage = item?.type == CollectionItemType.imageSlide;
-    final isVideo = item?.type == CollectionItemType.videoSlide;
+    // A loose passage is words, whatever the item underneath it happens to be.
+    final isImage = !model.looseActive && item?.type == CollectionItemType.imageSlide;
+    final isVideo = !model.looseActive && item?.type == CollectionItemType.videoSlide;
     final isBlank = model.blankScreen;
     final hasContent = model.liveSlideContent != null;
     // This is a picture of the projector, so it shows the waiting scene when

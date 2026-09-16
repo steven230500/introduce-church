@@ -158,17 +158,30 @@ class ControlModel extends Equatable {
 
   List<String> get liveSlides => liveItem?.slides ?? [];
 
-  String? get liveSlideContent =>
-      liveSlides.isNotEmpty ? liveSlides[liveSlideIndex.clamp(0, liveSlides.length - 1)] : null;
+  /// What the congregation is reading. A loose passage covers the service
+  /// while it is up, so the operator's own output panel has to show it too:
+  /// a black preview beside a screen full of words reads as a fault.
+  String? get liveSlideContent {
+    if (looseActive) return looseSlides[looseIndex.clamp(0, looseSlides.length - 1)];
+    return liveSlides.isNotEmpty
+        ? liveSlides[liveSlideIndex.clamp(0, liveSlides.length - 1)]
+        : null;
+  }
 
   String get liveSlideReference {
+    if (looseActive) {
+      final refs = looseReferences;
+      return refs.isEmpty ? '' : refs[looseIndex.clamp(0, refs.length - 1)];
+    }
     final refs = liveItem?.slideReferences ?? [];
     if (refs.isEmpty) return liveItem?.displayTitle ?? '';
     final ref = refs[liveSlideIndex.clamp(0, refs.length - 1)];
     return ref.isNotEmpty ? ref : (liveItem?.displayTitle ?? '');
   }
 
-  SlideTemplate get liveTemplate => templateFor(liveItem);
+  /// The design the screen is using. A loose passage takes the service's
+  /// design, not the design of whatever item it is covering.
+  SlideTemplate get liveTemplate => templateFor(looseActive ? null : liveItem);
 
   /// Whether a given position is the one the congregation is seeing.
   ///

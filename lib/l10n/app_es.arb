@@ -576,7 +576,7 @@
       }
     }
   },
-  "importFailures": "{count, plural, one{1 archivo no se pudo leer} other{{count} archivos no se pudieron leer}}",
+  "importFailures": "{count, plural, one{1 archivo quedó fuera} other{{count} archivos quedaron fuera}}",
   "@importFailures": {
     "placeholders": {
       "count": {
