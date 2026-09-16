@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/local_db/bible_reference.dart';
+import 'package:introduce_church/core/local_db/bible_repository.dart' show spanishBookName;
 
 void main() {
+  _suggestions();
   BibleReference? read(String input) => parseBibleReference(input).reference;
   ReferenceProblem? problem(String input) => parseBibleReference(input).problem;
 
@@ -92,5 +94,26 @@ void main() {
     expect(read('jn 3:16').toString(), 'Juan 3:16');
     expect(read('1 co 13:4-7').toString(), '1 Corintios 13:4-7');
     expect(read('sal 23').toString(), 'Salmos 23');
+  });
+}
+
+void _suggestions() {
+  group('offering the books a half-typed name could be', () {
+    test('"cor" is not a book, and offers the two it could be', () {
+      // The books are "1 Corintios" and "2 Corintios", so a prefix match finds
+      // neither, and the operator is left with nothing.
+      expect(matchBooks('cor'), isEmpty);
+      expect(booksMatching('cor').map(spanishBookName), ['1 Corintios', '2 Corintios']);
+    });
+
+    test('a name that is already a book offers only that one', () {
+      expect(booksMatching('juan').map(spanishBookName), ['Juan']);
+      expect(booksMatching('jn').map(spanishBookName), ['Juan']);
+    });
+
+    test('a single letter offers nothing, since it would offer everything', () {
+      expect(booksMatching('j'), matchBooks('j'));
+      expect(booksMatching(''), isEmpty);
+    });
   });
 }

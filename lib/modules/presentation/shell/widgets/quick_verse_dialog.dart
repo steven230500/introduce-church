@@ -52,11 +52,20 @@ class QuickVerseDialog extends StatefulWidget {
 
 class _QuickVerseDialogState extends State<QuickVerseDialog> {
   late final _controller = TextEditingController(text: widget.initial ?? '');
+  final _field = FocusNode(debugLabel: 'quick verse');
   late final _repository = widget.repository ?? Modular.get<BibleRepository>();
 
   ReferenceResult _parsed = (reference: null, problem: ReferenceProblem.empty, typed: null);
   String? _failure;
   bool _busy = false;
+
+  /// The words of the passage being typed, so the operator reads it here
+  /// before the congregation reads it on the wall. A wrong reference used to
+  /// be found out by the whole room at once.
+  String? _preview;
+  int _previewCount = 0;
+  String _previewOf = '';
+  Timer? _previewDebounce;
 
   /// Null in a test that pumps this dialog on its own.
   final _prefs = Modular.tryGet<AppPrefsService>();
@@ -83,8 +92,87 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
 
   @override
   void dispose() {
+    _previewDebounce?.cancel();
+    _field.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Books whose name starts with what was typed, for a line that does not
+  /// name one book yet: "cor" is two letters away from two different books.
+  List<int> get _bookChoices {
+    final problem = _parsed.problem;
+    if (problem != ReferenceProblem.ambiguous && problem != ReferenceProblem.noChapter) {
+      return const [];
+    }
+    final typed = _parsed.typed ?? '';
+    // "1 co 13" carries the chapter along; the book is what comes before it.
+    final book = typed.replaceAll(RegExp(r'\s*\d{1,3}\s*$'), '').trim();
+    final matches = booksMatching(book.isEmpty ? typed : book);
+    return matches.length > 1 || problem == ReferenceProblem.noChapter
+        ? matches.take(6).toList()
+        : const [];
+  }
+
+  void _chooseBook(int index) {
+    final name = spanishBookName(index);
+    _controller.value = TextEditingValue(
+      text: '$name ',
+      selection: TextSelection.collapsed(offset: name.length + 1),
+    );
+    // Picking the book is half the line; the chapter is typed straight after,
+    // so the caret goes back to the field rather than staying on the chip.
+    // Returning focus selects what is there, and the next keystroke would
+    // wipe the book out, so the caret is put back at the end afterwards.
+    _field.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      }
+    });
+  }
+
+  /// Reads the passage a beat after the typing stops, so a reference on its
+  /// way to "1 co 13:4" does not send four lookups.
+  void _schedulePreview() {
+    _previewDebounce?.cancel();
+    final reference = _parsed.reference;
+    if (reference == null) {
+      _preview = null;
+      _previewOf = '';
+      return;
+    }
+    if ('$reference' == _previewOf) return;
+    _previewDebounce = Timer(const Duration(milliseconds: 200), () => unawaited(_loadPreview()));
+  }
+
+  Future<void> _loadPreview() async {
+    final reference = _parsed.reference;
+    if (reference == null) return;
+    final key = '$reference';
+    try {
+      final versions = await _repository.getVersions();
+      final version = versions.where((v) => v.isDownloaded).firstOrNull ?? versions.firstOrNull;
+      if (version == null) return;
+      final verses = await _repository.getVerses(
+        version.code,
+        reference.bookIndex,
+        reference.chapter,
+      );
+      if (verses.isEmpty || !mounted) return;
+      final start = (reference.verseStart ?? 1).clamp(1, verses.length);
+      final end = (reference.verseEnd ?? reference.verseStart ?? verses.length).clamp(
+        start,
+        verses.length,
+      );
+      setState(() {
+        _preview = verses.sublist(start - 1, end).join(' ');
+        _previewCount = end - start + 1;
+        _previewOf = key;
+      });
+    } catch (_) {
+      // The preview is a courtesy; a failure here must not stop the add.
+    }
   }
 
   void _reparse() {
@@ -92,6 +180,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
       _parsed = parseBibleReference(_controller.text);
       _failure = null;
     });
+    _schedulePreview();
   }
 
   /// Adds the passage to the service, or only puts it on the screen.
@@ -200,6 +289,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
             },
             child: AppTextField(
               controller: _controller,
+              focusNode: _field,
               hintText: 'jn 3:16',
               autofocus: true,
               textInputAction: TextInputAction.done,
@@ -208,6 +298,14 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
           ),
           const SizedBox(height: AppSpace.md),
           _Feedback(result: _parsed, failure: _failure),
+          if (_bookChoices.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.sm),
+            _BookChoices(books: _bookChoices, onPick: _chooseBook),
+          ],
+          if (_preview case final text? when _parsed.reference != null) ...[
+            const SizedBox(height: AppSpace.md),
+            _Preview(text: text, count: _previewCount),
+          ],
           // Only worth asking when the reference covers more than one verse:
           // a range, or a whole chapter, which names no verse at all.
           if (_parsed.reference case final r?
@@ -286,6 +384,69 @@ class _Line extends StatelessWidget {
           fontSize: 13,
           fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
         ),
+      ),
+    );
+  }
+}
+
+/// The books a half-typed name could mean, one tap from being the one.
+class _BookChoices extends StatelessWidget {
+  const _BookChoices({required this.books, required this.onPick});
+
+  final List<int> books;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
+      children: [
+        for (final index in books)
+          ActionChip(
+            label: Text(spanishBookName(index), style: const TextStyle(fontSize: 12)),
+            onPressed: () => onPick(index),
+            backgroundColor: AppColors.surfaceControl,
+            side: const BorderSide(color: AppColors.border),
+            labelStyle: const TextStyle(color: AppColors.textSecondary),
+            visualDensity: VisualDensity.compact,
+          ),
+      ],
+    );
+  }
+}
+
+/// The passage itself, before it goes anywhere.
+class _Preview extends StatelessWidget {
+  const _Preview({required this.text, required this.count});
+
+  final String text;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceControl,
+        borderRadius: AppRadius.all(AppRadius.sm),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.45),
+          ),
+          if (count > 1) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(L10n.of(context).quickVerseVerseCount(count), style: AppText.rowSubtitle),
+          ],
+        ],
       ),
     );
   }

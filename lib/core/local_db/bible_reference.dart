@@ -103,6 +103,25 @@ List<int> matchBooks(String text) {
   return exact.isNotEmpty ? exact : prefixes;
 }
 
+/// Books whose name or abbreviation holds what was typed, for offering
+/// choices while the operator is still typing.
+///
+/// Looser than [matchBooks] on purpose: "cor" names no book, because the
+/// books are "1 Corintios" and "2 Corintios", and an operator who types it
+/// wants to be shown both rather than told it is not a book.
+List<int> booksMatching(String text) {
+  final exactOrPrefix = matchBooks(text);
+  if (exactOrPrefix.isNotEmpty) return exactOrPrefix;
+
+  final needle = _normalise(text);
+  if (needle.length < 2) return const [];
+  return [
+    for (var index = 0; index < 66; index++)
+      if ([_normalise(spanishBookName(index)), ...?_aliases[index]].any((n) => n.contains(needle)))
+        index,
+  ];
+}
+
 /// The chapter-and-verse tail, with everything before it taken as the book.
 final _pattern = RegExp(r'^(.*?)\s*(\d{1,3})(?:\s*[:.]\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?$');
 

@@ -96,6 +96,66 @@ void main() {
     expect(find.text('Juan 3:1'), findsOneWidget);
   });
 
+  testWidgets('the words show up while it is typed, before anyone reads them', (tester) async {
+    // A wrong reference used to be found out by the whole congregation at
+    // once, on the wall.
+    await pumpDialog(tester);
+
+    await tester.enterText(find.byType(TextField), 'jn 3:2');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(find.text('dos'), findsOneWidget);
+  });
+
+  testWidgets('a range says how many verses it is', (tester) async {
+    await pumpDialog(tester);
+
+    await tester.enterText(find.byType(TextField), 'jn 3:1-3');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(find.text('uno dos tres'), findsOneWidget);
+    expect(find.text('3 versículos'), findsOneWidget);
+  });
+
+  testWidgets('half a book name offers the books it could be', (tester) async {
+    await pumpDialog(tester);
+
+    await tester.enterText(find.byType(TextField), 'cor');
+    await tester.pump();
+
+    expect(find.text('1 Corintios'), findsOneWidget);
+    expect(find.text('2 Corintios'), findsOneWidget);
+
+    await tester.tap(find.text('2 Corintios'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '2 Corintios ',
+      reason: 'ready for the chapter, with no book left to type',
+    );
+    // The chapter is typed straight after picking the book, so the caret has
+    // to be back in the field and not left on the chip.
+    expect(tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus, isTrue);
+    // Focus returning selects the text, and the next keystroke would wipe the
+    // book out; the caret belongs at the end.
+    final controller = tester.widget<TextField>(find.byType(TextField)).controller!;
+    expect(controller.selection, TextSelection.collapsed(offset: controller.text.length));
+  });
+
+  testWidgets('a name that is already one book offers nothing', (tester) async {
+    await pumpDialog(tester);
+
+    await tester.enterText(find.byType(TextField), 'jn 3:1');
+    await tester.pump();
+
+    expect(find.byType(ActionChip), findsNothing);
+  });
+
   testWidgets('Enter adds the passage, which is the whole point', (tester) async {
     // Typing a reference instead of browsing to it only saves time if the
     // hand never leaves the keyboard.

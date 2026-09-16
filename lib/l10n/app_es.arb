@@ -1438,6 +1438,15 @@
   "searching": "Buscando...",
   "quickVerseAddsAfter": "Se agrega justo después de lo que está en pantalla.",
   "quickVerseExamples": "Ejemplos:  {examples}",
+  "quickVerseVerseCount": "{count, plural, one{1 versículo} other{{count} versículos}}",
+  "quickVerseWhichBook": "¿Cuál libro?",
+  "@quickVerseVerseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@quickVerseExamples": {
     "placeholders": {
       "examples": {

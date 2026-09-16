@@ -1129,6 +1129,8 @@
   "searching": "Searching...",
   "quickVerseAddsAfter": "It goes right after what is on screen.",
   "quickVerseExamples": "Examples:  {examples}",
+  "quickVerseVerseCount": "{count, plural, one{1 verse} other{{count} verses}}",
+  "quickVerseWhichBook": "Which book?",
   "@quickVerseExamples": {
     "placeholders": {
       "examples": {
