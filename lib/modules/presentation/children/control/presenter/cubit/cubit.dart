@@ -664,6 +664,11 @@ class ControlCubit extends Cubit<ControlState> {
         await _templateRepository.setItemTemplate(change.target, args['template_id'] as String?);
       case PendingKind.itemTitle:
         await _repository.updateItemTitle(change.target, args['title'] as String? ?? '');
+      case PendingKind.itemContent:
+        await _repository.updateItemContent(
+          change.target,
+          Map<String, dynamic>.from(args['content'] as Map? ?? const {}),
+        );
       case PendingKind.itemNotes:
         await _repository.updateItemNotes(change.target, args['notes'] as String?);
       case PendingKind.itemAutoAdvance:
@@ -1464,6 +1469,35 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
+  /// Rewrites a text slide that is already in the service.
+  ///
+  /// Operator and pastor write these together, and a point always comes out
+  /// wrong the first time. Before this the only way to fix one was to delete
+  /// the item and type the whole thing again.
+  Future<void> updateFreeSlide(String itemId, {required String text, String? title}) {
+    return _write(
+      PendingWrite(
+        kind: PendingKind.itemContent,
+        target: itemId,
+        args: {
+          'content': {'text': text, 'title': title},
+        },
+      ),
+    );
+  }
+
+  Future<void> updateSermon(String itemId, {required String title, required List<String> points}) {
+    return _write(
+      PendingWrite(
+        kind: PendingKind.itemContent,
+        target: itemId,
+        args: {
+          'content': {'title': title, 'points': points},
+        },
+      ),
+    );
+  }
+
   Future<void> addSermon(String title, List<String> points) async {
     final collection = _openCollection;
     if (collection == null) return;
@@ -1537,6 +1571,57 @@ class ControlCubit extends Cubit<ControlState> {
       ),
     ]);
   }
+
+  /// Moves the text of the design on the screen up or down, mid-service.
+  ///
+  /// The room decides this, not the desk: a banner, a row of heads, a beam
+  /// that does not reach the bottom of the wall. Asking the operator to leave
+  /// the presenter, find the design, open the editor and come back is asking
+  /// them to do it after the service, which means never.
+  ///
+  /// The designs the app ships with belong to every church, so one of those is
+  /// copied under [copyName] and the copy is what moves, applied wherever the
+  /// original was in use.
+  Future<void> nudgeLiveText(double delta, {required String copyName}) async {
+    if (_nudging || state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final collection = model.activeCollection;
+    if (collection == null) return;
+
+    final design = model.liveTemplate;
+    final offset = (design.textOffsetY + delta).clamp(-maxTextOffsetY, maxTextOffsetY);
+    if (offset == design.textOffsetY) return;
+
+    _nudging = true;
+    try {
+      if (SlideTemplate.findPreset(design.id) == null) {
+        await _templateRepository.saveTemplate(design.copyWith(textOffsetY: offset));
+        await refreshTemplates();
+        return;
+      }
+      final copy = await _templateRepository.saveTemplate(
+        design.copyWith(id: '', name: copyName, textOffsetY: offset),
+      );
+      await refreshTemplates();
+      // Where the preset was chosen is where its copy goes: on the item if
+      // that item had its own design, on the service otherwise.
+      final item = model.looseActive ? null : model.liveItem;
+      if (item?.templateId != null) {
+        await setItemTemplate(collection.id, item!.id, copy.id);
+      } else {
+        await setCollectionTemplate(collection.id, copy.id);
+      }
+    } catch (_) {
+      // Designs live on the server. With no network the screen keeps the one
+      // it has, which is the design the church already approved.
+    } finally {
+      _nudging = false;
+    }
+  }
+
+  /// Guards the copy a nudge may have to make: three presses on the arrow
+  /// would otherwise leave three copies of the same design behind.
+  bool _nudging = false;
 
   /// Reads the church's designs again, after one was made, changed or deleted
   /// somewhere the presenter was not looking - the library, the design picker.

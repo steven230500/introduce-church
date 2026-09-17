@@ -121,4 +121,99 @@ void main() {
       expect(find.text('Oculta'), findsNothing);
     });
   });
+
+  group('moving the text up or down', () {
+    const line = 'Santo, santo, santo';
+
+    /// Where the words sit on a 640x360 slide drawn with [offset].
+    Future<Rect> boxWith(WidgetTester tester, double offset) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 640,
+                height: 360,
+                child: SlideView(
+                  content: line,
+                  reference: '',
+                  template: SlideTemplate.darkClassic.copyWith(
+                    showReference: false,
+                    textOffsetY: offset,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.getRect(find.text(line));
+    }
+
+    testWidgets('a design that lifts its text draws it higher', (tester) async {
+      final centred = await boxWith(tester, 0);
+      final lifted = await boxWith(tester, -0.05);
+
+      // A twentieth of a 360pt slide is 18pt up, and the design's own margin
+      // is wider than that, so the whole move lands.
+      expect(lifted.center.dy, closeTo(centred.center.dy - 18, 1));
+      expect(lifted.center.dx, closeTo(centred.center.dx, 0.5), reason: 'nothing moves sideways');
+    });
+
+    testWidgets('and one that lowers it draws it lower', (tester) async {
+      final centred = await boxWith(tester, 0);
+      final dropped = await boxWith(tester, 0.05);
+
+      expect(dropped.center.dy, closeTo(centred.center.dy + 18, 1));
+    });
+
+    testWidgets('lifted as far as it goes, the text stops at the top of the slide', (
+      tester,
+    ) async {
+      final centred = await boxWith(tester, 0);
+      final far = await boxWith(tester, -maxTextOffsetY);
+
+      expect(far.top, greaterThanOrEqualTo(-0.5), reason: 'nothing leaves the slide');
+      expect(far.center.dy, lessThan(centred.center.dy - 18), reason: 'it did keep rising');
+    });
+
+    testWidgets('the words keep the room they had, so a long verse still fits', (tester) async {
+      const long = 'Porque de tal manera amó Dios al mundo que ha dado a su Hijo unigénito';
+      Future<double> fontSize(double offset) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 640,
+                height: 360,
+                child: SlideView(
+                  content: long,
+                  reference: '',
+                  template: SlideTemplate.darkClassic.copyWith(
+                    showReference: false,
+                    textOffsetY: offset,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        return tester.widget<Text>(find.text(long)).style!.fontSize!;
+      }
+
+      expect(await fontSize(-0.05), await fontSize(0));
+    });
+
+    testWidgets('a design stored with an impossible offset is clamped, not obeyed', (tester) async {
+      final template = SlideTemplate.fromJson(
+        id: 'custom',
+        name: 'Roto',
+        json: {...SlideTemplate.darkClassic.toJson(), 'textOffsetY': -4},
+      );
+
+      expect(template.textOffsetY, -maxTextOffsetY);
+    });
+  });
 }

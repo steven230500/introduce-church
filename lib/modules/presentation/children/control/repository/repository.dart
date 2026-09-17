@@ -109,6 +109,15 @@ class ControlRepository {
     await _api.patch<void>('/collections/items/$itemId', data: {'title': title});
   }
 
+  /// Merges [content] into the item's `content_json`, leaving the keys it does
+  /// not name alone.
+  ///
+  /// A corrected sermon sends its points; the design, the notes and the title
+  /// it did not touch stay as they are.
+  Future<void> updateItemContent(String itemId, Map<String, dynamic> content) async {
+    await _api.patch<void>('/collections/items/$itemId', data: {'content': content});
+  }
+
   Future<void> updateItemNotes(String itemId, String? notes) async {
     await _api.patch<void>('/collections/items/$itemId', data: {'notes': notes});
   }

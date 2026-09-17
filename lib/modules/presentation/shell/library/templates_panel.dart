@@ -106,7 +106,9 @@ class _TemplatesPanelView extends StatelessWidget {
                                   model!.activeCollection!.id,
                                   template.id,
                                 ),
-                          onEdit: isCustom ? () => _edit(context, cubit, template) : null,
+                          onEdit: () => isCustom
+                              ? _edit(context, cubit, template)
+                              : _copyAndEdit(context, cubit, template),
                           onDelete: isCustom ? () => _delete(context, cubit, template) : null,
                         );
                       },
@@ -125,6 +127,27 @@ class _TemplatesPanelView extends StatelessWidget {
       context,
       repo: cubit.repo,
       initial: SlideTemplate.defaultTemplate,
+      isNew: true,
+    );
+    if (result != null) await cubit.save(result);
+    if (context.mounted) await context.read<ControlCubit>().refreshTemplates();
+  }
+
+  /// Opens the editor on a copy of a design the app ships with.
+  ///
+  /// The presets belong to every church, so they cannot be edited in place.
+  /// That was shown as no edit button at all, which read as "designs cannot be
+  /// changed" - and that is where the operator gave up looking.
+  Future<void> _copyAndEdit(
+    BuildContext context,
+    TemplatesLibraryCubit cubit,
+    SlideTemplate preset,
+  ) async {
+    final l = L10n.of(context);
+    final result = await showTemplateEditor(
+      context,
+      repo: cubit.repo,
+      initial: preset.copyWith(id: '', name: l.designCopySuffix(preset.nameIn(l))),
       isNew: true,
     );
     if (result != null) await cubit.save(result);
@@ -253,27 +276,37 @@ class _TemplateTileState extends State<_TemplateTile> {
                               ),
                             ),
                           ),
-                        if (_hovering && widget.isCustom)
-                          Positioned(
-                            top: AppSpace.xs,
-                            right: AppSpace.xs,
+                        // Always shown, not only under the pointer: an
+                        // operator who does not know the editor exists has no
+                        // reason to hover a design to find out.
+                        Positioned(
+                          top: AppSpace.xs,
+                          right: AppSpace.xs,
+                          child: AnimatedOpacity(
+                            duration: AppMotion.fast,
+                            opacity: _hovering ? 1 : 0.7,
                             child: Row(
                               children: [
                                 _MiniButton(
                                   icon: Icons.edit_outlined,
-                                  tooltip: L10n.of(context).edit,
+                                  tooltip: widget.isCustom
+                                      ? L10n.of(context).edit
+                                      : L10n.of(context).designDuplicateAndEdit,
                                   onTap: widget.onEdit,
                                 ),
-                                const SizedBox(width: 3),
-                                _MiniButton(
-                                  icon: Icons.delete_outline,
-                                  tooltip: L10n.of(context).delete,
-                                  danger: true,
-                                  onTap: widget.onDelete,
-                                ),
+                                if (widget.isCustom) ...[
+                                  const SizedBox(width: 3),
+                                  _MiniButton(
+                                    icon: Icons.delete_outline,
+                                    tooltip: L10n.of(context).delete,
+                                    danger: true,
+                                    onTap: widget.onDelete,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),

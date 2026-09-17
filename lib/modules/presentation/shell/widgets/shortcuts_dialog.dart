@@ -29,6 +29,7 @@ class _ShortcutsDialog extends StatelessWidget {
       ('B', t.shortcutsBlack),
       ('W', t.shortcutsWaiting),
       ('Esc', t.shortcutsUnblank),
+      ('⌥ ↑   ·   ⌥ ↓', t.shortcutsNudgeText),
     ],
     t.shortcutsGroupContent: [('⌘K', t.shortcutsSearch), ('V', t.shortcutsQuickVerse)],
     t.shortcutsGroupHold: [('K', t.shortcutsHold), ('Enter', t.shortcutsSend)],

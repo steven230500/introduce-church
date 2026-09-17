@@ -10,6 +10,12 @@ enum BackgroundType { solid, gradient, image, motion, video }
 
 enum TextVerticalAlign { top, center, bottom }
 
+/// The furthest the text can be moved up or down, as a share of the slide.
+///
+/// A quarter of the height is already more than any room needs; beyond that
+/// the words would be leaving the screen rather than dodging what blocks it.
+const maxTextOffsetY = 0.25;
+
 enum ReferencePosition { bottomRight, bottomCenter, bottomLeft }
 
 enum SlideTransitionType { cut, fade, slideLeft, slideRight, zoomIn }
@@ -34,6 +40,7 @@ class SlideTemplate {
     required this.textValign,
     required this.paddingH,
     required this.paddingV,
+    this.textOffsetY = 0,
     required this.textShadow,
     required this.showReference,
     required this.referenceFontSize,
@@ -75,6 +82,14 @@ class SlideTemplate {
   final TextVerticalAlign textValign;
   final double paddingH;
   final double paddingV;
+
+  /// How far the whole block of text sits from where the alignment puts it, as
+  /// a share of the slide's height: negative up, positive down.
+  ///
+  /// A church whose screen is blocked at the bottom - heads, a banner, the edge
+  /// of a beam that does not reach - needs every line lifted, not one slide
+  /// rewritten. It lives in the design so it moves every slide drawn with it.
+  final double textOffsetY;
   final bool textShadow;
 
   final bool showReference;
@@ -125,6 +140,7 @@ class SlideTemplate {
     'textValign': textValign.name,
     'paddingH': paddingH,
     'paddingV': paddingV,
+    if (textOffsetY != 0) 'textOffsetY': textOffsetY,
     'textShadow': textShadow,
     'showReference': showReference,
     'referenceFontSize': referenceFontSize,
@@ -170,6 +186,10 @@ class SlideTemplate {
       ),
       paddingH: (json['paddingH'] as num?)?.toDouble() ?? _fallback.paddingH,
       paddingV: (json['paddingV'] as num?)?.toDouble() ?? _fallback.paddingV,
+      textOffsetY: ((json['textOffsetY'] as num?)?.toDouble() ?? 0).clamp(
+        -maxTextOffsetY,
+        maxTextOffsetY,
+      ),
       textShadow: json['textShadow'] as bool? ?? true,
       showReference: json['showReference'] as bool? ?? true,
       referenceFontSize:
@@ -211,6 +231,7 @@ class SlideTemplate {
     TextVerticalAlign? textValign,
     double? paddingH,
     double? paddingV,
+    double? textOffsetY,
     bool? textShadow,
     bool? showReference,
     double? referenceFontSize,
@@ -241,6 +262,7 @@ class SlideTemplate {
       textValign: textValign ?? this.textValign,
       paddingH: paddingH ?? this.paddingH,
       paddingV: paddingV ?? this.paddingV,
+      textOffsetY: textOffsetY ?? this.textOffsetY,
       textShadow: textShadow ?? this.textShadow,
       showReference: showReference ?? this.showReference,
       referenceFontSize: referenceFontSize ?? this.referenceFontSize,

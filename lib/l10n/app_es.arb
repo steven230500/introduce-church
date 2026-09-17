@@ -920,6 +920,7 @@
   "sermonPoints": "PUNTOS",
   "sermonRemovePoint": "Quitar punto",
   "sermonAddFirstPoint": "Agregar primer punto",
+  "sermonEdit": "Editar prédica",
   "announcementTitle": "Slide de anuncio",
   "announcementHint": "Bienvenidos a la iglesia...",
   "announcementMessage": "Mensaje",
@@ -929,6 +930,8 @@
   "freeSlideTitleHint": "Título (opcional)",
   "freeSlideContentHint": "Contenido del slide...",
   "freeSlideNote": "Se proyectará con el diseño activo de la colección",
+  "freeSlideEdit": "Editar slide",
+  "saveChanges": "Guardar cambios",
   "importPickPptx": "Selecciona un archivo .pptx",
   "importPptxNoText": "No se encontró texto en el archivo",
   "importPptxDone": "{count, plural, =1{1 slide importado} other{{count} slides importados}}",
@@ -1057,6 +1060,7 @@
   "designMargins": "Márgenes",
   "designHorizontal": "Horizontal",
   "designVertical": "Vertical",
+  "designTextOffset": "Subir / bajar (%)",
   "designShow": "Mostrar",
   "designRefSize": "Tamaño ref.",
   "designRefColor": "Color ref.",
@@ -1320,6 +1324,16 @@
   "shortcutsQuickVerse": "Versículo rápido: escribe \"jn 3:16\" y Enter",
   "shortcutsHold": "Retener la pantalla, o volver a seguirte",
   "shortcutsSend": "Enviar a la pantalla lo que estás viendo",
+  "shortcutsNudgeText": "Subir o bajar el texto del diseño",
+  "designAdjustedSuffix": "{name} (ajustado)",
+  "@designAdjustedSuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designDuplicateAndEdit": "Duplicar y editar",
   "shortcutsToggleView": "Alternar cuadrícula y slide grande",
   "shortcutsToggleLibrary": "Mostrar u ocultar la biblioteca",
   "shortcutsHelp": "Abrir esta ayuda",

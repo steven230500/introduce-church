@@ -319,6 +319,21 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
+  Future<void> updateItemContent(String itemId, Map<String, dynamic> content) async {
+    _checkNetwork();
+    calls.add('content:$itemId:${content.keys.join(",")}');
+    for (final row in rows) {
+      for (final item in (row['collection_items'] as List).cast<Map<String, dynamic>>()) {
+        if (item['id'] != itemId) continue;
+        item['content_json'] = {
+          ...(item['content_json'] as Map?)?.cast<String, dynamic>() ?? const {},
+          ...content,
+        };
+      }
+    }
+  }
+
+  @override
   Future<void> updateItemNotes(String itemId, String? notes) async {
     _checkNetwork();
     calls.add('notes:$itemId:$notes');
@@ -368,6 +383,26 @@ class FakeTemplateRepository extends TemplateRepository {
     for (final template in templates)
       {'id': template.id, 'name': template.name, 'config': template.toJson()},
   ];
+
+  /// Throw this on a save, to exercise a Sunday with no internet.
+  Object? failSaveWith;
+
+  /// Saves the way the server does: a preset id or an empty one means a new
+  /// design, which comes back under an id of its own.
+  @override
+  Future<SlideTemplate> saveTemplate(SlideTemplate t) async {
+    final failure = failSaveWith;
+    if (failure != null) throw failure;
+    final isNew = t.id.startsWith('preset_') || t.id.isEmpty;
+    final saved = isNew ? t.copyWith(id: 'custom_${templates.length + 1}') : t;
+    calls.add('saveTemplate:${saved.id}');
+    templates = [
+      for (final existing in templates)
+        if (existing.id != saved.id) existing,
+      saved,
+    ];
+    return saved;
+  }
 
   @override
   Future<void> setCollectionTemplate(String collectionId, String? templateId) async {

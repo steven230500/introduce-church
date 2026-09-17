@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 
+import '../../../core/models/labels.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../children/control/presenter/cubit/cubit.dart';
@@ -150,6 +151,21 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     final control = context.read<ControlCubit>();
     final shell = context.read<ShellCubit>();
 
+    // Before the arrows that pass slides: the same keys with Option held move
+    // the words on the screen instead of moving through the service.
+    if (HardwareKeyboard.instance.isAltPressed &&
+        (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown)) {
+      final design = control.state is ControlLoadedState
+          ? (control.state as ControlLoadedState).model.liveTemplate
+          : null;
+      if (design == null) return KeyEventResult.ignored;
+      control.nudgeLiveText(
+        key == LogicalKeyboardKey.arrowUp ? -_textNudge : _textNudge,
+        copyName: L10n.of(context).designAdjustedSuffix(design.nameIn(L10n.of(context))),
+      );
+      return KeyEventResult.handled;
+    }
+
     if (key == LogicalKeyboardKey.arrowRight ||
         key == LogicalKeyboardKey.arrowDown ||
         key == LogicalKeyboardKey.space ||
@@ -198,6 +214,10 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     }
     return KeyEventResult.handled;
   }
+
+  /// How far one press moves the text, as a share of the slide's height. Two
+  /// per cent is about a line, which is what "a little higher" means.
+  static const _textNudge = 0.02;
 
   /// The set list position a number key names, or null for any other key.
   static int? _itemNumber(LogicalKeyboardKey key) {

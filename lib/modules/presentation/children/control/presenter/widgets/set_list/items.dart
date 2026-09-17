@@ -415,7 +415,27 @@ bool _canRename(CollectionItemType type) => switch (type) {
   _ => true,
 };
 
+/// Whether the words on this item's slides were typed into the app, and so can
+/// be typed again.
+///
+/// A song and a passage are read from the library and the Bible; everything
+/// else is a file. These two the operator wrote, usually sitting beside the
+/// preacher, and getting a point wrong the first time is the normal case.
+bool _canEditContent(CollectionItemType type) =>
+    type == CollectionItemType.sermon || type == CollectionItemType.freeSlide;
+
+String _editLabel(L10n t, CollectionItemType type) =>
+    type == CollectionItemType.sermon ? t.sermonEdit : t.freeSlideEdit;
+
 List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
+  if (_canEditContent(item.type)) ...[
+    PopupMenuItem(
+      value: 'edit',
+      height: 38,
+      child: AppMenuRow(icon: Icons.edit_outlined, label: _editLabel(t, item.type)),
+    ),
+    const PopupMenuDivider(),
+  ],
   if (_canRename(item.type)) ...[
     PopupMenuItem(
       value: 'rename',
@@ -505,6 +525,8 @@ Future<void> _runItemAction(
   if (collectionId == null) return;
 
   switch (value) {
+    case 'edit':
+      await _editItemContent(context, item, cubit);
     case 'rename':
       await _showRenameDialog(context, item, cubit);
     case 'template':
@@ -526,6 +548,41 @@ Future<void> _runItemAction(
       await _showAutoAdvanceDialog(context, item, cubit);
     case 'remove':
       await _removeWithUndo(context, cubit, model, item);
+  }
+}
+
+/// Reopens the dialog the item was written in, filled with what it holds.
+Future<void> _editItemContent(
+  BuildContext context,
+  CollectionItem item,
+  ControlCubit cubit,
+) async {
+  final content = item.contentJson;
+  switch (item.type) {
+    case CollectionItemType.sermon:
+      final draft = await showSermonDialog(
+        context,
+        initial: (
+          title: content?['title'] as String? ?? '',
+          points: List<String>.from(content?['points'] as List? ?? const []),
+        ),
+      );
+      if (draft != null) {
+        await cubit.updateSermon(item.id, title: draft.title, points: draft.points);
+      }
+    case CollectionItemType.freeSlide:
+      final result = await showFreeSlideDialog(
+        context,
+        initial: FreeSlideResult(
+          text: content?['text'] as String? ?? '',
+          title: content?['title'] as String?,
+        ),
+      );
+      if (result != null) {
+        await cubit.updateFreeSlide(item.id, text: result.text, title: result.title);
+      }
+    default:
+      break;
   }
 }
 

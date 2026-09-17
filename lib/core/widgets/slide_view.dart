@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'fit_text.dart';
 import 'slide_background.dart';
@@ -27,6 +29,10 @@ class SlideView extends StatelessWidget {
 
   /// The width every template is designed against.
   static const designWidth = 1920.0;
+
+  /// The height that goes with it. Slides are 16:9 everywhere: the projector
+  /// window, the previews and the stream output all letterbox to it.
+  static const designHeight = designWidth * 9 / 16;
 
   final String content;
   final String reference;
@@ -211,12 +217,23 @@ class _BodyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Moving the text is moving its box: one margin grows by as much as the
+    // other shrinks, so up to the design's own margin the words keep the room
+    // they had and a long verse still fits the same way. Past that the margin
+    // being eaten is already at the slide's edge and stops there, so the box
+    // keeps rising but loses height, and the words shrink into what is left -
+    // which is what a screen blocked along the bottom needs.
+    final shift = template.textOffsetY * SlideView.designHeight * scale;
+    final margin = template.paddingV * scale;
+
     return Align(
       alignment: _align,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: template.paddingH * scale,
-          vertical: template.paddingV * scale,
+        padding: EdgeInsets.only(
+          left: template.paddingH * scale,
+          right: template.paddingH * scale,
+          top: math.max(0, margin + shift),
+          bottom: math.max(0, margin - shift),
         ),
         // The design's size is a ceiling, not a fixed value: a long verse
         // gives way rather than running off the bottom of the screen.

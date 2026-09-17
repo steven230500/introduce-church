@@ -632,6 +632,7 @@
   "sermonPoints": "POINTS",
   "sermonRemovePoint": "Remove point",
   "sermonAddFirstPoint": "Add the first point",
+  "sermonEdit": "Edit sermon",
   "announcementTitle": "Announcement slide",
   "announcementHint": "Welcome to church...",
   "announcementMessage": "Message",
@@ -641,6 +642,8 @@
   "freeSlideTitleHint": "Title (optional)",
   "freeSlideContentHint": "What the slide says...",
   "freeSlideNote": "It will use the service's current design",
+  "freeSlideEdit": "Edit slide",
+  "saveChanges": "Save changes",
   "importPickPptx": "Choose a .pptx file",
   "importPptxNoText": "No text was found in the file",
   "importPptxDone": "{count, plural, =1{1 slide imported} other{{count} slides imported}}",
@@ -769,6 +772,7 @@
   "designMargins": "Margins",
   "designHorizontal": "Horizontal",
   "designVertical": "Vertical",
+  "designTextOffset": "Up / down (%)",
   "designShow": "Show",
   "designRefSize": "Reference size",
   "designRefColor": "Reference colour",
@@ -1011,6 +1015,16 @@
   "shortcutsQuickVerse": "Quick verse: type \"jn 3:16\" and Enter",
   "shortcutsHold": "Hold the screen, or follow you again",
   "shortcutsSend": "Send what you are looking at to the screen",
+  "shortcutsNudgeText": "Move the design's text up or down",
+  "designAdjustedSuffix": "{name} (adjusted)",
+  "@designAdjustedSuffix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "designDuplicateAndEdit": "Duplicate and edit",
   "shortcutsToggleView": "Switch between grid and big slide",
   "shortcutsToggleLibrary": "Show or hide the library",
   "shortcutsHelp": "Open this help",

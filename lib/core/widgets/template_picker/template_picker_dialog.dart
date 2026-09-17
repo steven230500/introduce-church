@@ -747,6 +747,13 @@ class _TemplateEditorDialogState extends State<TemplateEditorDialog> {
                         max: 200,
                         onChanged: (v) => update(t.copyWith(paddingV: v)),
                       ),
+                      EditorSlider(
+                        label: l.designTextOffset,
+                        value: t.textOffsetY * 100,
+                        min: -maxTextOffsetY * 100,
+                        max: maxTextOffsetY * 100,
+                        onChanged: (v) => update(t.copyWith(textOffsetY: v / 100)),
+                      ),
                     ],
                   ),
                   EditorSection(

@@ -8,21 +8,30 @@ class FreeSlideResult {
   final String? title;
 }
 
-Future<FreeSlideResult?> showFreeSlideDialog(BuildContext context) {
-  return showDialog<FreeSlideResult>(context: context, builder: (_) => const _FreeSlideDialog());
+/// Writes a text slide, or corrects one already in the service when [initial]
+/// is given.
+Future<FreeSlideResult?> showFreeSlideDialog(BuildContext context, {FreeSlideResult? initial}) {
+  return showDialog<FreeSlideResult>(
+    context: context,
+    builder: (_) => _FreeSlideDialog(initial: initial),
+  );
 }
 
 class _FreeSlideDialog extends StatefulWidget {
-  const _FreeSlideDialog();
+  const _FreeSlideDialog({this.initial});
+
+  final FreeSlideResult? initial;
 
   @override
   State<_FreeSlideDialog> createState() => _FreeSlideDialogState();
 }
 
 class _FreeSlideDialogState extends State<_FreeSlideDialog> {
-  final _titleCtrl = TextEditingController();
-  final _textCtrl = TextEditingController();
+  late final _titleCtrl = TextEditingController(text: widget.initial?.title ?? '');
+  late final _textCtrl = TextEditingController(text: widget.initial?.text ?? '');
   final _textFocus = FocusNode();
+
+  bool get _isEdit => widget.initial != null;
 
   @override
   void dispose() {
@@ -48,7 +57,7 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: L10n.of(context).freeSlideTitle,
+      title: _isEdit ? L10n.of(context).freeSlideEdit : L10n.of(context).freeSlideTitle,
       icon: Icons.text_fields_rounded,
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
@@ -56,7 +65,7 @@ class _FreeSlideDialogState extends State<_FreeSlideDialog> {
         FilledButton(
           onPressed: _canSubmit ? _submit : null,
           style: FilledButton.styleFrom(disabledBackgroundColor: kDialogBorder),
-          child: Text(L10n.of(context).add),
+          child: Text(_isEdit ? L10n.of(context).saveChanges : L10n.of(context).add),
         ),
       ],
       child: Column(

@@ -162,7 +162,7 @@ class _AddItemMenu extends StatelessWidget {
         final result = await showFreeSlideDialog(context);
         if (result != null) await cubit.addFreeSlide(result.text, title: result.title);
       case 'sermon':
-        await _showSermonDialog(context, cubit);
+        await _addSermon(context, cubit);
       case 'announcement':
         await _showAnnouncementDialog(context, cubit);
 
@@ -206,26 +206,41 @@ class _SectionItemState extends State<_SectionItem> {
 
 // ── Sermon ────────────────────────────────────────────────────────────────────
 
-Future<void> _showSermonDialog(BuildContext context, ControlCubit cubit) async {
-  final result = await showDialog<({String title, List<String> points})>(
+typedef SermonDraft = ({String title, List<String> points});
+
+/// Writes the sermon's title slide and its points, or corrects them when
+/// [initial] is given.
+Future<SermonDraft?> showSermonDialog(BuildContext context, {SermonDraft? initial}) {
+  return showDialog<SermonDraft>(
     context: context,
-    builder: (_) => const _SermonDialog(),
+    builder: (_) => _SermonDialog(initial: initial),
   );
+}
+
+Future<void> _addSermon(BuildContext context, ControlCubit cubit) async {
+  final result = await showSermonDialog(context);
   if (result != null && context.mounted) {
     await cubit.addSermon(result.title, result.points);
   }
 }
 
 class _SermonDialog extends StatefulWidget {
-  const _SermonDialog();
+  const _SermonDialog({this.initial});
+
+  final SermonDraft? initial;
 
   @override
   State<_SermonDialog> createState() => _SermonDialogState();
 }
 
 class _SermonDialogState extends State<_SermonDialog> {
-  final _titleCtrl = TextEditingController();
-  final List<TextEditingController> _pointCtrls = [];
+  late final _titleCtrl = TextEditingController(text: widget.initial?.title ?? '');
+  late final List<TextEditingController> _pointCtrls = [
+    for (final point in widget.initial?.points ?? const <String>[])
+      TextEditingController(text: point),
+  ];
+
+  bool get _isEdit => widget.initial != null;
 
   @override
   void dispose() {
@@ -255,7 +270,7 @@ class _SermonDialogState extends State<_SermonDialog> {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      title: L10n.of(context).sermonNew,
+      title: _isEdit ? L10n.of(context).sermonEdit : L10n.of(context).sermonNew,
       icon: Icons.mic_outlined,
       width: 480,
       actions: [
@@ -263,7 +278,7 @@ class _SermonDialogState extends State<_SermonDialog> {
         const SizedBox(width: AppSpace.sm),
         FilledButton(
           onPressed: _titleCtrl.text.trim().isEmpty ? null : _save,
-          child: Text(L10n.of(context).save),
+          child: Text(_isEdit ? L10n.of(context).saveChanges : L10n.of(context).save),
         ),
       ],
       child: SingleChildScrollView(

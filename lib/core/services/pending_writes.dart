@@ -28,6 +28,7 @@ enum PendingKind {
   itemRemove,
   itemTemplate,
   itemTitle,
+  itemContent,
   itemNotes,
   itemAutoAdvance,
   itemOrder,
@@ -278,6 +279,7 @@ Collection applyPendingWrite(Collection collection, PendingWrite write) {
 
     case PendingKind.itemTemplate:
     case PendingKind.itemTitle:
+    case PendingKind.itemContent:
     case PendingKind.itemNotes:
     case PendingKind.itemAutoAdvance:
     case PendingKind.itemPlanned:
@@ -293,6 +295,12 @@ Collection applyPendingWrite(Collection collection, PendingWrite write) {
 CollectionItem _applyToItem(CollectionItem item, PendingWrite write) => switch (write.kind) {
   PendingKind.itemTemplate => item.withTemplateId(write.args['template_id'] as String?),
   PendingKind.itemTitle => item.renamed(write.args['title'] as String? ?? ''),
+  PendingKind.itemContent => item.copyWith(
+    contentJson: {
+      ...?item.contentJson,
+      ...Map<String, dynamic>.from(write.args['content'] as Map? ?? const {}),
+    },
+  ),
   PendingKind.itemNotes => item.copyWith(
     notes: write.args['notes'] as String?,
     clearNotes: write.args['notes'] == null,
