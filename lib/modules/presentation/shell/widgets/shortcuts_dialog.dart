@@ -47,30 +47,34 @@ class _ShortcutsDialog extends StatelessWidget {
       title: t.shortcutsTitle,
       icon: Icons.keyboard_outlined,
       width: 420,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final entry in _groups(t).entries) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.sm),
-              child: Text(entry.key.toUpperCase(), style: AppText.sectionLabel),
-            ),
-            for (final (keys, description) in entry.value)
+      // The list is longer than a laptop window is tall once the church adds a
+      // display, so it scrolls rather than running off the bottom.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final entry in _groups(t).entries) ...[
               Padding(
-                padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                child: Row(
-                  children: [
-                    SizedBox(width: 150, child: _KeyCap(label: keys)),
-                    const SizedBox(width: AppSpace.md),
-                    Expanded(child: Text(description, style: AppText.body)),
-                  ],
-                ),
+                padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.sm),
+                child: Text(entry.key.toUpperCase(), style: AppText.sectionLabel),
               ),
+              for (final (keys, description) in entry.value)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 150, child: _KeyCap(label: keys)),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(child: Text(description, style: AppText.body)),
+                    ],
+                  ),
+                ),
+            ],
+            const SizedBox(height: AppSpace.sm),
+            Text(t.shortcutsNotWhileTyping, style: AppText.rowSubtitle),
           ],
-          const SizedBox(height: AppSpace.sm),
-          Text(t.shortcutsNotWhileTyping, style: AppText.rowSubtitle),
-        ],
+        ),
       ),
     );
   }

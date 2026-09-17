@@ -78,7 +78,13 @@ class AppDialog extends StatelessWidget {
             child: Padding(padding: contentPadding, child: child),
           )
         else
-          Padding(padding: contentPadding, child: child),
+          // Flexible, not a plain child: a dialog taller than the window has to
+          // give way at the content, letting a scrolling child scroll. Without
+          // it the content kept its full height and ran off the bottom of the
+          // screen on a short window.
+          Flexible(
+            child: Padding(padding: contentPadding, child: child),
+          ),
         if (actions != null) ...[
           const Divider(height: 1),
           Padding(
