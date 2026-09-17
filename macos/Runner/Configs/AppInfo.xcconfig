@@ -8,7 +8,7 @@
 PRODUCT_NAME = Introduce
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.casavida.introduce.demo
+PRODUCT_BUNDLE_IDENTIFIER = com.casavida.introduce
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 Casa Vida CTG. All rights reserved.
