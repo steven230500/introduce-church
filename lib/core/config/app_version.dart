@@ -4,4 +4,4 @@
 /// it against the latest release to tell a church a newer one is out. A test
 /// fails the day the two disagree, and the release workflow refuses a tag that
 /// matches neither.
-const appVersion = '1.0.5';
+const appVersion = '1.0.6';
