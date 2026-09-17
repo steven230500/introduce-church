@@ -168,9 +168,7 @@ void main() {
       expect(dropped.center.dy, closeTo(centred.center.dy + 18, 1));
     });
 
-    testWidgets('lifted as far as it goes, the text stops at the top of the slide', (
-      tester,
-    ) async {
+    testWidgets('lifted as far as it goes, the text stops at the top of the slide', (tester) async {
       final centred = await boxWith(tester, 0);
       final far = await boxWith(tester, -maxTextOffsetY);
 

@@ -552,11 +552,7 @@ Future<void> _runItemAction(
 }
 
 /// Reopens the dialog the item was written in, filled with what it holds.
-Future<void> _editItemContent(
-  BuildContext context,
-  CollectionItem item,
-  ControlCubit cubit,
-) async {
+Future<void> _editItemContent(BuildContext context, CollectionItem item, ControlCubit cubit) async {
   final content = item.contentJson;
   switch (item.type) {
     case CollectionItemType.sermon:
