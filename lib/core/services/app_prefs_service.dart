@@ -194,6 +194,19 @@ class AppPrefsService {
     await _write(d);
   }
 
+  /// The Bible version the operator last chose, which the browser opens on and
+  /// a typed reference is looked up in.
+  Future<String?> bibleVersion() async {
+    final d = await _read();
+    return d['bible_version'] as String?;
+  }
+
+  Future<void> setBibleVersion(String code) async {
+    final d = Map<String, dynamic>.from(await _read());
+    d['bible_version'] = code;
+    await _write(d);
+  }
+
   /// A random id for this computer, made the first time it is asked for.
   ///
   /// It lets the anonymous count of copies in use tell ten launches on one

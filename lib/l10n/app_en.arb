@@ -506,12 +506,11 @@
   },
   "songsDeleteTitle": "Delete song",
   "bibleNoVersionsTitle": "No versions",
-  "bibleNoVersionsMessage": "Download a version to use the Bible.",
+  "bibleNoVersionsMessage": "Import a version to use the Bible.",
   "bibleVersions": "Versions",
   "bibleBooks": "Books",
   "bibleManageVersions": "Manage versions",
   "bibleVersionIncomplete": "incomplete",
-  "bibleVersionFinish": "Finish",
   "gridBigger": "Bigger slides",
   "gridSmaller": "Smaller slides",
   "bibleSearchBook": "Search books...",
@@ -1293,10 +1292,94 @@
       }
     }
   },
-  "bibleLocalFile": "local file",
-  "download": "Download",
   "retry": "Try again",
-  "bibleLocalFileNote": "Versions marked \"local file\" need you to import your own JSON file in the thiagobodruk/bible format.",
+  "bibleImport": "Import a Bible…",
+  "bibleImportReading": "Reading the file…",
+  "bibleImportSaving": "Saving {name}…",
+  "@bibleImportSaving": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportName": "Name",
+  "bibleImportCode": "Abbreviation",
+  "bibleImportCodeHelp": "Shown on screen as: Juan 3:16 • {code}",
+  "@bibleImportCodeHelp": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportSummary": "{books} of 66 books · {verses} verses · {format}",
+  "@bibleImportSummary": {
+    "placeholders": {
+      "books": {
+        "type": "int"
+      },
+      "verses": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportMissing": "{count, plural, one{1 book is missing. It can be used, but that one will not show up.} other{{count} books are missing. It can be used, but those will not show up.}}",
+  "@bibleImportMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleImportSkipped": "{count, plural, one{1 book outside the 66 was left out.} other{{count} books outside the 66 were left out.}}",
+  "@bibleImportSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleImportReplaces": "You already have {code}. This replaces it.",
+  "@bibleImportReplaces": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportCodeTaken": "{code} is the included version. Use another abbreviation.",
+  "@bibleImportCodeTaken": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportUnsupported": "That file is not a Bible Introduce can read. Zefania XML, OSIS, OpenSong, Beblia and FreeShow (.fsb) work.",
+  "bibleImportUnreadable": "The file could not be read. It may be damaged.",
+  "bibleImportEmpty": "The file has no verses in it.",
+  "bibleImportNotSaved": "The Bible could not be saved: {error}",
+  "@bibleImportNotSaved": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportNote": "Bring the file for the version your church uses. It is kept on this computer only: Introduce does not upload it anywhere. Most translations are owned by a publisher, so use one your church has permission to use.",
+  "bibleVersionDeleteTitle": "Remove {name}?",
+  "@bibleVersionDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleVersionDeleteMessage": "To have it back you will need to import the file again.",
   "confirm": "Confirm",
   "clearSearch": "Clear",
   "searchFieldHint": "Search...",

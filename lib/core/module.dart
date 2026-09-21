@@ -13,7 +13,6 @@ import 'repositories/organization_repository.dart';
 import 'repositories/template_repository.dart';
 import 'services/app_prefs_service.dart';
 import 'services/locale_controller.dart';
-import 'services/bible_download_service.dart';
 import 'services/update_checker.dart';
 import 'services/usage_reporter.dart';
 
@@ -39,9 +38,8 @@ class CoreModule extends Module {
 
     i.addInstance<AppDatabase>(AppDatabase.instance);
     i.addLazySingleton<BibleImportService>(BibleImportService.new);
-    i.addLazySingleton<BibleRepository>(BibleRepository.new);
-    i.addLazySingleton<BibleDownloadService>(
-      () => BibleDownloadService(Modular.get<Dio>(), Modular.get<AppDatabase>()),
+    i.addLazySingleton<BibleRepository>(
+      () => BibleRepository(Modular.get<AppDatabase>(), Modular.get<AppPrefsService>()),
     );
 
     i.addLazySingleton<OrganizationRepository>(

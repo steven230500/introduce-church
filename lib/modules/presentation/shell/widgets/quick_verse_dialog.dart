@@ -64,6 +64,9 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
   /// be found out by the whole room at once.
   String? _preview;
   int _previewCount = 0;
+
+  /// The version the preview was read in, which is the one that will go out.
+  String _previewVersion = '';
   String _previewOf = '';
   Timer? _previewDebounce;
 
@@ -151,8 +154,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     if (reference == null) return;
     final key = '$reference';
     try {
-      final versions = await _repository.getVersions();
-      final version = versions.where((v) => v.isDownloaded).firstOrNull ?? versions.firstOrNull;
+      final version = await _repository.preferredVersion();
       if (version == null) return;
       final verses = await _repository.getVerses(
         version.code,
@@ -168,6 +170,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
       setState(() {
         _preview = verses.sublist(start - 1, end).join(' ');
         _previewCount = end - start + 1;
+        _previewVersion = version.code;
         _previewOf = key;
       });
     } catch (_) {
@@ -192,15 +195,14 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     setState(() => _busy = true);
 
     try {
-      final versions = await _repository.getVersions();
-      if (versions.isEmpty) {
+      final version = await _repository.preferredVersion();
+      if (version == null) {
         setState(() {
           _busy = false;
           _failure = L10n.of(context).quickVerseNoBible;
         });
         return;
       }
-      final version = versions.first;
 
       // A chapter on its own means all of it, and how long it is depends on
       // the chapter, so it has to be read before the range can be asked for.
@@ -304,7 +306,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
           ],
           if (_preview case final text? when _parsed.reference != null) ...[
             const SizedBox(height: AppSpace.md),
-            _Preview(text: text, count: _previewCount),
+            _Preview(text: text, count: _previewCount, version: _previewVersion),
           ],
           // Only worth asking when the reference covers more than one verse:
           // a range, or a whole chapter, which names no verse at all.
@@ -418,10 +420,11 @@ class _BookChoices extends StatelessWidget {
 
 /// The passage itself, before it goes anywhere.
 class _Preview extends StatelessWidget {
-  const _Preview({required this.text, required this.count});
+  const _Preview({required this.text, required this.count, required this.version});
 
   final String text;
   final int count;
+  final String version;
 
   @override
   Widget build(BuildContext context) {
@@ -442,10 +445,11 @@ class _Preview extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.45),
           ),
-          if (count > 1) ...[
-            const SizedBox(height: AppSpace.xs),
-            Text(L10n.of(context).quickVerseVerseCount(count), style: AppText.rowSubtitle),
-          ],
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            [version, if (count > 1) L10n.of(context).quickVerseVerseCount(count)].join(' · '),
+            style: AppText.rowSubtitle,
+          ),
         ],
       ),
     );

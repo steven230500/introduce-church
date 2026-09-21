@@ -10,23 +10,30 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
 
   final BibleRepository _repo;
 
+  /// Opens on the version the operator uses, and again after the versions
+  /// dialog added or removed one.
   Future<void> load() async {
     final versions = await _repo.getVersions();
-    if (versions.isEmpty) return;
-    final selected = versions.first;
+    final selected = await _repo.preferredVersion();
+    if (versions.isEmpty || selected == null) {
+      emit(const BibleBrowserState());
+      return;
+    }
     final books = await _buildBookItems(selected.code);
+    // From scratch: a book picked in a version that may no longer be there
+    // means nothing now.
     emit(
-      state.copyWith(
+      BibleBrowserState(
         versions: versions,
         selectedVersion: selected,
         allBooks: books,
         filteredBooks: books,
-        view: BibleBrowserView.books,
       ),
     );
   }
 
   Future<void> selectVersion(BibleVersion version) async {
+    await _repo.rememberVersion(version.code);
     final books = await _buildBookItems(version.code);
     emit(
       state.copyWith(

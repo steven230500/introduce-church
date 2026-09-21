@@ -1,63 +1,152 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
-import '../../../core/services/bible_download_service.dart';
-import '../../../core/widgets/app_dialog.dart';
-import 'bible_versions_cubit.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../l10n/l10n.dart';
+import 'package:intl/intl.dart';
 
-Future<void> showBibleVersionsDialog(BuildContext context) {
-  return showDialog(
+import '../../../core/bible_import/bible_files.dart';
+import '../../../core/bible_import/version_naming.dart';
+import '../../../core/local_db/bible_import_service.dart' show bundledBibleCode;
+import '../../../core/local_db/bible_repository.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_dimens.dart';
+import '../../../core/theme/app_text.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../l10n/l10n.dart';
+import 'bible_versions_cubit.dart';
+
+/// The Bibles on this computer, and importing one from a file. Returns whether
+/// the list changed, so whoever opened it can read the versions again.
+Future<bool> showBibleVersionsDialog(BuildContext context) async {
+  final cubit = BibleVersionsCubit(Modular.get<BibleRepository>())..load();
+  await showDialog<void>(
     context: context,
-    builder: (_) => BlocProvider(
-      create: (_) => BibleVersionsCubit(Modular.get<BibleDownloadService>())..load(),
-      child: const _BibleVersionsDialog(),
-    ),
+    builder: (_) => BlocProvider.value(value: cubit, child: const BibleVersionsDialog()),
   );
+  final changed = cubit.changed;
+  await cubit.close();
+  return changed;
 }
 
-class _BibleVersionsDialog extends StatelessWidget {
-  const _BibleVersionsDialog();
+@visibleForTesting
+class BibleVersionsDialog extends StatelessWidget {
+  const BibleVersionsDialog({super.key, this.pickFile});
+
+  /// Stands in for the system picker in tests.
+  final Future<String?> Function()? pickFile;
+
+  Future<void> _import(BibleVersionsCubit cubit) async {
+    final path = pickFile != null
+        ? await pickFile!()
+        : (await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: bibleFileExtensions,
+          ))?.files.firstOrNull?.path;
+    if (path == null) return;
+    await cubit.open(path);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AppDialog(
-      title: L10n.of(context).bibleVersionsTitle,
-      icon: Icons.book_outlined,
-      width: 480,
-      contentPadding: EdgeInsets.zero,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          BlocBuilder<BibleVersionsCubit, BibleVersionsState>(
-            builder: (context, state) => ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              itemCount: state.versions.length,
-              separatorBuilder: (c, i) => const Divider(color: kDialogBorder, height: 16),
-              itemBuilder: (_, i) => _VersionRow(state: state.versions[i]),
-            ),
+    final cubit = context.read<BibleVersionsCubit>();
+    return BlocBuilder<BibleVersionsCubit, BibleVersionsState>(
+      builder: (context, state) {
+        final busy = state is BibleVersionsReading || state is BibleVersionsSaving;
+        return AppDialog(
+          title: L10n.of(context).bibleVersionsTitle,
+          icon: Icons.menu_book_outlined,
+          width: 520,
+          showClose: !busy,
+          contentPadding: const EdgeInsets.all(AppSpace.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (state is BibleVersionsLoading)
+                const Padding(
+                  padding: EdgeInsets.all(AppSpace.xl),
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else
+                Flexible(
+                  child: _VersionList(
+                    versions: state.model.versions,
+                    added: state is BibleVersionsIdle ? state.added : null,
+                    enabled: !busy,
+                  ),
+                ),
+              const SizedBox(height: AppSpace.lg),
+              switch (state) {
+                BibleVersionsReview() => _Review(key: ValueKey(state.bible.source), state: state),
+                BibleVersionsReading() => _Working(L10n.of(context).bibleImportReading),
+                BibleVersionsSaving(:final name) => _Working(
+                  L10n.of(context).bibleImportSaving(name),
+                ),
+                BibleVersionsIdle(:final problem, :final detail) => _ImportButton(
+                  problem: problem,
+                  detail: detail,
+                  onPressed: () => _import(cubit),
+                ),
+                BibleVersionsLoading() => const SizedBox.shrink(),
+              },
+              const SizedBox(height: AppSpace.md),
+              const _Note(),
+            ],
           ),
-          const _ImportNote(),
-        ],
+        );
+      },
+    );
+  }
+}
+
+// ── Versions ──────────────────────────────────────────────────────────────────
+
+class _VersionList extends StatelessWidget {
+  const _VersionList({required this.versions, required this.added, required this.enabled});
+
+  final List<InstalledBible> versions;
+  final String? added;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      shrinkWrap: true,
+      itemCount: versions.length,
+      separatorBuilder: (_, _) => const Divider(color: kDialogBorder, height: AppSpace.lg),
+      itemBuilder: (_, i) => _VersionRow(
+        version: versions[i],
+        highlighted: versions[i].code == added,
+        enabled: enabled,
       ),
     );
   }
 }
 
-// ── Row ───────────────────────────────────────────────────────────────────────
-
 class _VersionRow extends StatelessWidget {
-  const _VersionRow({required this.state});
-  final VersionState state;
+  const _VersionRow({required this.version, required this.highlighted, required this.enabled});
+
+  final InstalledBible version;
+  final bool highlighted;
+  final bool enabled;
+
+  Future<void> _delete(BuildContext context) async {
+    final t = L10n.of(context);
+    final cubit = context.read<BibleVersionsCubit>();
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: t.bibleVersionDeleteTitle(version.name),
+      message: t.bibleVersionDeleteMessage,
+      confirmLabel: t.delete,
+      destructive: true,
+      icon: Icons.delete_outline,
+    );
+    if (confirmed) await cubit.delete(version.code);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<BibleVersionsCubit>();
-    final installed = state.status == VersionStatus.installed;
+    final t = L10n.of(context);
     return Row(
       children: [
         Container(
@@ -66,48 +155,33 @@ class _VersionRow extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AppColors.surfaceControl,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.all(AppRadius.md),
+            border: highlighted ? Border.all(color: AppColors.success) : null,
           ),
           child: Icon(
-            installed ? Icons.menu_book_rounded : Icons.menu_book_outlined,
+            Icons.menu_book_rounded,
             size: 18,
-            color: installed ? AppColors.success : AppColors.textMuted,
+            color: version.complete ? AppColors.success : AppColors.warning,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                state.meta.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text(version.name, style: AppText.rowTitle, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
               Row(
                 children: [
                   Text(
-                    state.meta.bundled
-                        ? L10n.of(context).bibleVersionBundled(state.meta.code)
-                        : state.meta.code,
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                    version.bundled ? t.bibleVersionBundled(version.code) : version.code,
+                    style: AppText.rowSubtitle,
                   ),
-                  if (state.meta.localImport && !installed) ...[
-                    const SizedBox(width: 6),
-                    const _LocalImportBadge(),
-                  ],
-                  if (state.meta.apiCode != null && !installed) ...[
-                    const SizedBox(width: 6),
-                    const _ApiBadge(),
-                  ],
-                  if (state.status == VersionStatus.incomplete) ...[
-                    const SizedBox(width: 6),
+                  if (!version.complete) ...[
+                    const SizedBox(width: AppSpace.sm),
                     Text(
-                      L10n.of(context).bibleVersionIncomplete,
-                      style: TextStyle(color: Colors.amber.shade600, fontSize: 11),
+                      t.bibleVersionIncomplete,
+                      style: AppText.rowSubtitle.copyWith(color: AppColors.warning),
                     ),
                   ],
                 ],
@@ -115,174 +189,75 @@ class _VersionRow extends StatelessWidget {
             ],
           ),
         ),
-        _VersionAction(state: state, cubit: cubit),
+        if (version.bundled)
+          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
+        else
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+            tooltip: t.delete,
+            onPressed: enabled ? () => _delete(context) : null,
+          ),
       ],
     );
   }
 }
 
-class _LocalImportBadge extends StatelessWidget {
-  const _LocalImportBadge();
+// ── Importing ─────────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) =>
-      _Badge(L10n.of(context).bibleLocalFile, AppColors.textDisabled);
-}
+class _ImportButton extends StatelessWidget {
+  const _ImportButton({required this.problem, required this.detail, required this.onPressed});
 
-class _ApiBadge extends StatelessWidget {
-  const _ApiBadge();
-
-  @override
-  Widget build(BuildContext context) => _Badge('bolls.life', const Color(0xFF1D3D6B));
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge(this.label, this.borderColor);
-  final String label;
-  final Color borderColor;
+  final BibleImportProblem? problem;
+  final String? detail;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceControl,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: borderColor),
-      ),
-      child: Text(label, style: const TextStyle(color: AppColors.textTertiary, fontSize: 9)),
-    );
-  }
-}
-
-// ── Action ────────────────────────────────────────────────────────────────────
-
-class _VersionAction extends StatelessWidget {
-  const _VersionAction({required this.state, required this.cubit});
-  final VersionState state;
-  final BibleVersionsCubit cubit;
-
-  @override
-  Widget build(BuildContext context) {
-    return switch (state.status) {
-      VersionStatus.checking => const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-
-      VersionStatus.installed =>
-        state.meta.bundled
-            ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22)
-            : IconButton(
-                icon: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade400),
-                tooltip: L10n.of(context).delete,
-                onPressed: () => cubit.delete(state.meta.code),
-              ),
-
-      VersionStatus.notInstalled =>
-        state.meta.localImport
-            ? FilledButton.icon(
-                onPressed: () => cubit.importFromFile(state.meta.code),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.surfaceControl,
-                  foregroundColor: AppColors.accent,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                icon: const Icon(Icons.folder_open_rounded, size: 16),
-                label: Text(L10n.of(context).import, style: const TextStyle(fontSize: 13)),
-              )
-            : state.meta.canDownload
-            ? FilledButton.icon(
-                onPressed: () => cubit.download(state.meta.code),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                icon: const Icon(Icons.download_rounded, size: 16),
-                label: Text(L10n.of(context).download, style: const TextStyle(fontSize: 13)),
-              )
-            : const SizedBox.shrink(),
-
-      // What was half downloaded is finished, not deleted first: the same
-      // download wipes it and writes it again.
-      VersionStatus.incomplete => FilledButton.icon(
-        onPressed: () => cubit.download(state.meta.code),
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        ),
-        icon: const Icon(Icons.refresh_rounded, size: 16),
-        label: Text(L10n.of(context).bibleVersionFinish, style: const TextStyle(fontSize: 13)),
-      ),
-
-      VersionStatus.downloading => _ProgressBar(progress: state.progress),
-
-      VersionStatus.importing => SizedBox(
-        width: 100,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
-            ),
-            SizedBox(width: 8),
-            Text(
-              L10n.of(context).songImporting,
-              style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-
-      VersionStatus.error => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, size: 16, color: Colors.red.shade400),
-          const SizedBox(width: 6),
-          TextButton(
-            onPressed: () => state.meta.localImport
-                ? cubit.importFromFile(state.meta.code)
-                : cubit.download(state.meta.code),
-            child: Text(
-              L10n.of(context).retry,
-              style: TextStyle(color: AppColors.accent, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
+    final t = L10n.of(context);
+    final message = switch (problem) {
+      null => null,
+      BibleImportProblem.unsupported => t.bibleImportUnsupported,
+      BibleImportProblem.unreadable => t.bibleImportUnreadable,
+      BibleImportProblem.empty => t.bibleImportEmpty,
+      BibleImportProblem.notSaved => t.bibleImportNotSaved(detail ?? ''),
     };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.icon(
+          onPressed: onPressed,
+          icon: const Icon(Icons.folder_open_rounded, size: 16),
+          label: Text(t.bibleImport),
+        ),
+        if (message != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          Text(message, style: AppText.body.copyWith(color: AppColors.danger)),
+        ],
+      ],
+    );
   }
 }
 
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({required this.progress});
-  final double progress;
+class _Working extends StatelessWidget {
+  const _Working(this.label);
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 120,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            '${(progress * 100).toInt()}%',
-            style: const TextStyle(color: AppColors.accent, fontSize: 12),
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
           ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: AppColors.border,
-              color: AppColors.accent,
-              minHeight: 4,
-            ),
+          const SizedBox(width: AppSpace.sm),
+          Flexible(
+            child: Text(label, style: AppText.body, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -290,34 +265,141 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-// ── Footer note ───────────────────────────────────────────────────────────────
+/// The Bible just read, with its name and code to confirm before it is saved.
+class _Review extends StatefulWidget {
+  const _Review({super.key, required this.state});
 
-class _ImportNote extends StatelessWidget {
-  const _ImportNote();
+  final BibleVersionsReview state;
+
+  @override
+  State<_Review> createState() => _ReviewState();
+}
+
+class _ReviewState extends State<_Review> {
+  late final _name = TextEditingController(text: widget.state.name);
+  late final _code = TextEditingController(text: widget.state.code);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _code.dispose();
+    super.dispose();
+  }
+
+  void _install() {
+    if (!BibleVersionsCubit.canInstall(name: _name.text, code: _code.text)) return;
+    context.read<BibleVersionsCubit>().install(name: _name.text, code: _code.text);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    final bible = widget.state.bible;
+    final code = cleanVersionCode(_code.text);
+    final verses = NumberFormat.decimalPattern(
+      Localizations.localeOf(context).toString(),
+    ).format(bible.verseCount);
+
+    final warnings = [
+      if (code == bundledBibleCode) t.bibleImportCodeTaken(code),
+      if (code != bundledBibleCode && widget.state.model.has(code)) t.bibleImportReplaces(code),
+      if (bible.missingBooks > 0) t.bibleImportMissing(bible.missingBooks),
+      if (bible.skippedBooks > 0) t.bibleImportSkipped(bible.skippedBooks),
+    ];
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: AppColors.surfaceControl,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.all(AppRadius.md),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              L10n.of(context).bibleLocalFileNote,
-              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
-            ),
+          Text(
+            t.bibleImportSummary(bible.books.length, verses, bible.format.label),
+            style: AppText.rowSubtitle,
+          ),
+          const SizedBox(height: AppSpace.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: AppTextField(
+                  controller: _name,
+                  label: t.bibleImportName,
+                  hintText: t.bibleImportName,
+                  fillColor: AppColors.surface,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: AppTextField(
+                  controller: _code,
+                  label: t.bibleImportCode,
+                  hintText: t.bibleImportCode,
+                  fillColor: AppColors.surface,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _install(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(t.bibleImportCodeHelp(code.isEmpty ? '…' : code), style: AppText.rowSubtitle),
+          for (final warning in warnings) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(warning, style: AppText.body.copyWith(color: AppColors.warning)),
+          ],
+          const SizedBox(height: AppSpace.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: context.read<BibleVersionsCubit>().cancel,
+                child: Text(t.cancel),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              FilledButton(
+                onPressed: BibleVersionsCubit.canInstall(name: _name.text, code: _code.text)
+                    ? _install
+                    : null,
+                child: Text(t.import),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Note ──────────────────────────────────────────────────────────────────────
+
+/// Why the church brings its own Bible, said where the button is.
+class _Note extends StatelessWidget {
+  const _Note();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 1),
+          child: Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Text(
+            L10n.of(context).bibleImportNote,
+            style: AppText.rowSubtitle.copyWith(height: 1.45),
+          ),
+        ),
+      ],
     );
   }
 }

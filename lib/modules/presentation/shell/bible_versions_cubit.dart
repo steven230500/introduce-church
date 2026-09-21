@@ -1,191 +1,163 @@
 import 'package:equatable/equatable.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/services/bible_download_service.dart';
 
-// ── Available versions registry ───────────────────────────────────────────────
+import '../../../core/bible_import/bible_files.dart';
+import '../../../core/bible_import/imported_bible.dart';
+import '../../../core/bible_import/version_naming.dart';
+import '../../../core/local_db/bible_import_service.dart' show bundledBibleCode;
+import '../../../core/local_db/bible_repository.dart';
 
-class BibleVersionMeta {
-  const BibleVersionMeta({
+part 'bible_versions_state.dart';
+
+/// A version on this computer, as the dialog lists it.
+class InstalledBible extends Equatable {
+  const InstalledBible({
     required this.code,
     required this.name,
     required this.bundled,
-    this.url,
-    this.apiCode,
-    this.localImport = false,
+    required this.complete,
   });
+
   final String code;
   final String name;
+
+  /// The one that comes with the app. It cannot be removed.
   final bool bundled;
-  final String? url;
-  // apiCode: código en bolls.life — descarga automática capítulo a capítulo
-  final String? apiCode;
-  // localImport: usuario provee su propio JSON (versiones no disponibles en bolls.life)
-  final bool localImport;
 
-  bool get canDownload => apiCode != null || url != null;
-}
-
-const kAvailableVersions = [
-  BibleVersionMeta(code: 'RVR1960', name: 'Reina-Valera 1960', bundled: true),
-  BibleVersionMeta(
-    code: 'NVI',
-    name: 'Nueva Versión Internacional',
-    bundled: false,
-    apiCode: 'NVI',
-  ),
-  BibleVersionMeta(
-    code: 'LBLA',
-    name: 'La Biblia de las Américas',
-    bundled: false,
-    apiCode: 'LBLA',
-  ),
-  BibleVersionMeta(code: 'PDT', name: 'Palabra de Dios para Todos', bundled: false, apiCode: 'PDT'),
-  BibleVersionMeta(code: 'DHH', name: 'Dios Habla Hoy', bundled: false, localImport: true),
-  BibleVersionMeta(code: 'RVR2015', name: 'Reina-Valera 2015', bundled: false, localImport: true),
-];
-
-// ── States ────────────────────────────────────────────────────────────────────
-
-enum VersionStatus {
-  checking,
-  installed,
-  notInstalled,
-  downloading,
-  importing,
-  error,
-
-  /// Installed, but missing books: a download that was cut off.
-  incomplete,
-}
-
-class VersionState extends Equatable {
-  const VersionState({
-    required this.meta,
-    required this.status,
-    this.progress = 0.0,
-    this.errorMessage,
-  });
-
-  final BibleVersionMeta meta;
-  final VersionStatus status;
-  final double progress;
-  final String? errorMessage;
-
-  VersionState copyWith({VersionStatus? status, double? progress, String? errorMessage}) =>
-      VersionState(
-        meta: meta,
-        status: status ?? this.status,
-        progress: progress ?? this.progress,
-        errorMessage: errorMessage ?? this.errorMessage,
-      );
+  /// Every book and chapter is there. A download an older build left half
+  /// done, or a file with one Testament, is not.
+  final bool complete;
 
   @override
-  List<Object?> get props => [meta.code, status, progress, errorMessage];
+  List<Object?> get props => [code, name, bundled, complete];
 }
 
-class BibleVersionsState extends Equatable {
-  const BibleVersionsState(this.versions);
-  final List<VersionState> versions;
+class BibleVersionsModel extends Equatable {
+  const BibleVersionsModel({this.versions = const []});
 
-  BibleVersionsState copyWithVersion(VersionState updated) => BibleVersionsState([
-    for (final v in versions) v.meta.code == updated.meta.code ? updated : v,
-  ]);
+  /// The church's own first, the included one last.
+  final List<InstalledBible> versions;
+
+  bool has(String code) => versions.any((v) => v.code == code);
 
   @override
   List<Object?> get props => [versions];
 }
 
-// ── Cubit ─────────────────────────────────────────────────────────────────────
+typedef BibleFileReader = Future<BibleFileResult> Function(String path);
 
+/// The Bibles on this computer, and bringing one in from a file.
+///
+/// Introduce does not download Bibles: the church brings the file for the
+/// version it has the right to use. See [ImportedBible].
 class BibleVersionsCubit extends Cubit<BibleVersionsState> {
-  BibleVersionsCubit(this._service)
-    : super(
-        BibleVersionsState(
-          kAvailableVersions
-              .map((m) => VersionState(meta: m, status: VersionStatus.checking))
-              .toList(),
-        ),
-      );
+  BibleVersionsCubit(this._repo, {BibleFileReader? reader})
+    : _reader = reader ?? readBibleFile,
+      super(const BibleVersionsLoading());
 
-  final BibleDownloadService _service;
+  final BibleRepository _repo;
+  final BibleFileReader _reader;
+
+  /// Whether a version was added or removed while the dialog was open, so the
+  /// Bible panel knows to read its list again.
+  bool changed = false;
 
   Future<void> load() async {
-    for (final meta in kAvailableVersions) {
-      final installed = await _service.isDownloaded(meta.code);
-      if (!installed) {
-        _emit(meta.code, VersionStatus.notInstalled);
-        continue;
-      }
-      // A Bible with holes in it is worse than one that is not there: the
-      // operator only finds out when the passage does not come up.
-      final complete = meta.bundled || await _service.isComplete(meta.code);
-      _emit(meta.code, complete ? VersionStatus.installed : VersionStatus.incomplete);
+    final model = await _model();
+    if (!isClosed) emit(BibleVersionsIdle(model));
+  }
+
+  /// Reads the file at [path] and, when it is a Bible, offers it for review
+  /// with a name and a code worked out from it.
+  Future<void> open(String path) async {
+    final model = state.model;
+    emit(BibleVersionsReading(model));
+    final result = await _reader(path);
+    if (isClosed) return;
+
+    final bible = result.bible;
+    if (bible == null) {
+      emit(BibleVersionsIdle(model, problem: _problemOf(result.failure?.problem)));
+      return;
     }
-  }
-
-  Future<void> download(String code) async {
-    final meta = kAvailableVersions.firstWhere((m) => m.code == code);
-    if (!meta.canDownload) return;
-
-    _emit(code, VersionStatus.downloading, progress: 0);
-    try {
-      if (meta.apiCode != null) {
-        await _service.downloadFromApi(
-          apiCode: meta.apiCode!,
-          code: meta.code,
-          name: meta.name,
-          onProgress: (p) => _emit(code, VersionStatus.downloading, progress: p),
-        );
-      } else {
-        await _service.downloadAndImport(
-          url: meta.url!,
-          code: meta.code,
-          name: meta.name,
-          onProgress: (p) => _emit(code, VersionStatus.downloading, progress: p),
-        );
-      }
-      _emit(code, VersionStatus.installed);
-    } catch (e) {
-      _emit(code, VersionStatus.error, error: e.toString().split('\n').first);
-    }
-  }
-
-  Future<void> importFromFile(String code) async {
-    final meta = kAvailableVersions.firstWhere((m) => m.code == code);
-
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-      allowMultiple: false,
-    );
-    final path = result?.files.firstOrNull?.path;
-    if (path == null) return;
-
-    _emit(code, VersionStatus.importing);
-    try {
-      await _service.importFromFile(filePath: path, code: meta.code, name: meta.name);
-      _emit(code, VersionStatus.installed);
-    } catch (e) {
-      _emit(
-        code,
-        VersionStatus.error,
-        error: 'Archivo inválido: ${e.toString().split('\n').first}',
-      );
-    }
-  }
-
-  Future<void> delete(String code) async {
-    await _service.deleteVersion(code);
-    _emit(code, VersionStatus.notInstalled);
-  }
-
-  void _emit(String code, VersionStatus status, {double progress = 0.0, String? error}) {
-    final current = state.versions.firstWhere((v) => v.meta.code == code);
     emit(
-      state.copyWithVersion(
-        current.copyWith(status: status, progress: progress, errorMessage: error),
+      BibleVersionsReview(
+        model,
+        bible: bible,
+        name: bible.title,
+        code: suggestVersionCode(bible.title, abbreviation: bible.abbreviation),
       ),
     );
   }
+
+  /// Saves the Bible under review as [name] with the code [code], and makes
+  /// it the one the operator gets: whoever imports a Bible means to use it.
+  Future<void> install({required String name, required String code}) async {
+    final review = state;
+    if (review is! BibleVersionsReview) return;
+    final cleanCode = cleanVersionCode(code);
+    final cleanName = name.trim();
+    if (!canInstall(name: cleanName, code: cleanCode)) return;
+
+    emit(BibleVersionsSaving(review.model, name: cleanName));
+    try {
+      await _repo.install(review.bible, code: cleanCode, name: cleanName);
+      await _repo.rememberVersion(cleanCode);
+      changed = true;
+      final model = await _model();
+      if (!isClosed) emit(BibleVersionsIdle(model, added: cleanCode));
+    } catch (e) {
+      if (isClosed) return;
+      emit(
+        BibleVersionsIdle(
+          review.model,
+          problem: BibleImportProblem.notSaved,
+          detail: '$e'.split('\n').first,
+        ),
+      );
+    }
+  }
+
+  /// Whether a Bible can be saved under [name] and [code]. The included
+  /// version's code is taken: replacing it would leave a church without the
+  /// one Bible the app guarantees.
+  static bool canInstall({required String name, required String code}) =>
+      name.trim().isNotEmpty &&
+      cleanVersionCode(code).isNotEmpty &&
+      cleanVersionCode(code) != bundledBibleCode;
+
+  /// Drops the Bible under review without saving it.
+  void cancel() => emit(BibleVersionsIdle(state.model));
+
+  Future<void> delete(String code) async {
+    if (state.model.versions.any((v) => v.code == code && v.bundled)) return;
+    await _repo.delete(code);
+    changed = true;
+    final model = await _model();
+    if (!isClosed) emit(BibleVersionsIdle(model));
+  }
+
+  Future<BibleVersionsModel> _model() async {
+    final versions = await _repo.getInstalledVersions();
+    final installed = [
+      for (final v in versions)
+        InstalledBible(
+          code: v.code,
+          name: v.name,
+          bundled: v.isBundled,
+          complete: await _repo.isComplete(v),
+        ),
+    ];
+    installed.sort((a, b) {
+      if (a.bundled != b.bundled) return a.bundled ? 1 : -1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return BibleVersionsModel(versions: installed);
+  }
+
+  static BibleImportProblem _problemOf(BibleFileProblem? problem) => switch (problem) {
+    BibleFileProblem.unsupported || null => BibleImportProblem.unsupported,
+    BibleFileProblem.unreadable => BibleImportProblem.unreadable,
+    BibleFileProblem.empty => BibleImportProblem.empty,
+  };
 }

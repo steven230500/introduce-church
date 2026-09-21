@@ -52,7 +52,7 @@ class _BiblePanelView extends StatelessWidget {
                   title: L10n.of(context).bibleNoVersionsTitle,
                   message: L10n.of(context).bibleNoVersionsMessage,
                   actionLabel: L10n.of(context).bibleVersions,
-                  onAction: () => showBibleVersionsDialog(context),
+                  onAction: () => _manageVersions(context),
                 );
               }
               return switch (state.view) {
@@ -68,6 +68,13 @@ class _BiblePanelView extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Opens the versions dialog, and reads the list again if a version was
+/// imported or removed there.
+Future<void> _manageVersions(BuildContext context) async {
+  final cubit = context.read<BibleBrowserCubit>();
+  if (await showBibleVersionsDialog(context)) await cubit.load();
 }
 
 // ── Toolbar: breadcrumb, version, search ──────────────────────────────────────
@@ -117,11 +124,11 @@ class _BibleToolbar extends StatelessWidget {
                   ),
                   if (state.versions.isNotEmpty) _VersionPicker(state: state),
                   AppIconButton(
-                    icon: Icons.cloud_download_outlined,
+                    icon: Icons.library_books_outlined,
                     tooltip: L10n.of(context).bibleManageVersions,
                     size: 26,
                     iconSize: 15,
-                    onTap: () => showBibleVersionsDialog(context),
+                    onTap: () => _manageVersions(context),
                   ),
                 ],
               ),

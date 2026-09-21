@@ -5,9 +5,9 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'app_database.g.dart';
 
-// Versiones descargadas (RVR1960 bundled, otras descargadas)
+// Versiones instaladas (RV1909 incluida, las demás importadas por la iglesia)
 class BibleVersions extends Table {
-  TextColumn get code => text()(); // 'RVR1960', 'NVI', etc.
+  TextColumn get code => text()(); // 'RV1909', 'NVI', etc.
   TextColumn get name => text()();
   BoolColumn get isBundled => boolean().withDefault(const Constant(false))();
   BoolColumn get isDownloaded => boolean().withDefault(const Constant(false))();
@@ -82,13 +82,6 @@ class AppDatabase extends _$AppDatabase {
     return stored >= expected;
   }
 
-  /// Says a version is ready to be read. Called only once everything is in.
-  Future<void> markVersionDownloaded(String code) async {
-    await (update(bibleVersions)..where((t) => t.code.equals(code))).write(
-      BibleVersionsCompanion(isDownloaded: const Value(true), downloadedAt: Value(DateTime.now())),
-    );
-  }
-
   // Libros
   Future<List<BibleBook>> getBooks(String versionCode) {
     return (select(bibleBooks)
@@ -116,42 +109,6 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  // Insertar libro individual (para descarga progresiva)
-  Future<void> insertBook({
-    required String versionCode,
-    required int bookIndex,
-    required String abbrev,
-    required String bookName,
-    required int chapterCount,
-  }) async {
-    await into(bibleBooks).insertOnConflictUpdate(
-      BibleBooksCompanion(
-        versionCode: Value(versionCode),
-        bookIndex: Value(bookIndex),
-        abbrev: Value(abbrev),
-        name: Value(bookName),
-        chapterCount: Value(chapterCount),
-      ),
-    );
-  }
-
-  // Insertar capítulo individual (para descarga progresiva)
-  Future<void> insertChapter({
-    required String versionCode,
-    required int bookIndex,
-    required int chapter,
-    required String versesJson,
-  }) async {
-    await into(bibleChapters).insertOnConflictUpdate(
-      BibleChaptersCompanion(
-        versionCode: Value(versionCode),
-        bookIndex: Value(bookIndex),
-        chapter: Value(chapter),
-        versesJson: Value(versesJson),
-      ),
-    );
-  }
-
   // Eliminar libros y capítulos de una versión (sin borrar la fila de versión)
   Future<void> deleteBooksAndChapters(String code) async {
     await (delete(bibleChapters)..where((t) => t.versionCode.equals(code))).go();
@@ -164,8 +121,7 @@ class AppDatabase extends _$AppDatabase {
     required String name,
     required bool isBundled,
     required List<Map<String, dynamic>> books,
-    // A chapter-by-chapter download announces the version first and fills it
-    // afterwards, so it starts out not ready to be read.
+    // False only in tests, for a download an older build left half done.
     bool isDownloaded = true,
   }) async {
     await transaction(() async {
@@ -204,6 +160,78 @@ class AppDatabase extends _$AppDatabase {
           );
         }
       }
+    });
+  }
+
+  /// Saves a Bible read from a file, replacing any version with that code.
+  ///
+  /// [books] maps each book's place among the 66 to its chapters, so a file
+  /// with only the New Testament puts Matthew where Matthew goes. One
+  /// transaction: a Bible is either all there or not there at all.
+  Future<void> installVersion({
+    required String code,
+    required String name,
+    required Map<int, List<List<String>>> books,
+    required List<String> bookNames,
+    required List<String> bookAbbrevs,
+  }) async {
+    await transaction(() async {
+      await deleteBooksAndChapters(code);
+      await into(bibleVersions).insertOnConflictUpdate(
+        BibleVersionsCompanion(
+          code: Value(code),
+          name: Value(name),
+          isBundled: const Value(false),
+          isDownloaded: const Value(true),
+          downloadedAt: Value(DateTime.now()),
+        ),
+      );
+      await batch((b) {
+        for (final MapEntry(key: index, value: chapters) in books.entries) {
+          b.insert(
+            bibleBooks,
+            BibleBooksCompanion.insert(
+              versionCode: code,
+              bookIndex: index,
+              abbrev: bookAbbrevs[index],
+              name: bookNames[index],
+              chapterCount: chapters.length,
+            ),
+          );
+          for (final (c, verses) in chapters.indexed) {
+            if (verses.isEmpty) continue;
+            b.insert(
+              bibleChapters,
+              BibleChaptersCompanion.insert(
+                versionCode: code,
+                bookIndex: index,
+                chapter: c + 1,
+                versesJson: jsonEncode(verses),
+              ),
+            );
+          }
+        }
+      });
+    });
+  }
+
+  /// Gives a version a new code and name, keeping its text.
+  Future<void> renameVersion(String from, {required String to, required String name}) async {
+    await transaction(() async {
+      final row = await (select(
+        bibleVersions,
+      )..where((t) => t.code.equals(from))).getSingleOrNull();
+      if (row == null) return;
+      await into(
+        bibleVersions,
+      ).insertOnConflictUpdate(row.copyWith(code: to, name: name).toCompanion(true));
+      await (update(bibleBooks)..where((t) => t.versionCode.equals(from))).write(
+        BibleBooksCompanion(versionCode: Value(to)),
+      );
+      await (update(bibleChapters)..where((t) => t.versionCode.equals(from))).write(
+        BibleChaptersCompanion(versionCode: Value(to)),
+      );
+      await (delete(bibleVersions)..where((t) => t.code.equals(from))).go();
     });
   }
 }

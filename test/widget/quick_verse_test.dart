@@ -118,7 +118,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('uno dos tres'), findsOneWidget);
-    expect(find.text('3 versículos'), findsOneWidget);
+    // The version goes with the count, so the operator sees which one will go out.
+    expect(find.text('rvr1960 · 3 versículos'), findsOneWidget);
   });
 
   testWidgets('half a book name offers the books it could be', (tester) async {

@@ -43,8 +43,12 @@ de licencias.
 | ChordPro | `.cho`, `.chordpro`, `.chopro`, `.crd` |
 | Texto | `.txt`, una canción por archivo |
 
-**Biblia offline.** Reina-Valera 1960 completa dentro de la app, sin internet.
-Búsqueda por libro o escribiendo la referencia directo: `jn 3:16`, `sal 23`.
+**Biblia offline.** Trae la Reina-Valera 1909 completa, de dominio público. La
+versión que usa la iglesia (RVR1960, NVI, LBLA…) se importa una vez desde un
+archivo Zefania XML, OSIS, OpenSong, Beblia o FreeShow y queda solo en esa
+computadora: Introduce no reparte traducciones con derechos ni las sube al
+servidor. Búsqueda por libro o escribiendo la referencia directo: `jn 3:16`,
+`sal 23`.
 
 ![Biblia](docs/screenshots/biblia.png)
 
@@ -131,7 +135,7 @@ proyecta durante un ensayo no cuenta para el reporte de licencias.
 pregunta el idioma; después se cambia en Configuración, junto con la cuenta y
 la pantalla donde abre el proyector. El proyector y la pantalla de escenario
 hablan el mismo idioma que la consola. La Biblia incluida sigue siendo la
-Reina-Valera.
+Reina-Valera 1909.
 
 **Modo sin internet.** El servicio arranca y funciona sin red. La sesión
 sobrevive, los diseños y la biblioteca de canciones quedan en caché y la app

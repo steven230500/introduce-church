@@ -69,6 +69,16 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<List<Map<String, dynamic>>?> loadTemplates() async => savedTemplates;
 
+  String? bibleVersionCode;
+
+  @override
+  Future<String?> bibleVersion() async => bibleVersionCode;
+
+  @override
+  Future<void> setBibleVersion(String code) async {
+    bibleVersionCode = code;
+  }
+
   int? gridZoom;
 
   @override
