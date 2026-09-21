@@ -1057,6 +1057,32 @@
   "designDuplicateAndEdit": "Duplicate and edit",
   "shortcutsToggleView": "Switch between grid and big slide",
   "shortcutsToggleLibrary": "Show or hide the library",
+  "slideEdit": "Edit slide",
+  "slideEditSaveHint": "{keys} saves",
+  "@slideEditSaveHint": {
+    "placeholders": {
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
+  "slideEditSplit": "Split here",
+  "slideEditSplitHelp": "Splits the slide in two at the cursor",
+  "slideEditRemove": "Remove slide",
+  "slideEditRemoveTitle": "Remove slide?",
+  "slideEditRemoveSong": "It comes out of the song in the library, in every service. If it repeats, the other times stay.",
+  "slideEditRemovePoint": "This point comes out of the sermon.",
+  "slideEditSongNote": "This corrects the song in the library: every service that sings it gets the change.",
+  "slideEditRepeats": "{count, plural, one{These words come up once more in the song; both are corrected.} other{These words come up {count} more times in the song; all of them are corrected.}}",
+  "@slideEditRepeats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "slideEditUnavailable": "Bible passages, images and videos cannot be edited.",
+  "shortcutsEditSlide": "Edit the selected slide",
   "shortcutsHelp": "Open this help",
   "shortcutsNotWhileTyping": "Shortcuts do nothing while you are typing in a text field.",
   "sidePresenter": "Presenter",

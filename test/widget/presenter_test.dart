@@ -559,4 +559,71 @@ void main() {
       expect(find.text('V'), findsOneWidget);
     });
   });
+  group('editing a slide from the grid', () {
+    testWidgets('every slide has a pencil, and it opens the editor without projecting', (
+      tester,
+    ) async {
+      await pumpPresenter(tester);
+      expect(find.byTooltip('Editar slide'), findsNWidgets(2));
+
+      await tester.tap(find.byTooltip('Editar slide').last);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextField, 'Segunda'), findsOneWidget);
+      // The pencil has its own tap: the second slide was not put on the screen.
+      expect((control.state as ControlLoadedState).model.currentSlideIndex, 0);
+    });
+
+    testWidgets('a correction is saved to the song', (tester) async {
+      await pumpPresenter(tester);
+      await tester.tap(find.byTooltip('Editar slide').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Segunda'), 'Segunda estrofa');
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, contains('song:song-i1:2'));
+      expect(find.text('Segunda estrofa'), findsWidgets);
+    });
+
+    testWidgets('a slide is split where the cursor is', (tester) async {
+      await pumpPresenter(tester);
+      await tester.tap(find.byTooltip('Editar slide').first);
+      await tester.pumpAndSettle();
+
+      final field = find.widgetWithText(TextField, 'Primera');
+      final controller = tester.widget<TextField>(field).controller!;
+      await tester.enterText(field, 'Primera mitad segunda mitad');
+      // At the end of the text there is nothing to split off.
+      expect(
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Partir aquí')).onPressed,
+        isNull,
+      );
+      controller.selection = const TextSelection.collapsed(offset: 14);
+      await tester.pump();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Partir aquí'));
+      await tester.pumpAndSettle();
+
+      expect((control.state as ControlLoadedState).model.currentItem!.slides, [
+        'Primera mitad',
+        'segunda mitad',
+        'Segunda',
+      ]);
+    });
+
+    testWidgets('a slide libre is corrected but has nothing to split', (tester) async {
+      await pumpPresenter(tester);
+      control.selectItem(1);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Editar slide'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextField, 'Reunión de jóvenes'), findsOneWidget);
+      expect(find.text('Partir aquí'), findsNothing);
+      expect(find.text('Quitar slide'), findsNothing);
+    });
+  });
 }

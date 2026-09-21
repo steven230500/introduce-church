@@ -791,6 +791,9 @@ class ControlCubit extends Cubit<ControlState> {
         await _repository.updateItemAutoAdvance(change.target, args['auto_advance_secs'] as int?);
       case PendingKind.itemPlanned:
         await _repository.updateItemPlanned(change.target, args['planned_secs'] as int?);
+      case PendingKind.songVerses:
+        final song = change.editedSong;
+        if (song != null) await _repository.updateSong(song);
       case PendingKind.itemOrder:
         await _repository.reorderItems(
           change.target,
@@ -1706,6 +1709,68 @@ class ControlCubit extends Cubit<ControlState> {
         },
       ),
     );
+  }
+
+  /// Corrects, splits or takes out slide [slideIndex] of item [itemId]:
+  /// [parts] is what the slide becomes - one text, several, or none.
+  ///
+  /// A song's words are the church's, so the song itself changes, in every
+  /// service that sings it; a sermon, a slide libre and an announcement keep
+  /// their words in the item. When the item is on the screen, the screen
+  /// follows at once: a typo the congregation is reading is the reason to
+  /// open the editor in the middle of a service.
+  Future<void> editSlide(String itemId, int slideIndex, List<String> parts) async {
+    if (state is! ControlLoadedState) return;
+    final before = (state as ControlLoadedState).model;
+    final items = before.activeCollection?.items ?? const <CollectionItem>[];
+    final at = items.indexWhere((item) => item.id == itemId);
+    if (at < 0) return;
+    final item = items[at];
+    final words = [
+      for (final part in parts)
+        if (part.trim().isNotEmpty) part.trim(),
+    ];
+    if (!item.slidesEditable || slideIndex < 0 || slideIndex >= item.slides.length) return;
+    if (words.length > 1 && !item.canSplitSlide(slideIndex)) return;
+    if (words.isEmpty && !item.canRemoveSlide(slideIndex)) return;
+
+    final song = item.song;
+    if (item.type == CollectionItemType.song && song != null) {
+      final edited = song.withSlide(slideIndex, words);
+      if (edited == song) return;
+      await _write(
+        PendingWrite(
+          kind: PendingKind.songVerses,
+          target: song.id,
+          args: {'song': edited.toJson()},
+        ),
+      );
+    } else {
+      final content = item.contentWithSlide(slideIndex, words);
+      if (content == null) return;
+      await _write(
+        PendingWrite(kind: PendingKind.itemContent, target: itemId, args: {'content': content}),
+      );
+    }
+
+    if (state is! ControlLoadedState) return;
+    final after = (state as ControlLoadedState).model;
+    final updated = after.activeCollection?.items.where((i) => i.id == itemId).firstOrNull;
+    if (updated == null) return;
+    final last = updated.slides.length - 1;
+    int follow(int position) =>
+        item.slidePositionAfterEdit(slideIndex, words, position).clamp(0, last < 0 ? 0 : last);
+    final editingCurrent = after.currentItemIndex == at;
+    final editingLive = after.liveItemIndex == at;
+    emit(
+      ControlLoadedState(
+        after.copyWith(
+          currentSlideIndex: editingCurrent ? follow(before.currentSlideIndex) : null,
+          liveSlideIndex: editingLive ? follow(before.liveSlideIndex) : null,
+        ),
+      ),
+    );
+    if (after.isLive && editingLive) _syncState();
   }
 
   /// Marks a moment of the service: "Alabanza", "Prédica", "Anuncios".

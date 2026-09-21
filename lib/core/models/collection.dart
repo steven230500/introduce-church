@@ -153,6 +153,73 @@ class CollectionItem extends Equatable {
     return [title, ...points];
   }
 
+  /// Whether the words of its slides can be corrected from the grid. A
+  /// passage is the Bible's text, and pictures and videos have no words.
+  bool get slidesEditable => switch (type) {
+    CollectionItemType.song => song != null,
+    CollectionItemType.sermon ||
+    CollectionItemType.freeSlide ||
+    CollectionItemType.announcement => true,
+    _ => false,
+  };
+
+  /// Whether slide [index] can become two. A slide libre and an announcement
+  /// are one slide by nature.
+  bool canSplitSlide(int index) => switch (type) {
+    CollectionItemType.song || CollectionItemType.sermon => slidesEditable,
+    _ => false,
+  };
+
+  /// Whether slide [index] can be taken out: never the last one of a song,
+  /// and never the sermon's title, which is what the item is called.
+  bool canRemoveSlide(int index) => switch (type) {
+    CollectionItemType.song => (song?.verses.length ?? 0) > 1,
+    CollectionItemType.sermon => index > 0,
+    _ => false,
+  };
+
+  /// Where slide [position] lands once slide [index] is replaced by [parts],
+  /// so the operator's place and the screen stay on the same words.
+  int slidePositionAfterEdit(int index, List<String> parts, int position) {
+    if (type == CollectionItemType.song && song != null) {
+      return song!.positionAfter(index, parts, position);
+    }
+    if (position <= index) return position;
+    return position + parts.length - 1;
+  }
+
+  /// The content that results from replacing slide [index] with [parts], for
+  /// the kinds whose words live in the item itself. Songs keep theirs in the
+  /// library: see [Song.withSlide].
+  Map<String, dynamic>? contentWithSlide(int index, List<String> parts) {
+    switch (type) {
+      case CollectionItemType.sermon:
+        final title = contentJson?['title'] as String? ?? '';
+        final points = List<String>.from(contentJson?['points'] ?? const []);
+        if (index == 0) {
+          // The title split in two keeps its first half as the title; the rest
+          // become the first points.
+          if (parts.isEmpty) return null;
+          return {
+            'title': parts.first,
+            'points': [...parts.skip(1), ...points],
+          };
+        }
+        final at = index - 1;
+        if (at >= points.length) return null;
+        points.replaceRange(at, at + 1, parts);
+        return {'title': title, 'points': points};
+      case CollectionItemType.freeSlide:
+        if (parts.length != 1) return null;
+        return {'text': parts.single, 'title': ?contentJson?['title']};
+      case CollectionItemType.announcement:
+        if (parts.length != 1) return null;
+        return {'message': parts.single};
+      default:
+        return null;
+    }
+  }
+
   List<String> get _sermonLabels {
     final points = List<String>.from(contentJson?['points'] ?? []);
     return ['Título', ...List.generate(points.length, (i) => 'Punto ${i + 1}')];
@@ -188,6 +255,7 @@ class CollectionItem extends Equatable {
 
   CollectionItem copyWith({
     int? order,
+    Song? song,
     String? templateId,
     Map<String, dynamic>? contentJson,
     String? notes,
@@ -201,7 +269,7 @@ class CollectionItem extends Equatable {
     collectionId: collectionId,
     type: type,
     order: order ?? this.order,
-    song: song,
+    song: song ?? this.song,
     templateId: templateId ?? this.templateId,
     contentJson: contentJson ?? this.contentJson,
     notes: clearNotes ? null : notes ?? this.notes,

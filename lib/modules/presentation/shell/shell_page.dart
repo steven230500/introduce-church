@@ -28,6 +28,7 @@ import 'widgets/live_bar.dart';
 import 'widgets/remote_dialog.dart';
 import 'widgets/settings_dialog.dart';
 import 'widgets/quick_verse_dialog.dart';
+import 'widgets/slide_editor_dialog.dart';
 import 'widgets/shortcuts_dialog.dart';
 import 'widgets/update_dialog.dart';
 
@@ -190,6 +191,8 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       control.take();
     } else if (key == LogicalKeyboardKey.keyV) {
       showQuickVerseDialog(context);
+    } else if (key == LogicalKeyboardKey.keyE) {
+      showSlideEditor(context);
     } else if (key == LogicalKeyboardKey.keyK) {
       control.toggleFollowCursor();
     } else if (key == LogicalKeyboardKey.keyB) {

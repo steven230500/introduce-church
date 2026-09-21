@@ -31,7 +31,11 @@ class _ShortcutsDialog extends StatelessWidget {
       ('Esc', t.shortcutsUnblank),
       ('⌥ ↑   ·   ⌥ ↓', t.shortcutsNudgeText),
     ],
-    t.shortcutsGroupContent: [('⌘K', t.shortcutsSearch), ('V', t.shortcutsQuickVerse)],
+    t.shortcutsGroupContent: [
+      ('⌘K', t.shortcutsSearch),
+      ('V', t.shortcutsQuickVerse),
+      ('E', t.shortcutsEditSlide),
+    ],
     t.shortcutsGroupHold: [('K', t.shortcutsHold), ('Enter', t.shortcutsSend)],
     t.shortcutsGroupView: [
       ('G', t.shortcutsToggleView),

@@ -256,6 +256,7 @@ class _SlideGrid extends StatelessWidget {
     final slides = item.slides;
     final labels = item.slideLabelsIn(t);
     final isImageSlide = item.type == CollectionItemType.imageSlide;
+    final editable = item.slidesEditable;
     final cubit = context.read<ControlCubit>();
 
     return LayoutBuilder(
@@ -311,6 +312,12 @@ class _SlideGrid extends StatelessWidget {
 
                     return GestureDetector(
                       onTap: () => cubit.selectSlide(index),
+                      // No double click to edit: the first click already puts
+                      // the slide on the screen, and waiting to see whether a
+                      // second one follows would slow every click in a service.
+                      onSecondaryTapDown: editable
+                          ? (details) => _showSlideMenu(context, details.globalPosition, index)
+                          : null,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -347,17 +354,30 @@ class _SlideGrid extends StatelessWidget {
                           // Under the slide, not on top of it. As a badge inside
                           // the frame it landed on the words whenever the lyric
                           // ran long, which is exactly when you need to read both.
-                          Text(
-                            label.isEmpty ? t.slideNumber(index + 1) : label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.accentLight
-                                  : (hovering ? AppColors.textSecondary : AppColors.textMuted),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  label.isEmpty ? t.slideNumber(index + 1) : label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.accentLight
+                                        : (hovering
+                                              ? AppColors.textSecondary
+                                              : AppColors.textMuted),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if (editable)
+                                _EditSlideButton(
+                                  highlighted: hovering || isSelected,
+                                  onTap: () => showSlideEditor(context, slideIndex: index),
+                                ),
+                            ],
                           ),
                         ],
                       ),
@@ -370,6 +390,23 @@ class _SlideGrid extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _showSlideMenu(BuildContext context, Offset at, int index) async {
+    final t = L10n.of(context);
+    final choice = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      color: AppColors.surfaceRaised,
+      items: [
+        PopupMenuItem(
+          value: 'edit',
+          height: 38,
+          child: AppMenuRow(icon: Icons.edit_outlined, label: t.slideEdit),
+        ),
+      ],
+    );
+    if (choice == 'edit' && context.mounted) await showSlideEditor(context, slideIndex: index);
   }
 
   /// Columns that make the slides as big as they can be while still all
@@ -403,6 +440,39 @@ class _SlideGrid extends StatelessWidget {
 
   /// Room under each tile for the slide's label.
   static const _captionHeight = 18.0;
+}
+
+/// The pencil under a slide. Always there, not only on hover: a control that
+/// appears when the pointer finds it is one the operator never finds.
+class _EditSlideButton extends StatelessWidget {
+  const _EditSlideButton({required this.highlighted, required this.onTap});
+
+  final bool highlighted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: L10n.of(context).slideEdit,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        // Its own tap, so editing a slide never puts it on the screen.
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.only(left: AppSpace.xs),
+            child: Icon(
+              Icons.edit_outlined,
+              size: 13,
+              color: highlighted ? AppColors.textSecondary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Output panel shown beside the grid ────────────────────────────────────────

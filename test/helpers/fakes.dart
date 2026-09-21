@@ -354,6 +354,20 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
+  Future<void> updateSong(Song song) async {
+    _checkNetwork();
+    calls.add('song:${song.id}:${song.verses.length}');
+    // Every service that sings it gets the new words, as on the server.
+    for (final row in rows) {
+      for (final item in (row['collection_items'] as List).cast<Map<String, dynamic>>()) {
+        final stored = item['songs'] as Map?;
+        if (stored == null || stored['id'] != song.id) continue;
+        item['songs'] = song.toJson();
+      }
+    }
+  }
+
+  @override
   Future<void> updateItemNotes(String itemId, String? notes) async {
     _checkNetwork();
     calls.add('notes:$itemId:$notes');

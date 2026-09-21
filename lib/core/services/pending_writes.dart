@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../models/collection.dart';
+import '../models/song.dart';
 
 /// What kind of change is waiting to be sent.
 ///
@@ -33,6 +34,11 @@ enum PendingKind {
   itemAutoAdvance,
   itemOrder,
   itemPlanned,
+
+  /// A song's words corrected from the grid. The target is the song, not an
+  /// item: the song is the church's, and every service that sings it gets the
+  /// correction.
+  songVerses,
 }
 
 /// One change the operator made that the server has not been told about yet.
@@ -74,6 +80,11 @@ class PendingWrite extends Equatable {
     PendingKind.itemsAdd => '${kind.name}:${addedItems.firstOrNull?.id ?? target}',
     _ => '${kind.name}:$target',
   };
+
+  /// The song a [PendingKind.songVerses] sends, whole, verses included.
+  Song? get editedSong => kind == PendingKind.songVerses && args['song'] is Map
+      ? Song.fromJson(Map<String, dynamic>.from(args['song'] as Map))
+      : null;
 
   /// The items a [PendingKind.itemsAdd] puts in its collection, in order.
   List<CollectionItem> get addedItems => [
@@ -274,6 +285,18 @@ Collection applyPendingWrite(Collection collection, PendingWrite write) {
           ...moved,
           for (final (offset, item) in leftovers.indexed)
             item.copyWith(order: moved.length + offset),
+        ],
+      );
+
+    case PendingKind.songVerses:
+      final song = write.editedSong;
+      if (song == null || !collection.items.any((item) => item.song?.id == song.id)) {
+        return collection;
+      }
+      return collection.copyWith(
+        items: [
+          for (final item in collection.items)
+            if (item.song?.id == song.id) item.copyWith(song: song) else item,
         ],
       );
 

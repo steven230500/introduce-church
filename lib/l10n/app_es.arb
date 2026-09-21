@@ -1366,6 +1366,32 @@
   "designDuplicateAndEdit": "Duplicar y editar",
   "shortcutsToggleView": "Alternar cuadrícula y slide grande",
   "shortcutsToggleLibrary": "Mostrar u ocultar la biblioteca",
+  "slideEdit": "Editar slide",
+  "slideEditSaveHint": "{keys} guarda",
+  "@slideEditSaveHint": {
+    "placeholders": {
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
+  "slideEditSplit": "Partir aquí",
+  "slideEditSplitHelp": "Divide el slide en dos donde está el cursor",
+  "slideEditRemove": "Quitar slide",
+  "slideEditRemoveTitle": "¿Quitar slide?",
+  "slideEditRemoveSong": "Sale de la canción en la biblioteca, en todos los servicios. Si se repite, las otras veces se quedan.",
+  "slideEditRemovePoint": "Sale este punto de la prédica.",
+  "slideEditSongNote": "Corrige la canción en la biblioteca: el cambio llega a todos los servicios que la cantan.",
+  "slideEditRepeats": "{count, plural, one{Estas palabras se repiten 1 vez más en la canción; se corrigen las dos.} other{Estas palabras se repiten {count} veces más en la canción; se corrigen todas.}}",
+  "@slideEditRepeats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "slideEditUnavailable": "Los pasajes de la Biblia, las imágenes y los videos no se editan.",
+  "shortcutsEditSlide": "Editar el slide seleccionado",
   "shortcutsHelp": "Abrir esta ayuda",
   "shortcutsNotWhileTyping": "Los atajos no se activan mientras escribes en un campo de texto.",
   "sidePresenter": "Presentador",

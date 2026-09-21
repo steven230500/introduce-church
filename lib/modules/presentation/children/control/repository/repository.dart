@@ -1,6 +1,7 @@
 import '../../../../../core/api/api_client.dart';
 import '../../../../../core/models/collection.dart';
 import '../../../../../core/models/collection_item_type.dart';
+import '../../../../../core/models/song.dart';
 import '../../../../../core/utils/app_logger.dart';
 
 /// Everything the presenter reads and writes about service plans.
@@ -116,6 +117,32 @@ class ControlRepository {
   /// it did not touch stay as they are.
   Future<void> updateItemContent(String itemId, Map<String, dynamic> content) async {
     await _api.patch<void>('/collections/items/$itemId', data: {'content': content});
+  }
+
+  /// Replaces a song, verses included, keeping everything about it the
+  /// operator did not touch: a correction made from the grid must not reset
+  /// the song's language or its tags.
+  Future<void> updateSong(Song song) async {
+    await _api.put<void>(
+      '/songs/${song.id}',
+      data: {
+        'title': song.title,
+        'author': song.author,
+        'copyright': song.copyright,
+        'ccli_number': song.ccliNumber,
+        'language': song.language,
+        'tags': song.tags,
+        'verses': [
+          for (final (index, verse) in song.verses.indexed)
+            {
+              'type': verse.type.value,
+              'verse_order': index,
+              'content': verse.content,
+              'chords': ?verse.chords,
+            },
+        ],
+      },
+    );
   }
 
   Future<void> updateItemNotes(String itemId, String? notes) async {
