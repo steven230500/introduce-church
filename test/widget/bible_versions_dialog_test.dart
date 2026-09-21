@@ -13,7 +13,7 @@ import '../helpers/builders.dart';
 /// The versions a church has, kept in a list: a real database cannot be
 /// driven from inside a widget test's fake clock.
 class _FakeBibles extends BibleRepository {
-  _FakeBibles() : super(AppDatabase.instance);
+  _FakeBibles() : super(unopenedDatabase);
 
   final versions = <BibleVersion>[
     const BibleVersion(

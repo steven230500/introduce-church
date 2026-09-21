@@ -1,3 +1,4 @@
+import 'package:drift/native.dart';
 import 'package:introduce_church/core/bible_import/imported_bible.dart';
 import 'package:introduce_church/core/local_db/app_database.dart';
 
@@ -7,6 +8,13 @@ ImportedBible importedBible(Map<int, List<List<String>>> books) => ImportedBible
   source: '/prueba.xml',
   format: BibleFormat.zefania,
 );
+
+/// A database for a fake repository that answers from memory and never
+/// reads it. It is never opened. [AppDatabase.instance] would be: it opens
+/// the app's own file through path_provider, which a test does not have, and
+/// fails after the test has finished. One for every fake, as the app has
+/// one: drift warns about a second.
+final unopenedDatabase = AppDatabase.forTesting(NativeDatabase.memory());
 
 /// The whole Bible, one verse per book, as a file brings it.
 ImportedBible wholeBible(String verse) => importedBible({

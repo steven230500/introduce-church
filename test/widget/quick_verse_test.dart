@@ -8,12 +8,13 @@ import 'package:introduce_church/core/local_db/bible_repository.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 import 'package:introduce_church/modules/presentation/shell/widgets/quick_verse_dialog.dart';
 
+import '../helpers/bibles.dart';
 import '../helpers/builders.dart';
 import '../helpers/fakes.dart';
 
 /// A bible with one chapter in it, so the dialog has something to find.
 class _FakeBible extends BibleRepository {
-  _FakeBible() : super(AppDatabase.instance);
+  _FakeBible() : super(unopenedDatabase);
 
   @override
   Future<List<BibleVersion>> getVersions() async => const [
