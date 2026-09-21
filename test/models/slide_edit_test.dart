@@ -159,4 +159,22 @@ void main() {
     expect(item.canRemoveSlide(0), isFalse);
     expect(item.canSplitSlide(0), isTrue);
   });
+
+  test('a verse missing from the version has no slide, and the others keep their numbers', () {
+    const item = CollectionItem(
+      id: 'i',
+      collectionId: 'c',
+      type: CollectionItemType.bibleVerse,
+      order: 0,
+      contentJson: {
+        'book': 'Mateo',
+        'chapter': 17,
+        'verse': 20,
+        'texts': ['Veinte', '', 'Veintidós'],
+        'version': 'X',
+      },
+    );
+    expect(item.slides, ['"Veinte"', '"Veintidós"']);
+    expect(item.slideReferences, ['Mateo 17:20 • X', 'Mateo 17:22 • X']);
+  });
 }

@@ -168,7 +168,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
         verses.length,
       );
       setState(() {
-        _preview = verses.sublist(start - 1, end).join(' ');
+        _preview = verses.sublist(start - 1, end).where((v) => v.trim().isNotEmpty).join(' ');
         _previewCount = end - start + 1;
         _previewVersion = version.code;
         _previewOf = key;

@@ -119,6 +119,12 @@ class ControlRepository {
     await _api.patch<void>('/collections/items/$itemId', data: {'content': content});
   }
 
+  /// A song as the server has it now, verses included.
+  Future<Song> getSong(String id) async {
+    final body = await _api.get<Map<String, dynamic>>('/songs/$id');
+    return Song.fromJson(body!);
+  }
+
   /// Replaces a song, verses included, keeping everything about it the
   /// operator did not touch: a correction made from the grid must not reset
   /// the song's language or its tags.

@@ -11,16 +11,32 @@ Map<String, dynamic> remoteSnapshot(ControlModel model, {String? language}) {
   if (live != null) {
     if (model.liveSlideIndex + 1 < liveSlides.length) {
       nextText = liveSlides[model.liveSlideIndex + 1];
-    } else if (model.liveItemIndex + 1 < items.length) {
-      final following = items[model.liveItemIndex + 1].slides;
-      nextText = following.isEmpty ? null : following.first;
+    } else {
+      // The next thing on the screen, past the mark of the moment that
+      // starts after this item: "Prédica" is not what the arrow shows next.
+      final following = items
+          .skip(model.liveItemIndex + 1)
+          .where((item) => !item.isSection)
+          .firstOrNull
+          ?.slides;
+      nextText = following == null || following.isEmpty ? null : following.first;
     }
   }
   return {
     'lang': ?language,
     'collection': collection?.name,
+    // A moment is a heading on the phone, as on the operator's list, and the
+    // numbers count what goes on the screen, as the keys 1 to 9 do.
     'items': [
-      for (final item in items) {'title': item.displayTitle, 'slides': item.slides.length},
+      for (final (index, item) in items.indexed)
+        if (item.isSection)
+          {'title': item.displayTitle, 'moment': true}
+        else
+          {
+            'title': item.displayTitle,
+            'slides': item.slides.length,
+            'number': model.playableNumber(index),
+          },
     ],
     'item': model.currentItemIndex,
     'slide': model.currentSlideIndex,

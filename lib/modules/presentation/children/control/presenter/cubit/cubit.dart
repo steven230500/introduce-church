@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
+import '../../../../../../core/local_db/bible_import_service.dart'
+    show bundledBibleCode, bundledBibleName;
 import '../../../../../../core/local_db/bible_repository.dart';
 import '../../../../../../core/services/app_prefs_service.dart';
 import '../../../../../../core/services/pdf_import_service.dart';
@@ -472,7 +474,9 @@ class ControlCubit extends Cubit<ControlState> {
     DateTime Function()? now,
     String? Function()? currentOrg,
     PdfImportService? pdfImport,
+    BibleRepository? bible,
   }) : _pending = pending ?? PendingWrites(),
+       _bible = bible,
        _pdfImport = pdfImport ?? const PdfImportService(),
        _songs = songs,
        _clock = clock ?? ServiceClock(),
@@ -495,6 +499,9 @@ class ControlCubit extends Cubit<ControlState> {
   /// rather than held by every presenter that never imports anything.
   final SongsListRepository? _songs;
   SongsListRepository get _songLibrary => _songs ?? Modular.get<SongsListRepository>();
+
+  final BibleRepository? _bible;
+  BibleRepository get _bibleLibrary => _bible ?? Modular.get<BibleRepository>();
 
   final ServiceClock _clock;
   final DateTime Function() _now;
@@ -792,8 +799,16 @@ class ControlCubit extends Cubit<ControlState> {
       case PendingKind.itemPlanned:
         await _repository.updateItemPlanned(change.target, args['planned_secs'] as int?);
       case PendingKind.songVerses:
-        final song = change.editedSong;
-        if (song != null) await _repository.updateSong(song);
+        final edit = change.songEdit;
+        if (edit == null) {
+          // An undo: the song as it was, whole.
+          final song = change.editedSong;
+          if (song != null) await _repository.updateSong(song);
+        } else {
+          final current = await _repository.getSong(change.target);
+          final replayed = edit.applyTo(current);
+          if (replayed != null && replayed != current) await _repository.updateSong(replayed);
+        }
       case PendingKind.itemOrder:
         await _repository.reorderItems(
           change.target,
@@ -815,6 +830,51 @@ class ControlCubit extends Cubit<ControlState> {
   }
 
   int? _savedGridZoom;
+
+  bool _passagesChecked = false;
+
+  /// Passages saved before 1.2.0 under "RVR1960" carry the words of the
+  /// Reina-Valera 1909: until then that code named only the Bible that came
+  /// with the app, which was the 1909 all along. Once per session, each one
+  /// whose words are the included 1909's, and not those of a 1960 the church
+  /// has imported since, is given its real name.
+  Future<void> _relabelMislabelledPassages(List<Collection> collections) async {
+    if (_passagesChecked) return;
+    _passagesChecked = true;
+    try {
+      final bible = _bibleLibrary;
+      var relabelled = 0;
+      for (final item in [for (final collection in collections) ...collection.items]) {
+        final content = item.contentJson;
+        if (item.type != CollectionItemType.bibleVerse || content?['version'] != 'RVR1960') {
+          continue;
+        }
+        final book = (content?['bookIndex'] as num?)?.toInt();
+        final chapter = (content?['chapter'] as num?)?.toInt();
+        final start = (content?['verse'] as num?)?.toInt();
+        final texts = [for (final text in content?['texts'] as List? ?? const []) '$text'];
+        if (book == null || chapter == null || start == null || texts.isEmpty) continue;
+        Future<bool> isIn(String code) =>
+            bible.hasText(code, bookIndex: book, chapter: chapter, start: start, texts: texts);
+        if (!await isIn(bundledBibleCode) || await isIn('RVR1960')) continue;
+        await _write(
+          PendingWrite(
+            kind: PendingKind.itemContent,
+            target: item.id,
+            args: {
+              'content': {'version': bundledBibleCode, 'versionName': bundledBibleName},
+            },
+          ),
+          reload: false,
+        );
+        relabelled++;
+      }
+      if (relabelled > 0) await refresh();
+    } catch (e) {
+      // Only a label; a service must never fail to open because of it.
+      appLogger.d('ControlCubit._relabelMislabelledPassages | $e');
+    }
+  }
 
   /// Reloads from the server while keeping the current screen on display.
   ///
@@ -854,6 +914,7 @@ class ControlCubit extends Cubit<ControlState> {
           ),
         ),
       );
+      unawaited(_relabelMislabelledPassages(collections));
     } catch (e) {
       final s = e.toString();
       if (e is ApiException && e.isAuthFailure) {
@@ -1337,6 +1398,8 @@ class ControlCubit extends Cubit<ControlState> {
         author: song.author,
         copyright: song.copyright,
         ccliNumber: song.ccliNumber,
+        language: song.language,
+        tags: song.tags,
         verses: [
           for (final verse in song.verses)
             (type: verse.type.value, content: verse.content, chords: verse.chords),
@@ -1711,52 +1774,84 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
+  /// What the last slide edit replaced, so the operator can take it back.
+  ({String itemId, Song? song, Map<String, dynamic>? content, int currentSlide, int liveSlide})?
+  _lastSlideEdit;
+
+  /// Whether there is a slide edit to take back.
+  bool get canUndoSlideEdit => _lastSlideEdit != null;
+
   /// Corrects, splits or takes out slide [slideIndex] of item [itemId]:
   /// [parts] is what the slide becomes - one text, several, or none.
+  /// Returns whether anything changed.
   ///
   /// A song's words are the church's, so the song itself changes, in every
   /// service that sings it; a sermon, a slide libre and an announcement keep
   /// their words in the item. When the item is on the screen, the screen
   /// follows at once: a typo the congregation is reading is the reason to
   /// open the editor in the middle of a service.
-  Future<void> editSlide(String itemId, int slideIndex, List<String> parts) async {
-    if (state is! ControlLoadedState) return;
+  Future<bool> editSlide(String itemId, int slideIndex, List<String> parts) async {
+    if (state is! ControlLoadedState) return false;
     final before = (state as ControlLoadedState).model;
     final items = before.activeCollection?.items ?? const <CollectionItem>[];
     final at = items.indexWhere((item) => item.id == itemId);
-    if (at < 0) return;
+    if (at < 0) return false;
     final item = items[at];
     final words = [
       for (final part in parts)
         if (part.trim().isNotEmpty) part.trim(),
     ];
-    if (!item.slidesEditable || slideIndex < 0 || slideIndex >= item.slides.length) return;
-    if (words.length > 1 && !item.canSplitSlide(slideIndex)) return;
-    if (words.isEmpty && !item.canRemoveSlide(slideIndex)) return;
+    if (!item.slidesEditable || slideIndex < 0 || slideIndex >= item.slides.length) return false;
+    if (words.length > 1 && !item.canSplitSlide(slideIndex)) return false;
+    if (words.isEmpty && !item.canRemoveSlide(slideIndex)) return false;
 
     final song = item.song;
     if (item.type == CollectionItemType.song && song != null) {
       final edited = song.withSlide(slideIndex, words);
-      if (edited == song) return;
+      if (edited == song) return false;
+      final verse = song.verses[slideIndex];
+      _lastSlideEdit = (
+        itemId: itemId,
+        song: song,
+        content: null,
+        currentSlide: before.currentSlideIndex,
+        liveSlide: before.liveSlideIndex,
+      );
       await _write(
         PendingWrite(
           kind: PendingKind.songVerses,
           target: song.id,
-          args: {'song': edited.toJson()},
+          args: {
+            'id': newId(),
+            'song': edited.toJson(),
+            'edit': SongSlideEdit(
+              index: slideIndex,
+              type: verse.type,
+              original: verse.content,
+              parts: words,
+            ).toJson(),
+          },
         ),
       );
     } else {
       final content = item.contentWithSlide(slideIndex, words);
-      if (content == null) return;
+      if (content == null) return false;
+      _lastSlideEdit = (
+        itemId: itemId,
+        song: null,
+        content: {for (final key in content.keys) key: item.contentJson?[key]},
+        currentSlide: before.currentSlideIndex,
+        liveSlide: before.liveSlideIndex,
+      );
       await _write(
         PendingWrite(kind: PendingKind.itemContent, target: itemId, args: {'content': content}),
       );
     }
 
-    if (state is! ControlLoadedState) return;
+    if (state is! ControlLoadedState) return true;
     final after = (state as ControlLoadedState).model;
     final updated = after.activeCollection?.items.where((i) => i.id == itemId).firstOrNull;
-    if (updated == null) return;
+    if (updated == null) return true;
     final last = updated.slides.length - 1;
     int follow(int position) =>
         item.slidePositionAfterEdit(slideIndex, words, position).clamp(0, last < 0 ? 0 : last);
@@ -1771,6 +1866,51 @@ class ControlCubit extends Cubit<ControlState> {
       ),
     );
     if (after.isLive && editingLive) _syncState();
+    return true;
+  }
+
+  /// Puts back what the last slide edit changed: the song as it was, or the
+  /// item's words as they were, with the operator's place and the screen
+  /// where they were before it.
+  Future<void> undoSlideEdit() async {
+    final last = _lastSlideEdit;
+    if (last == null || state is! ControlLoadedState) return;
+    _lastSlideEdit = null;
+    final before = last.song;
+    if (before != null) {
+      await _write(
+        PendingWrite(
+          kind: PendingKind.songVerses,
+          target: before.id,
+          args: {'id': newId(), 'song': before.toJson()},
+        ),
+      );
+    } else if (last.content != null) {
+      await _write(
+        PendingWrite(
+          kind: PendingKind.itemContent,
+          target: last.itemId,
+          args: {'content': last.content},
+        ),
+      );
+    }
+
+    if (state is! ControlLoadedState) return;
+    final after = (state as ControlLoadedState).model;
+    final items = after.activeCollection?.items ?? const <CollectionItem>[];
+    final at = items.indexWhere((item) => item.id == last.itemId);
+    if (at < 0) return;
+    final end = items[at].slides.length - 1;
+    int clamp(int position) => position.clamp(0, end < 0 ? 0 : end);
+    emit(
+      ControlLoadedState(
+        after.copyWith(
+          currentSlideIndex: after.currentItemIndex == at ? clamp(last.currentSlide) : null,
+          liveSlideIndex: after.liveItemIndex == at ? clamp(last.liveSlide) : null,
+        ),
+      ),
+    );
+    if (after.isLive && after.liveItemIndex == at) _syncState();
   }
 
   /// Marks a moment of the service: "Alabanza", "Prédica", "Anuncios".

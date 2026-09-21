@@ -1392,6 +1392,15 @@
   },
   "slideEditUnavailable": "Los pasajes de la Biblia, las imágenes y los videos no se editan.",
   "shortcutsEditSlide": "Editar el slide seleccionado",
+  "slideEditSaved": "Guardado en «{title}»",
+  "@slideEditSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "slideEditChords": "Esta estrofa tiene acordes. Si cambias la letra, revisa en la canción que sigan en su lugar.",
   "shortcutsHelp": "Abrir esta ayuda",
   "shortcutsNotWhileTyping": "Los atajos no se activan mientras escribes en un campo de texto.",
   "sidePresenter": "Presentador",

@@ -1083,6 +1083,15 @@
   },
   "slideEditUnavailable": "Bible passages, images and videos cannot be edited.",
   "shortcutsEditSlide": "Edit the selected slide",
+  "slideEditSaved": "Saved to “{title}”",
+  "@slideEditSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "slideEditChords": "This stanza has chords. If you change the words, check in the song that they still line up.",
   "shortcutsHelp": "Open this help",
   "shortcutsNotWhileTyping": "Shortcuts do nothing while you are typing in a text field.",
   "sidePresenter": "Presenter",

@@ -36,6 +36,24 @@ extension CollectionItemTypeX on CollectionItemType {
     CollectionItemType.section => 'Momento',
   };
 
+  /// Whether this version knows what [value] is.
+  ///
+  /// A newer version will add kinds of item. Read as a song, which is what
+  /// [fromString] falls back to, one of those turns into an empty row this
+  /// version cannot explain - which is what 1.0.x did with the moments of
+  /// 1.1.0. What is not known is left out instead.
+  static bool isKnown(String? value) => switch (value) {
+    'song' ||
+    'bible_verse' ||
+    'sermon' ||
+    'free_slide' ||
+    'image_slide' ||
+    'video_slide' ||
+    'announcement' ||
+    'section' => true,
+    _ => false,
+  };
+
   static CollectionItemType fromString(String v) => switch (v) {
     'bible_verse' => CollectionItemType.bibleVerse,
     'sermon' => CollectionItemType.sermon,

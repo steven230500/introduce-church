@@ -49,6 +49,10 @@ class SongsListRepository {
     String? author,
     String? copyright,
     String? ccliNumber,
+    // What the form does not show is still the song's: saving an edit used to
+    // reset every song to Spanish and wipe its tags.
+    String language = 'es',
+    List<String> tags = const [],
     required List<({String type, String content, String? chords})> verses,
   }) async {
     appLogger.d('SongsListRepository.saveSong | id: $id title: $title');
@@ -58,8 +62,8 @@ class SongsListRepository {
       'author': author,
       'copyright': copyright,
       'ccli_number': ccliNumber,
-      'language': 'es',
-      'tags': <String>[],
+      'language': language,
+      'tags': tags,
       'verses': [
         for (final (index, verse) in verses.indexed)
           {

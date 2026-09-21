@@ -132,7 +132,12 @@ class CollectionItem extends Equatable {
       if (versesTogether && texts.length > 1) {
         return ['$book $chapter:$verseStart-${verseStart + texts.length - 1}$suffix'];
       }
-      return List.generate(texts.length, (i) => '$book $chapter:${verseStart + i}$suffix');
+      // A verse missing from the version it came from has no slide, and the
+      // ones after it keep their numbers.
+      return [
+        for (var i = 0; i < texts.length; i++)
+          if ('${texts[i]}'.trim().isNotEmpty) '$book $chapter:${verseStart + i}$suffix',
+      ];
     }
     return ['$book $chapter:$verseStart$suffix'];
   }
@@ -140,8 +145,13 @@ class CollectionItem extends Equatable {
   List<String> get _bibleSlides {
     final texts = contentJson?['texts'];
     if (texts is List && texts.isNotEmpty) {
-      if (versesTogether && texts.length > 1) return ['"${texts.join(' ')}"'];
-      return texts.map((t) => '"$t"').toList();
+      final present = [
+        for (final text in texts)
+          if ('$text'.trim().isNotEmpty) '$text',
+      ];
+      if (present.isEmpty) return ['""'];
+      if (versesTogether && texts.length > 1) return ['"${present.join(' ')}"'];
+      return present.map((t) => '"$t"').toList();
     }
     final text = contentJson?['text'] as String? ?? '';
     return ['"$text"'];
@@ -358,7 +368,14 @@ class Collection extends Equatable {
     bgAudioPath: json['bg_audio_path'] as String?,
     items:
         (json['collection_items'] as List<dynamic>? ?? [])
-            .map((i) => CollectionItem.fromJson(i as Map<String, dynamic>))
+            .cast<Map<String, dynamic>>()
+            // A row with no type is the oldest shape, a song; a type this
+            // version does not know is something newer, and left out.
+            .where(
+              (i) =>
+                  i['item_type'] == null || CollectionItemTypeX.isKnown(i['item_type'] as String?),
+            )
+            .map(CollectionItem.fromJson)
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order)),
   );

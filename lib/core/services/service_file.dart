@@ -183,7 +183,10 @@ ServiceFile decodeService(String source) {
     ],
     items: [
       for (final row in raw['items'] as List<dynamic>? ?? const [])
-        if (row is Map<String, dynamic>)
+        // Items a newer version wrote that this one does not know stay out,
+        // rather than arriving as empty songs.
+        if (row is Map<String, dynamic> &&
+            (row['type'] == null || CollectionItemTypeX.isKnown(row['type'] as String?)))
           (
             type: CollectionItemTypeX.fromString(row['type'] as String? ?? 'song'),
             songId: row['songId'] as String?,

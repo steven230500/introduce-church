@@ -54,4 +54,17 @@ void main() {
     expect(song.slides, ['Señor mi Dios', 'Mi corazón']);
     expect(back.items.last.slides, ['/a.png', '/b.png']);
   });
+
+  test('an item of a kind a newer version added is left out, not read as an empty song', () {
+    final service = Collection.fromJson(
+      collectionRow(
+        id: 'c1',
+        items: [
+          songItemRow(id: 'i1', collectionId: 'c1', order: 0, title: 'Una'),
+          itemRow(id: 'i2', collectionId: 'c1', type: 'hologram', order: 1),
+        ],
+      ),
+    );
+    expect(service.items.map((i) => i.id), ['i1']);
+  });
 }

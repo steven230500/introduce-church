@@ -11,7 +11,14 @@ class SongFormCubit extends Cubit<SongFormState> {
 
   final SongsListRepository _repository;
 
+  /// What the song being edited carries that the form does not show, kept
+  /// so that saving it does not lose them.
+  String _language = 'es';
+  List<String> _tags = const [];
+
   void init(Song? existing) {
+    _language = existing?.language ?? 'es';
+    _tags = existing?.tags ?? const [];
     if (existing == null) {
       emit(const SongFormReadyState(SongFormModel()));
       return;
@@ -132,6 +139,8 @@ class SongFormCubit extends Cubit<SongFormState> {
         author: model.author.trim().isEmpty ? null : model.author.trim(),
         copyright: model.copyright.trim().isEmpty ? null : model.copyright.trim(),
         ccliNumber: model.ccliNumber.trim().isEmpty ? null : model.ccliNumber.trim(),
+        language: _language,
+        tags: _tags,
         verses: [
           for (final verse in model.verses)
             (

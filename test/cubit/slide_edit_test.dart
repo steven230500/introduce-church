@@ -131,4 +131,95 @@ void main() {
     expect(model(control).currentItem!.slides.first, 'El amor');
     expect(repo.calls.where((c) => c.startsWith('content:')), isEmpty);
   });
+
+  group('a song edit made with no network', () {
+    /// Someone at another computer changes the song's first verse while this
+    /// one is offline.
+    void editedElsewhere() {
+      final row = repo.rows.first['collection_items'][0] as Map<String, dynamic>;
+      ((row['songs'] as Map)['verses'] as List)[0]['content'] = 'Santo, santo, santo, Señor';
+    }
+
+    test('is made again on the song as the server has it, keeping the other change', () async {
+      repo.failWritesWith = const SocketException('Network is unreachable');
+      await control.editSlide('i1', 1, ['Señor omnipotente']);
+      editedElsewhere();
+
+      repo.failWritesWith = null;
+      await control.refresh();
+
+      final song = model(control).currentItem!.song!;
+      expect(song.slides, [
+        'Santo, santo, santo, Señor',
+        'Señor omnipotente',
+        'Santo, santo, santo',
+      ]);
+    });
+
+    test('is not made twice when the first attempt did reach the server', () async {
+      repo.failWritesWith = const SocketException('Network is unreachable');
+      await control.editSlide('i1', 1, ['Señor omnipotente']);
+      // The words it changes are already gone: nothing left to do.
+      ((repo.rows.first['collection_items'][0]['songs'] as Map)['verses'] as List)[1]['content'] =
+          'Señor omnipotente';
+
+      repo.failWritesWith = null;
+      repo.calls.clear();
+      await control.refresh();
+
+      expect(repo.calls.where((c) => c.startsWith('song:')), isEmpty);
+      expect(model(control).pendingWrites, 0);
+    });
+
+    test('two edits in a row are both kept, in order', () async {
+      repo.failWritesWith = const SocketException('Network is unreachable');
+      await control.editSlide('i1', 1, ['Señor omnipotente']);
+      await control.editSlide('i1', 0, ['¡Santo, santo, santo!']);
+      expect(model(control).pendingWrites, 2);
+
+      repo.failWritesWith = null;
+      await control.refresh();
+
+      expect(model(control).currentItem!.song!.slides, [
+        '¡Santo, santo, santo!',
+        'Señor omnipotente',
+        '¡Santo, santo, santo!',
+      ]);
+    });
+  });
+
+  group('undo', () {
+    test('puts a song back as it was, split included', () async {
+      await control.editSlide('i1', 1, ['Señr', 'omnipotente']);
+      expect(control.canUndoSlideEdit, isTrue);
+
+      await control.undoSlideEdit();
+
+      expect(model(control).currentItem!.slides, [
+        'Santo, santo, santo',
+        'Señr omnipotente',
+        'Santo, santo, santo',
+      ]);
+      expect(slidesOf('c2')[1], 'Señr omnipotente');
+      expect(control.canUndoSlideEdit, isFalse);
+    });
+
+    test('puts a sermon point back', () async {
+      control.selectItem(1);
+      await control.editSlide('i2', 1, const []);
+      await control.undoSlideEdit();
+      expect(model(control).currentItem!.slides, ['El amor', 'Uno', 'Dos']);
+    });
+
+    test('puts the screen back on the slide it was on', () async {
+      control.toggleLive();
+      control.selectSlide(1);
+      await control.editSlide('i1', 0, ['Santo,', 'santo, santo']);
+      expect(model(control).liveSlideIndex, 2);
+
+      await control.undoSlideEdit();
+      expect(model(control).liveSlideIndex, 1);
+      expect(repo.lastSync, (0, 1));
+    });
+  });
 }

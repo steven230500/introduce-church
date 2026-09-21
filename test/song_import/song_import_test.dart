@@ -220,6 +220,8 @@ void main() {
         'title': 'Grande es tu fidelidad (en vivo)',
         'copyright': '© 1923 Hope Publishing',
         'ccli': '18723',
+        'language': 'es',
+        'tags': <String>[],
       });
     });
   });

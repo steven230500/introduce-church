@@ -354,6 +354,20 @@ class FakeControlRepository extends ControlRepository {
   }
 
   @override
+  Future<Song> getSong(String id) async {
+    _checkNetwork();
+    for (final row in rows) {
+      for (final item in (row['collection_items'] as List).cast<Map<String, dynamic>>()) {
+        final stored = item['songs'] as Map?;
+        if (stored != null && stored['id'] == id) {
+          return Song.fromJson(jsonDecode(jsonEncode(stored)) as Map<String, dynamic>);
+        }
+      }
+    }
+    throw StateError('no song $id');
+  }
+
+  @override
   Future<void> updateSong(Song song) async {
     _checkNetwork();
     calls.add('song:${song.id}:${song.verses.length}');
@@ -615,9 +629,25 @@ class FakeSongsRepository extends SongsListRepository {
     String? author,
     String? copyright,
     String? ccliNumber,
+    String language = 'es',
+    List<String> tags = const [],
     required List<({String type, String content, String? chords})> verses,
   }) async {
-    saved.add({'id': id, 'title': title, 'copyright': copyright, 'ccli': ccliNumber});
-    return Song(id: id ?? 'new', title: title, copyright: copyright, ccliNumber: ccliNumber);
+    saved.add({
+      'id': id,
+      'title': title,
+      'copyright': copyright,
+      'ccli': ccliNumber,
+      'language': language,
+      'tags': tags,
+    });
+    return Song(
+      id: id ?? 'new',
+      title: title,
+      copyright: copyright,
+      ccliNumber: ccliNumber,
+      language: language,
+      tags: tags,
+    );
   }
 }

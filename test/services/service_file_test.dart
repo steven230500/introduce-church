@@ -189,7 +189,11 @@ void main() {
       final odd = jsonDecode(saved()) as Map<String, dynamic>;
       (odd['items'] as List).add({'type': 'holograma'});
 
-      expect(decodeService(jsonEncode(odd)).items, hasLength(3));
+      // The file opens with what this version knows; the newer kind stays out
+      // rather than arriving as an empty song.
+      final items = decodeService(jsonEncode(odd)).items;
+      expect(items, hasLength(2));
+      expect(items.map((i) => i.type.value), isNot(contains('holograma')));
     });
   });
 

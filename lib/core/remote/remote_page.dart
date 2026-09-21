@@ -52,6 +52,8 @@ const remotePageHtml = r'''<!doctype html>
   .list div.cur { background: rgba(10,132,255,.16); }
   .list div.air::after { content: "●"; color: var(--live); margin-left: auto; }
   .list span.n { color: var(--muted); width: 22px; flex: none; text-align: right; }
+  .list div.moment { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .6px;
+    text-transform: uppercase; padding: 14px 14px 6px; background: rgba(255,255,255,.03); }
   .hidden { display: none !important; }
   #pair { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; text-align: center; }
   #pair h1 { font-size: 22px; margin: 0; }
@@ -200,9 +202,16 @@ const remotePageHtml = r'''<!doctype html>
     list.replaceChildren();
     state.items.forEach((item, i) => {
       const row = document.createElement('div');
+      // A moment is a heading: nothing to put on the screen, nothing to tap.
+      if (item.moment) {
+        row.className = 'moment';
+        row.textContent = item.title;
+        list.append(row);
+        return;
+      }
       if (i === state.item) row.classList.add('cur');
       if (live && i === state.live_item) row.classList.add('air');
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = i + 1;
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = item.number ?? i + 1;
       const title = document.createElement('span'); title.textContent = item.title;
       row.append(n, title);
       row.onclick = () => send({ type: 'goto', item: i, slide: 0 });

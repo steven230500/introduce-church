@@ -35,11 +35,26 @@ Future<void> showSlideEditor(BuildContext context, {int? slideIndex}) async {
   }
   final index = slideIndex ?? model.currentSlideIndex;
   if (index < 0 || index >= item.slides.length) return;
-  await showDialog<void>(
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final t = L10n.of(context);
+  final saved = await showDialog<bool>(
     context: context,
     builder: (_) => BlocProvider.value(
       value: cubit,
       child: SlideEditorDialog(item: item, slideIndex: index, template: model.templateFor(item)),
+    ),
+  );
+  // A song changed in the library is a change to every service that sings
+  // it: taking it back has to be one click away, as removing an item is.
+  if (saved != true || !cubit.canUndoSlideEdit || messenger == null) return;
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(t.slideEditSaved(item.titleIn(t))),
+      duration: const Duration(seconds: 8),
+      behavior: SnackBarBehavior.floating,
+      width: 420,
+      action: SnackBarAction(label: t.undo, onPressed: cubit.undoSlideEdit),
     ),
   );
 }
@@ -106,8 +121,12 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
       _failure = null;
     });
     try {
-      await context.read<ControlCubit>().editSlide(_item.id, widget.slideIndex, parts);
-      if (mounted) Navigator.pop(context);
+      final changed = await context.read<ControlCubit>().editSlide(
+        _item.id,
+        widget.slideIndex,
+        parts,
+      );
+      if (mounted) Navigator.pop(context, changed);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -245,6 +264,10 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
             if (repeats > 0) ...[
               const SizedBox(height: AppSpace.xs),
               Text(t.slideEditRepeats(repeats), style: AppText.body),
+            ],
+            if (_item.song!.verses[widget.slideIndex].chords?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: AppSpace.xs),
+              Text(t.slideEditChords, style: AppText.body.copyWith(color: AppColors.warning)),
             ],
           ],
           if (_failure != null) ...[

@@ -66,10 +66,59 @@ void main() {
       expect(snapshot['next'], 'Señor mi Dios');
       expect(snapshot['collection'], 'Domingo');
       expect(snapshot['items'], [
-        {'title': 'Sublime gracia', 'slides': 2},
-        {'title': 'Cuán grande', 'slides': 1},
+        {'title': 'Sublime gracia', 'slides': 2, 'number': 1},
+        {'title': 'Cuán grande', 'slides': 1, 'number': 2},
       ]);
       expect(snapshot['is_live'], isTrue);
+    });
+
+    test('a moment is a heading, and what comes next is past it', () async {
+      final rows = [
+        collectionRow(
+          id: 'c2',
+          name: 'Con momentos',
+          items: [
+            itemRow(
+              id: 'm1',
+              collectionId: 'c2',
+              type: 'section',
+              order: 0,
+              contentJson: {'title': 'Alabanza'},
+            ),
+            songItemRow(id: 'i3', collectionId: 'c2', order: 1, title: 'Una', verses: ['Única']),
+            itemRow(
+              id: 'm2',
+              collectionId: 'c2',
+              type: 'section',
+              order: 2,
+              contentJson: {'title': 'Prédica'},
+            ),
+            songItemRow(id: 'i4', collectionId: 'c2', order: 3, title: 'Dos', verses: ['Segunda']),
+          ],
+        ),
+      ];
+      final withMoments = ControlCubit(
+        FakeControlRepository(rows: rows),
+        FakeTemplateRepository(),
+        FakePrefsService(),
+        FakePresentationSocket(),
+        pending: PendingWrites.inMemory(),
+      );
+      addTearDown(withMoments.close);
+      await withMoments.load();
+      ControlModel state() => (withMoments.state as ControlLoadedState).model;
+      withMoments.selectCollection(state().collections.first);
+      withMoments.toggleLive();
+
+      final snapshot = remoteSnapshot(state());
+      expect(snapshot['items'], [
+        {'title': 'Alabanza', 'moment': true},
+        {'title': 'Una', 'slides': 1, 'number': 1},
+        {'title': 'Prédica', 'moment': true},
+        {'title': 'Dos', 'slides': 1, 'number': 2},
+      ]);
+      expect(snapshot['text'], 'Única');
+      expect(snapshot['next'], 'Segunda', reason: 'the mark between them is not shown next');
     });
 
     test('messages it does not understand are ignored, not guessed at', () {

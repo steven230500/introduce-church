@@ -587,6 +587,24 @@ void main() {
       expect(find.text('Segunda estrofa'), findsWidgets);
     });
 
+    testWidgets('a saved correction can be taken back from the notice', (tester) async {
+      await pumpPresenter(tester);
+      await tester.tap(find.byTooltip('Editar slide').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Segunda'), 'Segunda estrofa');
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Guardado en «Sublime Gracia»'), findsOneWidget);
+      await tester.tap(find.text('Deshacer'));
+      await tester.pumpAndSettle();
+
+      expect((control.state as ControlLoadedState).model.currentItem!.slides, [
+        'Primera',
+        'Segunda',
+      ]);
+    });
+
     testWidgets('a slide is split where the cursor is', (tester) async {
       await pumpPresenter(tester);
       await tester.tap(find.byTooltip('Editar slide').first);

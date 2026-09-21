@@ -308,10 +308,18 @@ class _VersesList extends StatelessWidget {
         final start = state.selectedVerse;
         final end = state.selectedVerseEnd ?? start;
 
+        // A verse the imported file does not have is not listed, and the ones
+        // after it keep their numbers.
+        final present = [
+          for (var i = 0; i < state.verses.length; i++)
+            if (state.verses[i].trim().isNotEmpty) i,
+        ];
+
         return ListView.builder(
           padding: const EdgeInsets.only(bottom: AppSpace.md),
-          itemCount: state.verses.length,
-          itemBuilder: (_, i) {
+          itemCount: present.length,
+          itemBuilder: (_, row) {
+            final i = present[row];
             final number = i + 1;
             final selected = start != null && end != null && number >= start && number <= end;
 

@@ -216,3 +216,59 @@ class Song extends Equatable {
   @override
   List<Object?> get props => [id, title, author, verses];
 }
+
+/// One slide of a song changed from the grid, kept as what was done rather
+/// than as the song it produced.
+///
+/// Made with no network, the change waits in the queue; by the time it is
+/// sent, someone at another computer may have corrected another verse of the
+/// same song. Sending the whole song as it was here would undo their change.
+/// Replayed as "the verse that said [original] now says [parts]" on the song
+/// as the server has it now, both changes survive.
+class SongSlideEdit {
+  const SongSlideEdit({
+    required this.index,
+    required this.type,
+    required this.original,
+    required this.parts,
+  });
+
+  /// Where the slide was when it was edited: tried first, since it is almost
+  /// always still there.
+  final int index;
+  final VerseType type;
+  final String original;
+  final List<String> parts;
+
+  /// [song] with this edit made on it, or null when the words it changes are
+  /// no longer in the song: already changed by this same edit, sent before a
+  /// dropped connection hid the answer, or changed by someone else since.
+  /// Either way there is nothing left to do, and doing it anyway would guess.
+  Song? applyTo(Song song) {
+    bool edited(Verse v) => v.type == type && v.content == original;
+    final at = index < song.verses.length && edited(song.verses[index])
+        ? index
+        : song.verses.indexWhere(edited);
+    if (at < 0) return null;
+    return song.withSlide(at, parts);
+  }
+
+  Map<String, dynamic> toJson() => {
+    'index': index,
+    'type': type.value,
+    'original': original,
+    'parts': parts,
+  };
+
+  static SongSlideEdit? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final index = json['index'], original = json['original'], parts = json['parts'];
+    if (index is! int || original is! String || parts is! List) return null;
+    return SongSlideEdit(
+      index: index,
+      type: VerseTypeX.fromString(json['type'] as String? ?? 'verse'),
+      original: original,
+      parts: [for (final part in parts) '$part'],
+    );
+  }
+}

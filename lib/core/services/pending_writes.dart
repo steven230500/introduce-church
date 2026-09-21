@@ -78,6 +78,9 @@ class PendingWrite extends Equatable {
   /// service are two changes, and the second must not replace the first.
   String get key => switch (kind) {
     PendingKind.itemsAdd => '${kind.name}:${addedItems.firstOrNull?.id ?? target}',
+    // Each correction to a song is its own step, replayed in order on the
+    // song the server has: a second edit must not replace the first.
+    PendingKind.songVerses => '${kind.name}:$target:${args['id'] ?? ''}',
     _ => '${kind.name}:$target',
   };
 
@@ -85,6 +88,11 @@ class PendingWrite extends Equatable {
   Song? get editedSong => kind == PendingKind.songVerses && args['song'] is Map
       ? Song.fromJson(Map<String, dynamic>.from(args['song'] as Map))
       : null;
+
+  /// What a [PendingKind.songVerses] did, to be done again on the server's
+  /// song. Null for an undo, which puts a whole song back as it was.
+  SongSlideEdit? get songEdit =>
+      kind == PendingKind.songVerses ? SongSlideEdit.fromJson(args['edit']) : null;
 
   /// The items a [PendingKind.itemsAdd] puts in its collection, in order.
   List<CollectionItem> get addedItems => [

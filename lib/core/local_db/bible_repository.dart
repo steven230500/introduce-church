@@ -157,6 +157,25 @@ class BibleRepository {
 
   Future<void> rememberVersion(String code) async => _prefs?.setBibleVersion(code);
 
+  /// Whether [texts] are, word for word, verses [start] onwards of [chapter]
+  /// of book [bookIndex] in version [code]. False when that version is not
+  /// on this computer.
+  Future<bool> hasText(
+    String code, {
+    required int bookIndex,
+    required int chapter,
+    required int start,
+    required List<String> texts,
+  }) async {
+    if (texts.isEmpty || start < 1) return false;
+    final verses = await getVerses(code, bookIndex, chapter);
+    if (start - 1 + texts.length > verses.length) return false;
+    for (final (i, text) in texts.indexed) {
+      if (verses[start - 1 + i].trim() != text.trim()) return false;
+    }
+    return true;
+  }
+
   /// Every version on this computer, a half-installed one included, for the
   /// versions dialog to show and let the operator remove.
   Future<List<BibleVersion>> getInstalledVersions() => _db.getAllVersions();
