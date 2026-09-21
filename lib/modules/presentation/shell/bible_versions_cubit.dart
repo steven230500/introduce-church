@@ -92,7 +92,7 @@ class BibleVersionsCubit extends Cubit<BibleVersionsState> {
 
   /// Saves the Bible under review as [name] with the code [code], and makes
   /// it the one the operator gets: whoever imports a Bible means to use it.
-  Future<void> install({required String name, required String code}) async {
+  Future<void> install({required String name, required String code, String? language}) async {
     final review = state;
     if (review is! BibleVersionsReview) return;
     final cleanCode = cleanVersionCode(code);
@@ -101,7 +101,12 @@ class BibleVersionsCubit extends Cubit<BibleVersionsState> {
 
     emit(BibleVersionsSaving(review.model, name: cleanName));
     try {
-      await _repo.install(review.bible, code: cleanCode, name: cleanName);
+      await _repo.install(
+        review.bible,
+        code: cleanCode,
+        name: cleanName,
+        language: language ?? review.bible.probableLanguage,
+      );
       await _repo.rememberVersion(cleanCode);
       changed = true;
       final model = await _model();
@@ -125,6 +130,29 @@ class BibleVersionsCubit extends Cubit<BibleVersionsState> {
       name.trim().isNotEmpty &&
       cleanVersionCode(code).isNotEmpty &&
       cleanVersionCode(code) != bundledBibleCode;
+
+  /// Whether version [code] can be called [newCode]: not the included one's
+  /// code, and not another version's.
+  bool canRename(String code, {required String name, required String newCode}) {
+    final clean = cleanVersionCode(newCode);
+    return name.trim().isNotEmpty &&
+        clean.isNotEmpty &&
+        clean != bundledBibleCode &&
+        (clean == code || !state.model.has(clean));
+  }
+
+  /// A new name and code for a version already on this computer, so a Bible
+  /// imported as "La Biblia de Las Americas" does not have to be imported
+  /// again to be called "LBLA".
+  Future<void> rename(String code, {required String name, required String newCode}) async {
+    if (!canRename(code, name: name, newCode: newCode)) return;
+    final version = state.model.versions.where((v) => v.code == code).firstOrNull;
+    if (version == null || version.bundled) return;
+    await _repo.rename(code, to: cleanVersionCode(newCode), name: name.trim());
+    changed = true;
+    final model = await _model();
+    if (!isClosed) emit(BibleVersionsIdle(model));
+  }
 
   /// Drops the Bible under review without saving it.
   void cancel() => emit(BibleVersionsIdle(state.model));

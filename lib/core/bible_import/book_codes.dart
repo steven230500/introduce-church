@@ -20,6 +20,38 @@ const osisBookCodes = [
   '2Pet', '1John', '2John', '3John', 'Jude', 'Rev',
 ];
 
+/// USFM book codes, in canonical order: USFM, USFX and eBible use them.
+const usfmBookCodes = [
+  'GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'JOS', 'JDG', 'RUT', '1SA', '2SA', //
+  '1KI', '2KI', '1CH', '2CH', 'EZR', 'NEH', 'EST', 'JOB', 'PSA', 'PRO',
+  'ECC', 'SNG', 'ISA', 'JER', 'LAM', 'EZK', 'DAN', 'HOS', 'JOL', 'AMO',
+  'OBA', 'JON', 'MIC', 'NAM', 'HAB', 'ZEP', 'HAG', 'ZEC', 'MAL', 'MAT',
+  'MRK', 'LUK', 'JHN', 'ACT', 'ROM', '1CO', '2CO', 'GAL', 'EPH', 'PHP',
+  'COL', '1TH', '2TH', '1TI', '2TI', 'TIT', 'PHM', 'HEB', 'JAS', '1PE',
+  '2PE', '1JN', '2JN', '3JN', 'JUD', 'REV',
+];
+
+/// MyBible's book numbers, in canonical order: Genesis is 10, Revelation 730.
+/// The gaps are the deuterocanonical books, which have no place here.
+const myBibleBookNumbers = [
+  10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 190, 220, //
+  230, 240, 250, 260, 290, 300, 310, 330, 340, 350, 360, 370, 380, 390, 400, 410,
+  420, 430, 440, 450, 460, 470, 480, 490, 500, 510, 520, 530, 540, 550, 560, 570,
+  580, 590, 600, 610, 620, 630, 640, 650, 660, 670, 680, 690, 700, 710, 720, 730,
+];
+
+/// Where a USFM code goes: "GEN", "1CO".
+int? bookIndexFromUsfm(String code) {
+  final index = usfmBookCodes.indexOf(code.trim().toUpperCase());
+  return index < 0 ? null : index;
+}
+
+/// Where a MyBible book number goes.
+int? bookIndexFromMyBible(int number) {
+  final index = myBibleBookNumbers.indexOf(number);
+  return index < 0 ? null : index;
+}
+
 /// English names, for the OpenSong files that were made in English.
 const _englishNames = [
   'genesis', 'exodus', 'leviticus', 'numbers', 'deuteronomy', 'joshua', 'judges', //

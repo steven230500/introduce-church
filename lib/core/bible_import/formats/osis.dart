@@ -15,6 +15,7 @@ ImportedBible readOsis(String xml, {required String source, required String name
   final collector = VerseCollector();
   String? title;
   String? abbreviation;
+  String? language;
 
   String? current;
   StringBuffer? verseText;
@@ -53,6 +54,7 @@ ImportedBible readOsis(String xml, {required String source, required String name
         switch (tag) {
           case 'osistext':
             abbreviation = attributeOf(attributes, ['osisidwork']);
+            language = attributeOf(attributes, ['lang']);
           case 'header':
             inHeader = !isSelfClosing;
           case 'title' when inHeader && title == null:
@@ -111,5 +113,6 @@ ImportedBible readOsis(String xml, {required String source, required String name
     title: titleOr(title, name),
     abbreviation: abbreviation?.trim(),
     source: source,
+    language: language,
   );
 }

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/models/song.dart';
 import 'package:introduce_church/core/song_import/imported_song.dart';
-import 'package:introduce_church/core/song_import/rtf.dart';
+import 'package:introduce_church/core/utils/rtf.dart';
 import 'package:introduce_church/core/song_import/section_names.dart';
 
 void main() {

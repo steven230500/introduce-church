@@ -191,13 +191,118 @@ class _VersionRow extends StatelessWidget {
         ),
         if (version.bundled)
           const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
-        else
+        else ...[
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textTertiary),
+            tooltip: t.bibleVersionRename,
+            onPressed: enabled ? () => _rename(context) : null,
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
             tooltip: t.delete,
             onPressed: enabled ? () => _delete(context) : null,
           ),
+        ],
       ],
+    );
+  }
+
+  Future<void> _rename(BuildContext context) async {
+    final cubit = context.read<BibleVersionsCubit>();
+    final result = await showDialog<({String name, String code})>(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: _RenameDialog(version: version),
+      ),
+    );
+    if (result != null) await cubit.rename(version.code, name: result.name, newCode: result.code);
+  }
+}
+
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.version});
+
+  final InstalledBible version;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final _name = TextEditingController(text: widget.version.name);
+  late final _code = TextEditingController(text: widget.version.code);
+
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(_changed);
+    _code.addListener(_changed);
+  }
+
+  void _changed() => setState(() {});
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _code.dispose();
+    super.dispose();
+  }
+
+  bool get _valid => context.read<BibleVersionsCubit>().canRename(
+    widget.version.code,
+    name: _name.text,
+    newCode: _code.text,
+  );
+
+  void _save() {
+    if (_valid) Navigator.pop(context, (name: _name.text, code: _code.text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    final code = cleanVersionCode(_code.text);
+    return AppDialog(
+      title: t.bibleVersionRename,
+      icon: Icons.edit_outlined,
+      width: 420,
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.cancel)),
+        const SizedBox(width: AppSpace.sm),
+        FilledButton(onPressed: _valid ? _save : null, child: Text(t.save)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _name,
+            label: t.bibleImportName,
+            hintText: t.bibleImportName,
+            autofocus: true,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: AppSpace.md),
+          AppTextField(
+            controller: _code,
+            label: t.bibleImportCode,
+            hintText: t.bibleImportCode,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(t.bibleImportCodeHelp(code.isEmpty ? '…' : code), style: AppText.rowSubtitle),
+          if (!_valid && code.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(
+              code == bundledBibleCode
+                  ? t.bibleImportCodeTaken(code)
+                  : t.bibleVersionCodeInUse(code),
+              style: AppText.body.copyWith(color: AppColors.warning),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -279,6 +384,10 @@ class _ReviewState extends State<_Review> {
   late final _name = TextEditingController(text: widget.state.name);
   late final _code = TextEditingController(text: widget.state.code);
 
+  /// The language the books are named in, on the screen and under a verse:
+  /// what the file says or its words suggest, for the operator to correct.
+  late String _language = widget.state.bible.probableLanguage;
+
   @override
   void dispose() {
     _name.dispose();
@@ -288,7 +397,11 @@ class _ReviewState extends State<_Review> {
 
   void _install() {
     if (!BibleVersionsCubit.canInstall(name: _name.text, code: _code.text)) return;
-    context.read<BibleVersionsCubit>().install(name: _name.text, code: _code.text);
+    context.read<BibleVersionsCubit>().install(
+      name: _name.text,
+      code: _code.text,
+      language: _language,
+    );
   }
 
   @override
@@ -350,6 +463,25 @@ class _ReviewState extends State<_Review> {
           ),
           const SizedBox(height: AppSpace.xs),
           Text(t.bibleImportCodeHelp(code.isEmpty ? '…' : code), style: AppText.rowSubtitle),
+          const SizedBox(height: AppSpace.sm),
+          Row(
+            children: [
+              Text(t.bibleImportLanguage, style: AppText.rowSubtitle),
+              const SizedBox(width: AppSpace.sm),
+              for (final (code, label) in [
+                ('es', t.bibleLanguageEs),
+                ('en', t.bibleLanguageEn),
+              ]) ...[
+                ChoiceChip(
+                  label: Text(label, style: const TextStyle(fontSize: 12)),
+                  selected: _language == code,
+                  visualDensity: VisualDensity.compact,
+                  onSelected: (_) => setState(() => _language = code),
+                ),
+                const SizedBox(width: AppSpace.xs),
+              ],
+            ],
+          ),
           for (final warning in warnings) ...[
             const SizedBox(height: AppSpace.sm),
             Text(warning, style: AppText.body.copyWith(color: AppColors.warning)),

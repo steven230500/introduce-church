@@ -5,7 +5,7 @@ import 'package:xml/xml.dart';
 
 import '../imported_song.dart';
 import '../protobuf.dart';
-import '../rtf.dart';
+import '../../utils/rtf.dart';
 import '../section_names.dart';
 
 /// A group of slides as ProPresenter keeps it: "Verse 1" and its slides.

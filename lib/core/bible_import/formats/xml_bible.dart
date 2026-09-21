@@ -31,6 +31,7 @@ ImportedBible _readTagged(
   final collector = VerseCollector();
   String? title;
   String? abbreviation;
+  String? language;
 
   int? book;
   var booksSeen = 0;
@@ -59,7 +60,7 @@ ImportedBible _readTagged(
             title = attributeOf(attributes, ['biblename', 'name', 'translation']);
           case 'information':
             inInformation = !isSelfClosing;
-          case 'title' || 'identifier' when inInformation:
+          case 'title' || 'identifier' || 'language' when inInformation:
             field = tag;
             fieldText.clear();
           case 'biblebook' || 'book' || 'b':
@@ -94,9 +95,10 @@ ImportedBible _readTagged(
         switch (tag) {
           case 'information':
             inInformation = false;
-          case 'title' || 'identifier' when field == tag:
+          case 'title' || 'identifier' || 'language' when field == tag:
             if (tag == 'title') title = fieldText.toString();
             if (tag == 'identifier') abbreviation = fieldText.toString();
+            if (tag == 'language') language = fieldText.toString();
             field = null;
           case 'vers' || 'verse' || 'v':
             if (verseText != null && book != null) {
@@ -122,6 +124,7 @@ ImportedBible _readTagged(
     title: titleOr(title, name),
     abbreviation: abbreviation?.trim(),
     source: source,
+    language: language,
   );
 }
 

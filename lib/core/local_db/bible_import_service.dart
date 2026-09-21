@@ -8,6 +8,27 @@ import '../utils/app_logger.dart';
 const bundledBibleCode = 'RV1909';
 const bundledBibleName = 'Reina-Valera 1909';
 
+/// The English one, for the bilingual churches: the World English Bible, in
+/// the public domain, the edition that reads "the LORD".
+const bundledEnglishCode = 'WEB';
+const bundledEnglishName = 'World English Bible';
+
+/// Every Bible the app carries: its code, name, file and language.
+const _bundled = [
+  (
+    code: bundledBibleCode,
+    name: bundledBibleName,
+    asset: 'assets/bibles/rv1909.json',
+    language: 'es',
+  ),
+  (
+    code: bundledEnglishCode,
+    name: bundledEnglishName,
+    asset: 'assets/bibles/web.json',
+    language: 'en',
+  ),
+];
+
 /// What builds up to 1.1.0 called the same text. It was never the 1960
 /// revision - "crió", "á su Hijo", "reformaos" are the 1909 - so a church saw
 /// "RVR1960" under words its Bibles do not have.
@@ -21,25 +42,24 @@ class BibleImportService {
   Future<void> ensureBundledBiblesImported() async {
     await retireMislabelled();
 
-    final alreadyImported = await _db.isVersionDownloaded(bundledBibleCode);
-    if (alreadyImported) {
-      final valid = await _isDataValid(bundledBibleCode);
-      if (valid) {
-        appLogger.d('BibleImportService: $bundledBibleCode already imported');
-        return;
+    for (final bible in _bundled) {
+      if (await _db.isVersionDownloaded(bible.code)) {
+        final current = bible.code != bundledBibleCode || await bundledTextIsCurrent();
+        if (await _isDataValid(bible.code) && current) {
+          appLogger.d('BibleImportService: ${bible.code} already imported');
+          continue;
+        }
+        appLogger.w('BibleImportService: ${bible.code} outdated or damaged, re-importing...');
+        await _db.deleteVersion(bible.code);
       }
-      appLogger.w('BibleImportService: $bundledBibleCode data corrupted, re-importing...');
-      await _db.deleteVersion(bundledBibleCode);
+      appLogger.i('BibleImportService: importing ${bible.code}...');
+      await _importFromAsset(
+        assetPath: bible.asset,
+        code: bible.code,
+        name: bible.name,
+        language: bible.language,
+      );
     }
-
-    appLogger.i('BibleImportService: importing $bundledBibleCode...');
-    await _importFromAsset(
-      assetPath: 'assets/bibles/rv1909.json',
-      code: bundledBibleCode,
-      name: bundledBibleName,
-      isBundled: true,
-    );
-    appLogger.i('BibleImportService: $bundledBibleCode import complete');
   }
 
   /// Gives the included Bible its real name on a computer that has it under
@@ -54,6 +74,22 @@ class BibleImportService {
       await _db.renameVersion(_mislabelledCode, to: bundledBibleCode, name: bundledBibleName);
     }
     appLogger.i('BibleImportService: $_mislabelledCode renamed to $bundledBibleCode');
+  }
+
+  /// Whether the included Bible on this computer is the text this build
+  /// carries. Builds up to 1.4 carried it with the printed edition's drop
+  /// capitals typed out as capitals - "EN el principio", "Y ACONTECIO",
+  /// "JEHOVA es mi pastor" - at the start of more than half the chapters, and
+  /// without their accents. A computer that has that text gets this one, once.
+  Future<bool> bundledTextIsCurrent() async {
+    try {
+      final chapter = await _db.getChapter(bundledBibleCode, 0, 1);
+      if (chapter == null) return false;
+      final verses = jsonDecode(chapter.versesJson) as List;
+      return verses.isNotEmpty && !'${verses.first}'.startsWith('EN el');
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _isDataValid(String versionCode) async {
@@ -71,12 +107,16 @@ class BibleImportService {
     required String assetPath,
     required String code,
     required String name,
-    required bool isBundled,
+    required String language,
   }) async {
-    appLogger.i('BibleImportService: loading $assetPath from bundle...');
     final jsonString = await rootBundle.loadString(assetPath);
     final books = List<Map<String, dynamic>>.from(jsonDecode(jsonString));
-    appLogger.i('BibleImportService: ${books.length} books found, inserting into SQLite...');
-    await _db.insertVersion(code: code, name: name, isBundled: isBundled, books: books);
+    await _db.insertVersion(
+      code: code,
+      name: name,
+      isBundled: true,
+      books: books,
+      language: language,
+    );
   }
 }

@@ -801,7 +801,7 @@
   "bibleVersionIncomplete": "incompleta",
   "gridBigger": "Slides más grandes",
   "gridSmaller": "Slides más pequeños",
-  "bibleSearchBook": "Buscar libro...",
+  "bibleSearchBook": "Buscar libro o palabras...",
   "bibleNoBookMatches": "Ningún libro coincide",
   "bibleTapVerse": "Toca un versículo. Toca otro para elegir un pasaje.",
   "bibleOnePerSlide": "Uno por slide",
@@ -1421,6 +1421,19 @@
   "slideRemovePageMessage": "Sale de esta presentación en este servicio. El archivo original no se toca.",
   "songDetails": "Título y autor",
   "songDetailsNote": "Cambia la canción en la biblioteca: el nombre nuevo llega a todos los servicios y al reporte de licencias.",
+  "bibleVersionRename": "Cambiar nombre",
+  "bibleVersionCodeInUse": "Ya hay otra versión {code}. Usa otra sigla.",
+  "@bibleVersionCodeInUse": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportLanguage": "Libros en",
+  "bibleLanguageEs": "Español",
+  "bibleLanguageEn": "English",
+  "bibleInTheText": "En el texto",
   "shortcutsHelp": "Abrir esta ayuda",
   "shortcutsNotWhileTyping": "Los atajos no se activan mientras escribes en un campo de texto.",
   "sidePresenter": "Presentador",

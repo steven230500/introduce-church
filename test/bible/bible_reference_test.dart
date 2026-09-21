@@ -27,6 +27,13 @@ void main() {
       expect(read('jue 6:12')!.bookName, 'Jueces');
     });
 
+    test('an English name, for the church that reads the English Bible', () {
+      expect(read('john 3:16')?.bookIndex, 42);
+      expect(read('Psalm 23')?.bookIndex, 18);
+      expect(read('Revelation 1:8')?.bookIndex, 65);
+      expect(read('1 Corinthians 13:4')?.bookIndex, 45);
+    });
+
     test('a range', () {
       final ref = read('1 co 13:4-7')!;
 

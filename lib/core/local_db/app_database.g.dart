@@ -57,8 +57,24 @@ class $BibleVersionsTable extends BibleVersions with TableInfo<$BibleVersionsTab
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _languageMeta = const VerificationMeta('language');
   @override
-  List<GeneratedColumn> get $columns => [code, name, isBundled, isDownloaded, downloadedAt];
+  late final GeneratedColumn<String> language = GeneratedColumn<String>(
+    'language',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    code,
+    name,
+    isBundled,
+    isDownloaded,
+    downloadedAt,
+    language,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -99,6 +115,12 @@ class $BibleVersionsTable extends BibleVersions with TableInfo<$BibleVersionsTab
         downloadedAt.isAcceptableOrUnknown(data['downloaded_at']!, _downloadedAtMeta),
       );
     }
+    if (data.containsKey('language')) {
+      context.handle(
+        _languageMeta,
+        language.isAcceptableOrUnknown(data['language']!, _languageMeta),
+      );
+    }
     return context;
   }
 
@@ -122,6 +144,10 @@ class $BibleVersionsTable extends BibleVersions with TableInfo<$BibleVersionsTab
         DriftSqlType.dateTime,
         data['${effectivePrefix}downloaded_at'],
       ),
+      language: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language'],
+      ),
     );
   }
 
@@ -137,12 +163,17 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
   final bool isBundled;
   final bool isDownloaded;
   final DateTime? downloadedAt;
+
+  /// The language the Bible is in, "es" or "en": its books are named in it.
+  /// Null for the versions saved before this was kept, all of them Spanish.
+  final String? language;
   const BibleVersion({
     required this.code,
     required this.name,
     required this.isBundled,
     required this.isDownloaded,
     this.downloadedAt,
+    this.language,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -153,6 +184,9 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
     map['is_downloaded'] = Variable<bool>(isDownloaded);
     if (!nullToAbsent || downloadedAt != null) {
       map['downloaded_at'] = Variable<DateTime>(downloadedAt);
+    }
+    if (!nullToAbsent || language != null) {
+      map['language'] = Variable<String>(language);
     }
     return map;
   }
@@ -166,6 +200,7 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
       downloadedAt: downloadedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(downloadedAt),
+      language: language == null && nullToAbsent ? const Value.absent() : Value(language),
     );
   }
 
@@ -177,6 +212,7 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
       isBundled: serializer.fromJson<bool>(json['isBundled']),
       isDownloaded: serializer.fromJson<bool>(json['isDownloaded']),
       downloadedAt: serializer.fromJson<DateTime?>(json['downloadedAt']),
+      language: serializer.fromJson<String?>(json['language']),
     );
   }
   @override
@@ -188,6 +224,7 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
       'isBundled': serializer.toJson<bool>(isBundled),
       'isDownloaded': serializer.toJson<bool>(isDownloaded),
       'downloadedAt': serializer.toJson<DateTime?>(downloadedAt),
+      'language': serializer.toJson<String?>(language),
     };
   }
 
@@ -197,12 +234,14 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
     bool? isBundled,
     bool? isDownloaded,
     Value<DateTime?> downloadedAt = const Value.absent(),
+    Value<String?> language = const Value.absent(),
   }) => BibleVersion(
     code: code ?? this.code,
     name: name ?? this.name,
     isBundled: isBundled ?? this.isBundled,
     isDownloaded: isDownloaded ?? this.isDownloaded,
     downloadedAt: downloadedAt.present ? downloadedAt.value : this.downloadedAt,
+    language: language.present ? language.value : this.language,
   );
   BibleVersion copyWithCompanion(BibleVersionsCompanion data) {
     return BibleVersion(
@@ -211,6 +250,7 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
       isBundled: data.isBundled.present ? data.isBundled.value : this.isBundled,
       isDownloaded: data.isDownloaded.present ? data.isDownloaded.value : this.isDownloaded,
       downloadedAt: data.downloadedAt.present ? data.downloadedAt.value : this.downloadedAt,
+      language: data.language.present ? data.language.value : this.language,
     );
   }
 
@@ -221,13 +261,14 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
           ..write('name: $name, ')
           ..write('isBundled: $isBundled, ')
           ..write('isDownloaded: $isDownloaded, ')
-          ..write('downloadedAt: $downloadedAt')
+          ..write('downloadedAt: $downloadedAt, ')
+          ..write('language: $language')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(code, name, isBundled, isDownloaded, downloadedAt);
+  int get hashCode => Object.hash(code, name, isBundled, isDownloaded, downloadedAt, language);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -236,7 +277,8 @@ class BibleVersion extends DataClass implements Insertable<BibleVersion> {
           other.name == this.name &&
           other.isBundled == this.isBundled &&
           other.isDownloaded == this.isDownloaded &&
-          other.downloadedAt == this.downloadedAt);
+          other.downloadedAt == this.downloadedAt &&
+          other.language == this.language);
 }
 
 class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
@@ -245,6 +287,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
   final Value<bool> isBundled;
   final Value<bool> isDownloaded;
   final Value<DateTime?> downloadedAt;
+  final Value<String?> language;
   final Value<int> rowid;
   const BibleVersionsCompanion({
     this.code = const Value.absent(),
@@ -252,6 +295,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
     this.isBundled = const Value.absent(),
     this.isDownloaded = const Value.absent(),
     this.downloadedAt = const Value.absent(),
+    this.language = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BibleVersionsCompanion.insert({
@@ -260,6 +304,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
     this.isBundled = const Value.absent(),
     this.isDownloaded = const Value.absent(),
     this.downloadedAt = const Value.absent(),
+    this.language = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : code = Value(code),
        name = Value(name);
@@ -269,6 +314,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
     Expression<bool>? isBundled,
     Expression<bool>? isDownloaded,
     Expression<DateTime>? downloadedAt,
+    Expression<String>? language,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -277,6 +323,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
       if (isBundled != null) 'is_bundled': isBundled,
       if (isDownloaded != null) 'is_downloaded': isDownloaded,
       if (downloadedAt != null) 'downloaded_at': downloadedAt,
+      if (language != null) 'language': language,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -287,6 +334,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
     Value<bool>? isBundled,
     Value<bool>? isDownloaded,
     Value<DateTime?>? downloadedAt,
+    Value<String?>? language,
     Value<int>? rowid,
   }) {
     return BibleVersionsCompanion(
@@ -295,6 +343,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
       isBundled: isBundled ?? this.isBundled,
       isDownloaded: isDownloaded ?? this.isDownloaded,
       downloadedAt: downloadedAt ?? this.downloadedAt,
+      language: language ?? this.language,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -317,6 +366,9 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
     if (downloadedAt.present) {
       map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
     }
+    if (language.present) {
+      map['language'] = Variable<String>(language.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -331,6 +383,7 @@ class BibleVersionsCompanion extends UpdateCompanion<BibleVersion> {
           ..write('isBundled: $isBundled, ')
           ..write('isDownloaded: $isDownloaded, ')
           ..write('downloadedAt: $downloadedAt, ')
+          ..write('language: $language, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1047,6 +1100,7 @@ typedef $$BibleVersionsTableCreateCompanionBuilder =
       Value<bool> isBundled,
       Value<bool> isDownloaded,
       Value<DateTime?> downloadedAt,
+      Value<String?> language,
       Value<int> rowid,
     });
 typedef $$BibleVersionsTableUpdateCompanionBuilder =
@@ -1056,6 +1110,7 @@ typedef $$BibleVersionsTableUpdateCompanionBuilder =
       Value<bool> isBundled,
       Value<bool> isDownloaded,
       Value<DateTime?> downloadedAt,
+      Value<String?> language,
       Value<int> rowid,
     });
 
@@ -1081,6 +1136,9 @@ class $$BibleVersionsTableFilterComposer extends Composer<_$AppDatabase, $BibleV
 
   ColumnFilters<DateTime> get downloadedAt =>
       $composableBuilder(column: $table.downloadedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => ColumnFilters(column));
 }
 
 class $$BibleVersionsTableOrderingComposer extends Composer<_$AppDatabase, $BibleVersionsTable> {
@@ -1105,6 +1163,9 @@ class $$BibleVersionsTableOrderingComposer extends Composer<_$AppDatabase, $Bibl
 
   ColumnOrderings<DateTime> get downloadedAt =>
       $composableBuilder(column: $table.downloadedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => ColumnOrderings(column));
 }
 
 class $$BibleVersionsTableAnnotationComposer extends Composer<_$AppDatabase, $BibleVersionsTable> {
@@ -1129,6 +1190,9 @@ class $$BibleVersionsTableAnnotationComposer extends Composer<_$AppDatabase, $Bi
 
   GeneratedColumn<DateTime> get downloadedAt =>
       $composableBuilder(column: $table.downloadedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => column);
 }
 
 class $$BibleVersionsTableTableManager
@@ -1163,6 +1227,7 @@ class $$BibleVersionsTableTableManager
                 Value<bool> isBundled = const Value.absent(),
                 Value<bool> isDownloaded = const Value.absent(),
                 Value<DateTime?> downloadedAt = const Value.absent(),
+                Value<String?> language = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BibleVersionsCompanion(
                 code: code,
@@ -1170,6 +1235,7 @@ class $$BibleVersionsTableTableManager
                 isBundled: isBundled,
                 isDownloaded: isDownloaded,
                 downloadedAt: downloadedAt,
+                language: language,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1179,6 +1245,7 @@ class $$BibleVersionsTableTableManager
                 Value<bool> isBundled = const Value.absent(),
                 Value<bool> isDownloaded = const Value.absent(),
                 Value<DateTime?> downloadedAt = const Value.absent(),
+                Value<String?> language = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BibleVersionsCompanion.insert(
                 code: code,
@@ -1186,6 +1253,7 @@ class $$BibleVersionsTableTableManager
                 isBundled: isBundled,
                 isDownloaded: isDownloaded,
                 downloadedAt: downloadedAt,
+                language: language,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) =>

@@ -127,4 +127,22 @@ void main() {
     expect(cubit.state.model.versions.map((v) => v.code), ['RV1909']);
     await cubit.close();
   });
+
+  test('a version is renamed without importing it again, and stays the one used', () async {
+    final cubit = cubitReading(found(lbla()));
+    await cubit.load();
+    await cubit.open('/descargas/lbla.xml');
+    await cubit.install(name: 'La Biblia de Las Americas', code: 'LBLAA');
+
+    expect(cubit.canRename('LBLAA', name: 'x', newCode: 'RV1909'), isFalse);
+    await cubit.rename('LBLAA', name: 'La Biblia de las Américas', newCode: 'lbla');
+
+    final versions = cubit.state.model.versions;
+    expect(versions.map((v) => v.code), ['LBLA', 'RV1909']);
+    expect(versions.first.name, 'La Biblia de las Américas');
+    expect(prefs.bibleVersionCode, 'LBLA');
+    expect((await repo.preferredVersion())?.code, 'LBLA');
+    expect(await repo.getVerses('LBLA', 42, 1), isNotEmpty, reason: 'the text came along');
+    await cubit.close();
+  });
 }

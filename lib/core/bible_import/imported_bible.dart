@@ -7,6 +7,11 @@ enum BibleFormat {
   openSong('OpenSong'),
   beblia('Beblia XML'),
   freeShow('FreeShow'),
+  usfx('USFX'),
+  usfm('USFM'),
+  mySword('MySword'),
+  eSword('e-Sword'),
+  myBible('MyBible'),
 
   /// A list of books of chapters of verses: what the included Bible is kept in.
   bookList('JSON');
@@ -30,6 +35,7 @@ class ImportedBible extends Equatable {
     required this.format,
     this.abbreviation,
     this.skippedBooks = 0,
+    this.language,
   });
 
   /// What the file calls itself, or the file's name when it does not say.
@@ -51,6 +57,30 @@ class ImportedBible extends Equatable {
   final String source;
   final BibleFormat format;
 
+  /// "es" or "en" when the file says which, null when it does not.
+  final String? language;
+
+  /// The language the Bible is in: what the file says, or else what its words
+  /// look like. A handful of the commonest words in each language is enough
+  /// to tell Spanish from English in a few hundred verses.
+  String get probableLanguage {
+    if (language != null) return language!;
+    var english = 0, spanish = 0;
+    var seen = 0;
+    for (final chapters in books.values) {
+      for (final verses in chapters) {
+        for (final verse in verses) {
+          for (final word in verse.toLowerCase().split(RegExp(r'[^a-záéíóúñü]+'))) {
+            if (const {'the', 'and', 'of', 'to', 'he', 'his'}.contains(word)) english++;
+            if (const {'de', 'la', 'que', 'el', 'y', 'los'}.contains(word)) spanish++;
+          }
+          if (++seen > 400) return english > spanish ? 'en' : 'es';
+        }
+      }
+    }
+    return english > spanish ? 'en' : 'es';
+  }
+
   int get missingBooks => 66 - books.length;
 
   int get verseCount => books.values.fold(
@@ -61,7 +91,7 @@ class ImportedBible extends Equatable {
   );
 
   @override
-  List<Object?> get props => [title, abbreviation, books, skippedBooks, source, format];
+  List<Object?> get props => [title, abbreviation, books, skippedBooks, source, format, language];
 }
 
 /// Why a file did not become a Bible.

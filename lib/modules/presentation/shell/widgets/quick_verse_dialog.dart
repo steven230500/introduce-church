@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 
+import '../../../../core/local_db/app_database.dart' show BibleVersion;
 import '../../../../core/local_db/bible_reference.dart';
 import '../../../../core/local_db/bible_repository.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -73,6 +74,24 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
   /// Null in a test that pumps this dialog on its own.
   final _prefs = Modular.tryGet<AppPrefsService>();
 
+  /// The versions on this computer, and the one this passage goes out in.
+  /// Chosen here, it is remembered: the next passage is in the same one.
+  List<BibleVersion> _versions = const [];
+  BibleVersion? _version;
+
+  Future<BibleVersion?> _currentVersion() async => _version ?? await _repository.preferredVersion();
+
+  void _chooseVersion(String code) {
+    final version = _versions.where((v) => v.code == code).firstOrNull;
+    if (version == null) return;
+    setState(() {
+      _version = version;
+      _previewOf = '';
+    });
+    unawaited(_repository.rememberVersion(code));
+    _schedulePreview();
+  }
+
   /// The whole passage on one slide. Remembered from the last time.
   bool _together = false;
 
@@ -88,6 +107,15 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     _prefs?.versesTogether().then((value) {
       if (mounted) setState(() => _together = value);
     });
+    unawaited(() async {
+      final versions = await _repository.getVersions();
+      final preferred = await _repository.preferredVersion();
+      if (!mounted) return;
+      setState(() {
+        _versions = versions;
+        _version = preferred;
+      });
+    }());
     // A reference handed in from the palette is already a reference; show its
     // verdict without waiting for a keystroke.
     if (widget.initial?.isNotEmpty == true) _reparse();
@@ -154,7 +182,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     if (reference == null) return;
     final key = '$reference';
     try {
-      final version = await _repository.preferredVersion();
+      final version = await _currentVersion();
       if (version == null) return;
       final verses = await _repository.getVerses(
         version.code,
@@ -195,7 +223,7 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
     setState(() => _busy = true);
 
     try {
-      final version = await _repository.preferredVersion();
+      final version = await _currentVersion();
       if (version == null) {
         setState(() {
           _busy = false;
@@ -263,6 +291,11 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
       title: L10n.of(context).addQuickVerse,
       icon: Icons.bolt_rounded,
       width: 460,
+      // Only when there is a choice to make.
+      headerActions: [
+        if (_versions.length > 1 && _version != null)
+          _VersionChoice(versions: _versions, selected: _version!.code, onChanged: _chooseVersion),
+      ],
       actions: [
         // Two actions and no Cancel: the X and Escape already close this, and
         // a third button crowds the row.
@@ -419,6 +452,44 @@ class _BookChoices extends StatelessWidget {
 }
 
 /// The passage itself, before it goes anywhere.
+/// Which Bible the passage goes out in, beside the dialog's title.
+class _VersionChoice extends StatelessWidget {
+  const _VersionChoice({required this.versions, required this.selected, required this.onChanged});
+
+  final List<BibleVersion> versions;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: L10n.of(context).bibleVersions,
+      child: Container(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceControl,
+          borderRadius: AppRadius.all(AppRadius.sm),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: selected,
+            isDense: true,
+            focusColor: Colors.transparent,
+            dropdownColor: AppColors.surfaceControl,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+            icon: const Icon(Icons.expand_more, size: 14, color: AppColors.textMuted),
+            items: [for (final v in versions) DropdownMenuItem(value: v.code, child: Text(v.code))],
+            onChanged: (code) {
+              if (code != null) onChanged(code);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Preview extends StatelessWidget {
   const _Preview({required this.text, required this.count, required this.version});
 

@@ -513,7 +513,7 @@
   "bibleVersionIncomplete": "incomplete",
   "gridBigger": "Bigger slides",
   "gridSmaller": "Smaller slides",
-  "bibleSearchBook": "Search books...",
+  "bibleSearchBook": "Search a book or words...",
   "bibleNoBookMatches": "No book matches",
   "bibleTapVerse": "Tap a verse. Tap another to choose a passage.",
   "bibleOnePerSlide": "One per slide",
@@ -1112,6 +1112,19 @@
   "slideRemovePageMessage": "It comes out of this presentation in this service. The original file is not touched.",
   "songDetails": "Title and author",
   "songDetailsNote": "This changes the song in the library: every service and the licence report get the new name.",
+  "bibleVersionRename": "Rename",
+  "bibleVersionCodeInUse": "There is already a version {code}. Use another abbreviation.",
+  "@bibleVersionCodeInUse": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleImportLanguage": "Book names in",
+  "bibleLanguageEs": "Español",
+  "bibleLanguageEn": "English",
+  "bibleInTheText": "In the text",
   "shortcutsHelp": "Open this help",
   "shortcutsNotWhileTyping": "Shortcuts do nothing while you are typing in a text field.",
   "sidePresenter": "Presenter",

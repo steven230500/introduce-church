@@ -27,6 +27,7 @@ class VerseCollector {
     required String title,
     required String source,
     String? abbreviation,
+    String? language,
   }) {
     final books = <int, List<List<String>>>{};
     for (final book in _verses.keys.toList()..sort()) {
@@ -45,6 +46,7 @@ class VerseCollector {
       books: books,
       skippedBooks: _skipped.length,
       source: source,
+      language: languageCode(language),
       format: format,
     );
   }
@@ -56,6 +58,15 @@ class VerseCollector {
 /// historical present ("le dijo*"). A study aid on paper; on a screen in front
 /// of a congregation it reads as a typo.
 final _studyMarks = RegExp(r'(?<=\p{L})\*', unicode: true);
+
+/// "es" or "en" from however a file writes it - "spa", "Spanish", "en-US",
+/// "ENG" - or null for anything else.
+String? languageCode(String? value) {
+  final v = value?.trim().toLowerCase() ?? '';
+  if (v.startsWith('es') || v.startsWith('spa') || v == 'castellano') return 'es';
+  if (v.startsWith('en')) return 'en';
+  return null;
+}
 
 /// "20", "20-21" and "20a" are all verse 20.
 int? leadingNumber(Object? value) {

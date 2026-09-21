@@ -102,6 +102,72 @@ void main() {
     });
   });
 
+  test('the included text with the drop capitals typed out is replaced, once', () async {
+    Future<void> bundle(String genesis) => db.insertVersion(
+      code: 'RV1909',
+      name: 'Reina-Valera 1909',
+      isBundled: true,
+      books: [
+        {
+          'abbrev': 'gn',
+          'name': 'Génesis',
+          'chapters': [
+            [genesis],
+          ],
+        },
+      ],
+    );
+    await bundle('EN el principio crió Dios los cielos y la tierra.');
+    expect(await BibleImportService(db).bundledTextIsCurrent(), isFalse);
+    // What the import does next: the old text out, this build's in.
+    await db.deleteVersion('RV1909');
+    await bundle('En el principio crió Dios los cielos y la tierra.');
+    expect(await BibleImportService(db).bundledTextIsCurrent(), isTrue);
+  });
+
+  test('an English Bible names its books in English, under the verse too', () async {
+    await repo.install(
+      importedBible({
+        18: [
+          for (var c = 1; c <= 23; c++) [if (c == 23) 'The LORD is my shepherd'],
+        ],
+        42: [
+          [],
+          [],
+          [for (var v = 1; v <= 16; v++) v == 16 ? 'For God so loved the world' : 'v'],
+        ],
+      }),
+      code: 'WEB',
+      name: 'World English Bible',
+      language: 'en',
+    );
+    final john = await repo.getVerseRange(
+      versionCode: 'WEB',
+      bookIndex: 42,
+      chapter: 3,
+      verseStart: 16,
+      verseEnd: 16,
+    );
+    expect(john?.reference, 'John 3:16');
+    final psalm = await repo.getVerseRange(
+      versionCode: 'WEB',
+      bookIndex: 18,
+      chapter: 23,
+      verseStart: 1,
+      verseEnd: 1,
+    );
+    expect(psalm?.reference, 'Psalm 23:1');
+    expect((await repo.getBooks('WEB')).first.name, 'Psalms');
+  });
+
+  test('with only the Bibles the app carries, the one in the app\'s language is used', () async {
+    await db.insertVersion(code: 'RV1909', name: 'RV', isBundled: true, books: [], language: 'es');
+    await db.insertVersion(code: 'WEB', name: 'WEB', isBundled: true, books: [], language: 'en');
+    expect((await repo.preferredVersion())?.code, 'RV1909');
+    prefs.locale = 'en';
+    expect((await repo.preferredVersion())?.code, 'WEB');
+  });
+
   group('the version used when nobody picks one', () {
     setUp(() async {
       await installMislabelled(db);

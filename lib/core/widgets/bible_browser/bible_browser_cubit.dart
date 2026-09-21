@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../local_db/app_database.dart';
@@ -19,7 +21,7 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
       emit(const BibleBrowserState());
       return;
     }
-    final books = await _buildBookItems(selected.code);
+    final books = await _buildBookItems(selected);
     // From scratch: a book picked in a version that may no longer be there
     // means nothing now.
     emit(
@@ -34,7 +36,8 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
 
   Future<void> selectVersion(BibleVersion version) async {
     await _repo.rememberVersion(version.code);
-    final books = await _buildBookItems(version.code);
+    if (state.query.trim().length >= _searchFrom) unawaited(_searchTextIn(version));
+    final books = await _buildBookItems(version);
     emit(
       state.copyWith(
         selectedVersion: version,
@@ -55,7 +58,44 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
     final filtered = q.isEmpty
         ? state.allBooks
         : state.allBooks.where((b) => b.displayName.toLowerCase().contains(q)).toList();
-    emit(state.copyWith(filteredBooks: filtered));
+    final searching = q.length >= _searchFrom;
+    emit(
+      state.copyWith(
+        filteredBooks: filtered,
+        query: query,
+        textHits: searching ? state.textHits : const [],
+      ),
+    );
+    if (searching) unawaited(_searchText(query));
+  }
+
+  /// Below this many letters a search of the words finds half the Bible.
+  static const _searchFrom = 3;
+
+  /// Looks for [query] in the words of the selected version. An answer that
+  /// arrives after the operator typed more is dropped.
+  Future<void> _searchText(String query) async {
+    final version = state.selectedVersion;
+    if (version == null) return;
+    final hits = await _repo.searchText(version.code, query);
+    if (isClosed || state.query != query) return;
+    emit(state.copyWith(textHits: hits));
+  }
+
+  Future<void> _searchTextIn(BibleVersion version) async {
+    final query = state.query;
+    final hits = await _repo.searchText(version.code, query);
+    if (isClosed || state.query != query || state.selectedVersion?.code != version.code) return;
+    emit(state.copyWith(textHits: hits));
+  }
+
+  /// Opens the chapter of a verse found by its words, with the verse chosen.
+  Future<void> openHit(VerseHit hit) async {
+    final book = state.allBooks.where((b) => b.book.bookIndex == hit.bookIndex).firstOrNull;
+    if (book == null) return;
+    await selectBook(book);
+    await selectChapter(hit.chapter);
+    selectVerse(hit.verse);
   }
 
   Future<void> selectBook(BibleBookItem book) async {
@@ -137,10 +177,17 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
     );
   }
 
-  Future<List<BibleBookItem>> _buildBookItems(String versionCode) async {
-    final books = await _repo.getBooks(versionCode);
+  /// The books of [version], named in its language: an English Bible lists
+  /// "John", not "Juan".
+  Future<List<BibleBookItem>> _buildBookItems(BibleVersion version) async {
+    final books = await _repo.getBooks(version.code);
     return books
-        .map((b) => BibleBookItem(book: b, displayName: spanishBookName(b.bookIndex)))
+        .map(
+          (b) => BibleBookItem(
+            book: b,
+            displayName: bookName(b.bookIndex, language: version.language),
+          ),
+        )
         .toList();
   }
 }

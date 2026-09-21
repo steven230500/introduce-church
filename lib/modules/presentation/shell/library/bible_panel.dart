@@ -193,28 +193,81 @@ class _BooksList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<BibleBrowserCubit, BibleBrowserState>(
-      buildWhen: (a, b) => a.filteredBooks != b.filteredBooks,
+      buildWhen: (a, b) => a.filteredBooks != b.filteredBooks || a.textHits != b.textHits,
       builder: (context, state) {
-        if (state.filteredBooks.isEmpty) {
+        final t = L10n.of(context);
+        final cubit = context.read<BibleBrowserCubit>();
+        if (state.filteredBooks.isEmpty && state.textHits.isEmpty) {
           return EmptyState(
             compact: true,
             icon: Icons.search_off_rounded,
-            title: L10n.of(context).bibleNoBookMatches,
+            title: t.bibleNoBookMatches,
           );
         }
-        return ListView.builder(
+        final language = state.selectedVersion?.language;
+        return ListView(
           padding: const EdgeInsets.only(bottom: AppSpace.md),
-          itemCount: state.filteredBooks.length,
-          itemBuilder: (_, i) {
-            final book = state.filteredBooks[i];
-            return _BibleRow(
-              label: book.displayName,
-              trailing: '${book.book.chapterCount}',
-              onTap: () => context.read<BibleBrowserCubit>().selectBook(book),
-            );
-          },
+          children: [
+            for (final book in state.filteredBooks)
+              _BibleRow(
+                label: book.displayName,
+                trailing: '${book.book.chapterCount}',
+                onTap: () => cubit.selectBook(book),
+              ),
+            if (state.textHits.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md,
+                  AppSpace.md,
+                  AppSpace.md,
+                  AppSpace.xs,
+                ),
+                child: Text(t.bibleInTheText.toUpperCase(), style: AppText.sectionLabel),
+              ),
+              for (final hit in state.textHits)
+                _VerseHitRow(
+                  reference:
+                      '${bookName(hit.bookIndex, language: language, inReference: true)} '
+                      '${hit.chapter}:${hit.verse}',
+                  text: hit.text,
+                  onTap: () => cubit.openHit(hit),
+                ),
+            ],
+          ],
         );
       },
+    );
+  }
+}
+
+/// A verse found by its words: where it is, and the words themselves.
+class _VerseHitRow extends StatelessWidget {
+  const _VerseHitRow({required this.reference, required this.text, required this.onTap});
+
+  final String reference;
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(reference, style: AppText.rowTitle),
+            const SizedBox(height: 2),
+            Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,7 +5,7 @@
 /// this is a line of text.
 library;
 
-import 'bible_repository.dart' show spanishBookName;
+import 'bible_repository.dart' show bookName, spanishBookName;
 
 /// A reference as someone typed it, before the text is looked up.
 class BibleReference {
@@ -92,7 +92,7 @@ List<int> matchBooks(String text) {
   final prefixes = <int>[];
 
   for (var index = 0; index < 66; index++) {
-    final names = [_normalise(spanishBookName(index)), ...?_aliases[index]];
+    final names = _namesOf(index);
     if (names.contains(needle)) {
       exact.add(index);
       continue;
@@ -117,8 +117,7 @@ List<int> booksMatching(String text) {
   if (needle.length < 2) return const [];
   return [
     for (var index = 0; index < 66; index++)
-      if ([_normalise(spanishBookName(index)), ...?_aliases[index]].any((n) => n.contains(needle)))
-        index,
+      if (_namesOf(index).any((n) => n.contains(needle))) index,
   ];
 }
 
@@ -139,6 +138,16 @@ String _normalise(String value) {
 /// Deliberately not the abbreviations in the bible file: those are English
 /// derived, where "jn" is Jonás and "jud" is Jueces. An operator typing "jn"
 /// means Juan, and giving them Jonás mid-sermon is worse than not finding it.
+/// Every way book [index] may be typed: its Spanish name, its English one -
+/// "john 3:16" for the church that reads the English Bible - and the usual
+/// abbreviations.
+List<String> _namesOf(int index) => [
+  _normalise(spanishBookName(index)),
+  _normalise(bookName(index, language: 'en')),
+  if (index == 18) 'psalm',
+  ...?_aliases[index],
+];
+
 const _aliases = <int, List<String>>{
   0: ['gn', 'gen'],
   1: ['ex', 'exo'],

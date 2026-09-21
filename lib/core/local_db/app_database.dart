@@ -13,6 +13,10 @@ class BibleVersions extends Table {
   BoolColumn get isDownloaded => boolean().withDefault(const Constant(false))();
   DateTimeColumn get downloadedAt => dateTime().nullable()();
 
+  /// The language the Bible is in, "es" or "en": its books are named in it.
+  /// Null for the versions saved before this was kept, all of them Spanish.
+  TextColumn get language => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {code};
 }
@@ -47,7 +51,14 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.addColumn(bibleVersions, bibleVersions.language);
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'introduce_church_local');
@@ -101,6 +112,10 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
+  /// Every chapter of a version, for reading it whole.
+  Future<List<BibleChapter>> getChapters(String versionCode) =>
+      (select(bibleChapters)..where((t) => t.versionCode.equals(versionCode))).get();
+
   Future<void> deleteVersion(String code) async {
     await transaction(() async {
       await (delete(bibleChapters)..where((t) => t.versionCode.equals(code))).go();
@@ -123,12 +138,14 @@ class AppDatabase extends _$AppDatabase {
     required List<Map<String, dynamic>> books,
     // False only in tests, for a download an older build left half done.
     bool isDownloaded = true,
+    String? language,
   }) async {
     await transaction(() async {
       await into(bibleVersions).insertOnConflictUpdate(
         BibleVersionsCompanion(
           code: Value(code),
           name: Value(name),
+          language: Value(language),
           isBundled: Value(isBundled),
           isDownloaded: Value(isDownloaded),
           downloadedAt: Value(DateTime.now()),
@@ -174,6 +191,7 @@ class AppDatabase extends _$AppDatabase {
     required Map<int, List<List<String>>> books,
     required List<String> bookNames,
     required List<String> bookAbbrevs,
+    String? language,
   }) async {
     await transaction(() async {
       await deleteBooksAndChapters(code);
@@ -181,6 +199,7 @@ class AppDatabase extends _$AppDatabase {
         BibleVersionsCompanion(
           code: Value(code),
           name: Value(name),
+          language: Value(language),
           isBundled: const Value(false),
           isDownloaded: const Value(true),
           downloadedAt: Value(DateTime.now()),

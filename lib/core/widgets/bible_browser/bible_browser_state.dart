@@ -21,6 +21,8 @@ class BibleBrowserState extends Equatable {
     this.selectedVerse,
     this.selectedVerseEnd,
     this.view = BibleBrowserView.books,
+    this.query = '',
+    this.textHits = const [],
   });
 
   final List<BibleVersion> versions;
@@ -34,6 +36,11 @@ class BibleBrowserState extends Equatable {
   final int? selectedVerse;
   final int? selectedVerseEnd;
   final BibleBrowserView view;
+
+  /// What the operator typed in the search, and the verses whose words hold
+  /// it: "de tal manera amó" is a way into the Bible as much as "Juan" is.
+  final String query;
+  final List<VerseHit> textHits;
 
   bool get canConfirm =>
       selectedVersion != null &&
@@ -58,6 +65,8 @@ class BibleBrowserState extends Equatable {
     int? selectedVerseEnd,
     bool clearVerse = false,
     BibleBrowserView? view,
+    String? query,
+    List<VerseHit>? textHits,
   }) {
     return BibleBrowserState(
       versions: versions ?? this.versions,
@@ -71,6 +80,8 @@ class BibleBrowserState extends Equatable {
       selectedVerse: clearVerse ? null : selectedVerse ?? this.selectedVerse,
       selectedVerseEnd: clearVerse ? null : selectedVerseEnd ?? this.selectedVerseEnd,
       view: view ?? this.view,
+      query: query ?? this.query,
+      textHits: textHits ?? this.textHits,
     );
   }
 
@@ -87,5 +98,7 @@ class BibleBrowserState extends Equatable {
     selectedVerse,
     selectedVerseEnd,
     view,
+    query,
+    textHits,
   ];
 }

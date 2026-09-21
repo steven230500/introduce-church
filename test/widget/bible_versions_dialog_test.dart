@@ -32,8 +32,21 @@ class _FakeBibles extends BibleRepository {
   Future<bool> isComplete(BibleVersion version) async => true;
 
   @override
-  Future<void> install(ImportedBible bible, {required String code, required String name}) async {
-    versions.add(BibleVersion(code: code, name: name, isBundled: false, isDownloaded: true));
+  Future<void> install(
+    ImportedBible bible, {
+    required String code,
+    required String name,
+    String language = 'es',
+  }) async {
+    versions.add(
+      BibleVersion(
+        code: code,
+        name: name,
+        isBundled: false,
+        isDownloaded: true,
+        language: language,
+      ),
+    );
   }
 
   @override
