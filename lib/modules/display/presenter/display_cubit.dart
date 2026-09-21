@@ -332,7 +332,7 @@ class DisplayCubit extends Cubit<DisplayState> {
   final Map<String, SlideTemplate> _templateCache = {};
 
   Future<SlideTemplate> _resolveTemplate(Collection collection, CollectionItem item) =>
-      _templateById(item.templateId ?? collection.templateId);
+      _templateById(collection.designsFor(item).firstOrNull);
 
   Future<SlideTemplate> _templateById(String? id) async {
     if (id == null) return SlideTemplate.defaultTemplate;

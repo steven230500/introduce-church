@@ -183,7 +183,7 @@ class _MomentRow extends StatelessWidget {
     final t = L10n.of(context);
     final cubit = context.read<ControlCubit>();
     final colour = AppColors.moments[model.momentOrder(item.id) % AppColors.moments.length];
-    final folded = model.collapsedMoments.contains(item.id);
+    final folded = model.isMomentFolded(item.id);
     final length = model.momentLength(index);
 
     return HoverBuilder(
@@ -639,6 +639,20 @@ List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
       height: 38,
       child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: t.rename),
     ),
+    PopupMenuItem(
+      value: 'template',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.palette_outlined,
+        label: item.templateId == null ? t.momentDesign : t.changeDesign,
+      ),
+    ),
+    if (item.templateId != null)
+      PopupMenuItem(
+        value: 'clear_template',
+        height: 38,
+        child: AppMenuRow(icon: Icons.format_color_reset_outlined, label: t.useCollectionDesign),
+      ),
     const PopupMenuDivider(),
     PopupMenuItem(
       value: 'remove',
@@ -655,6 +669,14 @@ List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
         value: 'edit',
         height: 38,
         child: AppMenuRow(icon: Icons.edit_outlined, label: _editLabel(t, item.type)),
+      ),
+      const PopupMenuDivider(),
+    ],
+    if (item.type == CollectionItemType.song && item.song != null) ...[
+      PopupMenuItem(
+        value: 'song_details',
+        height: 38,
+        child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: t.songDetails),
       ),
       const PopupMenuDivider(),
     ],
@@ -706,8 +728,14 @@ List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
       child: AppMenuRow(
         icon: Icons.timer_outlined,
         label: t.autoAdvance,
-        trailing: item.autoAdvanceSecs != null ? '${item.autoAdvanceSecs}s' : 'apagado',
+        trailing: item.autoAdvanceSecs != null ? '${item.autoAdvanceSecs}s' : t.autoAdvanceOff,
       ),
+    ),
+    const PopupMenuDivider(),
+    PopupMenuItem(
+      value: 'moment_here',
+      height: 38,
+      child: AppMenuRow(icon: Icons.label_outline, label: t.momentHere),
     ),
     const PopupMenuDivider(),
     PopupMenuItem(
@@ -752,10 +780,16 @@ Future<void> _runItemAction(
   if (collectionId == null) return;
 
   switch (value) {
+    case 'moment_here':
+      final name = await askMomentName(context);
+      final at = model.activeCollection?.items.indexWhere((i) => i.id == item.id) ?? -1;
+      if (name != null && at >= 0) await cubit.addSection(name, before: at);
     case 'edit':
       await _editItemContent(context, item, cubit);
     case 'rename':
       await _showRenameDialog(context, item, cubit);
+    case 'song_details':
+      await _showSongDetailsDialog(context, item, cubit);
     case 'template':
       final picked = await showTemplatePicker(
         context,
@@ -876,6 +910,84 @@ Future<void> _showRenameDialog(
   // An empty name would leave the row with nothing to click on.
   if (name == null || name.isEmpty || name == item.displayTitle) return;
   await cubit.setItemTitle(item.id, name);
+}
+
+/// A song's title and author, changed from the service: the operator sees the
+/// typo in the set list and should not have to go looking for the song.
+Future<void> _showSongDetailsDialog(
+  BuildContext context,
+  CollectionItem item,
+  ControlCubit cubit,
+) async {
+  final song = item.song;
+  if (song == null) return;
+  final result = await showDialog<({String title, String author})>(
+    context: context,
+    builder: (_) => _SongDetailsDialog(song: song),
+  );
+  if (result != null) {
+    await cubit.updateSongDetails(item.id, title: result.title, author: result.author);
+  }
+}
+
+class _SongDetailsDialog extends StatefulWidget {
+  const _SongDetailsDialog({required this.song});
+
+  final Song song;
+
+  @override
+  State<_SongDetailsDialog> createState() => _SongDetailsDialogState();
+}
+
+class _SongDetailsDialogState extends State<_SongDetailsDialog> {
+  late final _title = TextEditingController(text: widget.song.title);
+  late final _author = TextEditingController(text: widget.song.author ?? '');
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _author.dispose();
+    super.dispose();
+  }
+
+  void _save() => Navigator.pop(context, (title: _title.text, author: _author.text));
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    return AppDialog(
+      title: t.songDetails,
+      icon: Icons.drive_file_rename_outline,
+      width: 420,
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.cancel)),
+        const SizedBox(width: AppSpace.sm),
+        FilledButton(onPressed: _save, child: Text(t.save)),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _title,
+            label: t.songTitle,
+            hintText: t.songTitle,
+            autofocus: true,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: AppSpace.md),
+          AppTextField(
+            controller: _author,
+            label: t.songAuthor,
+            hintText: t.songAuthor,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Text(t.songDetailsNote, style: AppText.rowSubtitle),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Auto-advance dialog ───────────────────────────────────────────────────────

@@ -20,7 +20,9 @@ import '../../../../l10n/l10n.dart';
 /// screen, a verse that wraps badly, a stanza too long for one slide, fixed
 /// from the grid in a few seconds. Opens on slide [slideIndex] of the item
 /// selected in the set list, or on the selected slide.
-Future<void> showSlideEditor(BuildContext context, {int? slideIndex}) async {
+///
+/// With [adding], it writes a new slide to go after that one instead.
+Future<void> showSlideEditor(BuildContext context, {int? slideIndex, bool adding = false}) async {
   final cubit = context.read<ControlCubit>();
   final state = cubit.state;
   if (state is! ControlLoadedState) return;
@@ -41,12 +43,28 @@ Future<void> showSlideEditor(BuildContext context, {int? slideIndex}) async {
     context: context,
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: SlideEditorDialog(item: item, slideIndex: index, template: model.templateFor(item)),
+      child: SlideEditorDialog(
+        item: item,
+        slideIndex: index,
+        template: model.templateFor(item),
+        adding: adding,
+      ),
     ),
   );
-  // A song changed in the library is a change to every service that sings
-  // it: taking it back has to be one click away, as removing an item is.
-  if (saved != true || !cubit.canUndoSlideEdit || messenger == null) return;
+  if (saved == true) offerSlideUndo(messenger, t, cubit, item);
+}
+
+/// The notice after a slide changed, with the way back.
+///
+/// A song changed in the library is a change to every service that sings it:
+/// taking it back has to be one click away, as removing an item is.
+void offerSlideUndo(
+  ScaffoldMessengerState? messenger,
+  L10n t,
+  ControlCubit cubit,
+  CollectionItem item,
+) {
+  if (messenger == null || !cubit.canUndoSlideEdit) return;
   messenger.clearSnackBars();
   messenger.showSnackBar(
     SnackBar(
@@ -66,10 +84,14 @@ class SlideEditorDialog extends StatefulWidget {
     required this.item,
     required this.slideIndex,
     required this.template,
+    this.adding = false,
   });
 
   final CollectionItem item;
   final int slideIndex;
+
+  /// Writing a new slide to go after [slideIndex], rather than changing it.
+  final bool adding;
 
   /// The design the slide goes out in, so the preview wraps where the
   /// projector will.
@@ -80,7 +102,9 @@ class SlideEditorDialog extends StatefulWidget {
 }
 
 class _SlideEditorDialogState extends State<SlideEditorDialog> {
-  late final _text = TextEditingController(text: widget.item.slides[widget.slideIndex]);
+  late final _text = TextEditingController(
+    text: widget.adding ? '' : widget.item.slides[widget.slideIndex],
+  );
   bool _busy = false;
   String? _failure;
 
@@ -121,11 +145,10 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
       _failure = null;
     });
     try {
-      final changed = await context.read<ControlCubit>().editSlide(
-        _item.id,
-        widget.slideIndex,
-        parts,
-      );
+      final cubit = context.read<ControlCubit>();
+      final changed = widget.adding
+          ? await cubit.insertSlide(_item.id, after: widget.slideIndex, text: parts.single)
+          : await cubit.editSlide(_item.id, widget.slideIndex, parts);
       if (mounted) Navigator.pop(context, changed);
     } catch (e) {
       if (!mounted) return;
@@ -170,19 +193,19 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
     final canSplit = _item.canSplitSlide(widget.slideIndex);
 
     return AppDialog(
-      title: t.slideEdit,
+      title: widget.adding ? t.slideAdd : t.slideEdit,
       icon: Icons.edit_outlined,
       width: 760,
       showClose: !_busy,
       actions: [
-        if (_item.canRemoveSlide(widget.slideIndex))
+        if (!widget.adding && _item.canRemoveSlide(widget.slideIndex))
           TextButton.icon(
             onPressed: _busy ? null : _remove,
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             icon: const Icon(Icons.delete_outline, size: 16),
             label: Text(t.slideEditRemove),
           ),
-        if (canSplit)
+        if (canSplit && !widget.adding)
           Tooltip(
             message: t.slideEditSplitHelp,
             child: TextButton.icon(
@@ -204,7 +227,7 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${_item.titleIn(t)}  ·  $label',
+            '${_item.titleIn(t)}  ·  ${widget.adding ? t.slideAddAfter(label) : label}',
             style: AppText.rowSubtitle,
             overflow: TextOverflow.ellipsis,
           ),
@@ -261,11 +284,12 @@ class _SlideEditorDialogState extends State<SlideEditorDialog> {
           if (_isSong) ...[
             const SizedBox(height: AppSpace.sm),
             Text(t.slideEditSongNote, style: AppText.body),
-            if (repeats > 0) ...[
+            if (repeats > 0 && !widget.adding) ...[
               const SizedBox(height: AppSpace.xs),
               Text(t.slideEditRepeats(repeats), style: AppText.body),
             ],
-            if (_item.song!.verses[widget.slideIndex].chords?.trim().isNotEmpty == true) ...[
+            if (!widget.adding &&
+                _item.song!.verses[widget.slideIndex].chords?.trim().isNotEmpty == true) ...[
               const SizedBox(height: AppSpace.xs),
               Text(t.slideEditChords, style: AppText.body.copyWith(color: AppColors.warning)),
             ],

@@ -131,16 +131,17 @@ class Song extends Equatable {
 
   List<String> get slides => verses.map((v) => v.content).toList();
 
-  Song copyWith({List<Verse>? verses}) => Song(
-    id: id,
-    title: title,
-    author: author,
-    copyright: copyright,
-    ccliNumber: ccliNumber,
-    language: language,
-    tags: tags,
-    verses: verses ?? this.verses,
-  );
+  Song copyWith({List<Verse>? verses, String? title, String? author, bool clearAuthor = false}) =>
+      Song(
+        id: id,
+        title: title ?? this.title,
+        author: clearAuthor ? null : author ?? this.author,
+        copyright: copyright,
+        ccliNumber: ccliNumber,
+        language: language,
+        tags: tags,
+        verses: verses ?? this.verses,
+      );
 
   /// How many other times the words of slide [index] come up in the song:
   /// the chorus sung three times is three slides with the same words.
@@ -211,6 +212,43 @@ class Song extends Equatable {
     return moved;
   }
 
+  /// The song with a new slide of [text] at [at], of the same kind as the one
+  /// before it. Only there: a slide added after one chorus is not added after
+  /// every chorus.
+  Song withSlideInserted(int at, String text) {
+    if (at < 0 || at > verses.length) return this;
+    final kind = at > 0 ? verses[at - 1].type : (verses.firstOrNull?.type ?? VerseType.verse);
+    return _renumbered([
+      ...verses.take(at),
+      Verse(id: newId(), songId: id, type: kind, order: 0, content: text),
+      ...verses.skip(at),
+    ]);
+  }
+
+  /// The song with slide [from] moved to [to].
+  Song withSlideMoved(int from, int to) {
+    if (from < 0 || from >= verses.length || to < 0 || to >= verses.length || from == to) {
+      return this;
+    }
+    final moved = [...verses];
+    moved.insert(to, moved.removeAt(from));
+    return _renumbered(moved);
+  }
+
+  Song _renumbered(List<Verse> list) => copyWith(
+    verses: [
+      for (final (order, v) in list.indexed)
+        Verse(
+          id: v.id,
+          songId: v.songId,
+          type: v.type,
+          order: order,
+          content: v.content,
+          chords: v.chords,
+        ),
+    ],
+  );
+
   static bool _sameWords(Verse a, Verse b) => a.type == b.type && a.content == b.content;
 
   @override
@@ -225,32 +263,65 @@ class Song extends Equatable {
 /// same song. Sending the whole song as it was here would undo their change.
 /// Replayed as "the verse that said [original] now says [parts]" on the song
 /// as the server has it now, both changes survive.
+/// What was done to a slide: its words changed (or split, or taken out), a new
+/// slide put after it, or it moved one place.
+enum SlideAction { replace, insert, move }
+
 class SongSlideEdit {
   const SongSlideEdit({
     required this.index,
     required this.type,
     required this.original,
     required this.parts,
+    this.action = SlideAction.replace,
+    this.offset = 0,
   });
 
   /// Where the slide was when it was edited: tried first, since it is almost
   /// always still there.
   final int index;
   final VerseType type;
-  final String original;
-  final List<String> parts;
 
-  /// [song] with this edit made on it, or null when the words it changes are
-  /// no longer in the song: already changed by this same edit, sent before a
-  /// dropped connection hid the answer, or changed by someone else since.
-  /// Either way there is nothing left to do, and doing it anyway would guess.
+  /// The slide's words when it was edited: how it is found again on a song
+  /// that has changed since.
+  final String original;
+
+  /// For [SlideAction.replace], what the slide became; for
+  /// [SlideAction.insert], the new slide's words, alone.
+  final List<String> parts;
+  final SlideAction action;
+
+  /// For [SlideAction.move]: one place back (-1) or forward (1).
+  final int offset;
+
+  /// [song] with this edit made on it, or null when there is nothing left to
+  /// do: the slide is no longer in the song, or the edit is already there -
+  /// sent before a dropped connection hid the answer. Doing it anyway would
+  /// guess, or do it twice.
   Song? applyTo(Song song) {
-    bool edited(Verse v) => v.type == type && v.content == original;
-    final at = index < song.verses.length && edited(song.verses[index])
-        ? index
-        : song.verses.indexWhere(edited);
-    if (at < 0) return null;
-    return song.withSlide(at, parts);
+    final verses = song.verses;
+    bool isAnchor(Verse v) => v.type == type && v.content == original;
+    switch (action) {
+      case SlideAction.replace:
+        final at = index < verses.length && isAnchor(verses[index])
+            ? index
+            : verses.indexWhere(isAnchor);
+        return at < 0 ? null : song.withSlide(at, parts);
+      case SlideAction.insert:
+        final at = index < verses.length && isAnchor(verses[index])
+            ? index
+            : verses.indexWhere(isAnchor);
+        if (at < 0 || parts.isEmpty) return null;
+        final already = at + 1 < verses.length && verses[at + 1].content == parts.first;
+        return already ? null : song.withSlideInserted(at + 1, parts.first);
+      case SlideAction.move:
+        final target = index + offset;
+        if (target >= 0 && target < verses.length && isAnchor(verses[target])) return null;
+        final at = index < verses.length && isAnchor(verses[index])
+            ? index
+            : verses.indexWhere(isAnchor);
+        return at < 0 ? null : song.withSlideMoved(at, (at + offset).clamp(0, verses.length - 1));
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -258,6 +329,8 @@ class SongSlideEdit {
     'type': type.value,
     'original': original,
     'parts': parts,
+    'action': action.name,
+    'offset': offset,
   };
 
   static SongSlideEdit? fromJson(Object? json) {
@@ -269,6 +342,10 @@ class SongSlideEdit {
       type: VerseTypeX.fromString(json['type'] as String? ?? 'verse'),
       original: original,
       parts: [for (final part in parts) '$part'],
+      action:
+          SlideAction.values.where((a) => a.name == json['action']).firstOrNull ??
+          SlideAction.replace,
+      offset: json['offset'] is int ? json['offset'] as int : 0,
     );
   }
 }

@@ -222,4 +222,77 @@ void main() {
       expect(repo.lastSync, (0, 1));
     });
   });
+
+  group('adding, moving, renaming', () {
+    test('a slide added after another goes to the song, and the screen stays put', () async {
+      control.toggleLive();
+      control.selectSlide(2);
+      await control.insertSlide('i1', after: 0, text: 'Verso nuevo');
+
+      expect(model(control).currentItem!.slides, [
+        'Santo, santo, santo',
+        'Verso nuevo',
+        'Señr omnipotente',
+        'Santo, santo, santo',
+      ]);
+      expect(model(control).liveSlideIndex, 3, reason: 'still on the last chorus');
+      expect(slidesOf('c2')[1], 'Verso nuevo');
+    });
+
+    test('a slide moved, and moved back with undo', () async {
+      await control.moveSlide('i1', 1, 1);
+      expect(model(control).currentItem!.slides[2], 'Señr omnipotente');
+      await control.undoSlideEdit();
+      expect(model(control).currentItem!.slides[1], 'Señr omnipotente');
+    });
+
+    test('with no network, an added slide is sent once when it comes back', () async {
+      repo.failWritesWith = const SocketException('Network is unreachable');
+      await control.insertSlide('i1', after: 1, text: 'Coda');
+      repo.failWritesWith = null;
+      await control.refresh();
+      await control.refresh();
+      expect(model(control).currentItem!.slides.where((s) => s == 'Coda'), hasLength(1));
+    });
+
+    test('a sermon point is added and moved', () async {
+      control.selectItem(1);
+      await control.insertSlide('i2', after: 2, text: 'Tres');
+      await control.moveSlide('i2', 3, -1);
+      expect(model(control).currentItem!.slides, ['El amor', 'Uno', 'Tres', 'Dos']);
+    });
+
+    test('a song gets a new title and author, in every service', () async {
+      await control.updateSongDetails('i1', title: 'Santo, Santo, Santo', author: 'R. Heber');
+      final song = model(control).currentItem!.song!;
+      expect(song.title, 'Santo, Santo, Santo');
+      expect(song.author, 'R. Heber');
+      expect(
+        model(control).collections.firstWhere((c) => c.id == 'c2').items.first.song!.title,
+        'Santo, Santo, Santo',
+      );
+    });
+  });
+
+  test('a page comes out of a presentation, in this service only', () async {
+    repo.rows.first['collection_items'].add(
+      itemRow(
+        id: 'i3',
+        collectionId: 'c1',
+        type: 'image_slide',
+        order: 2,
+        contentJson: {
+          'title': 'Anuncios',
+          'paths': ['/a.png', '/b.png', '/c.png'],
+        },
+      ),
+    );
+    await control.refresh();
+    control.selectItem(2);
+
+    await control.editSlide('i3', 1, const []);
+    expect(model(control).currentItem!.slides, ['/a.png', '/c.png']);
+    await control.undoSlideEdit();
+    expect(model(control).currentItem!.slides, ['/a.png', '/b.png', '/c.png']);
+  });
 }

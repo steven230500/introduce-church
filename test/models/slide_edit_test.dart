@@ -177,4 +177,88 @@ void main() {
     expect(item.slides, ['"Veinte"', '"Veintidós"']);
     expect(item.slideReferences, ['Mateo 17:20 • X', 'Mateo 17:22 • X']);
   });
+
+  group('adding and moving slides', () {
+    test('a new slide goes after one, of the same kind, and only there', () {
+      final song = hymn().withSlideInserted(2, 'Estrofa nueva');
+      expect(song.slides, [
+        'Primera estrofa',
+        'Santo es el Señr',
+        'Estrofa nueva',
+        'Segunda estrofa',
+        'Santo es el Señr',
+      ]);
+      expect(song.verses[2].type, VerseType.chorus);
+    });
+
+    test('a slide moves one place', () {
+      expect(hymn().withSlideMoved(2, 1).slides.take(3), [
+        'Primera estrofa',
+        'Segunda estrofa',
+        'Santo es el Señr',
+      ]);
+    });
+
+    test('an insert or a move replayed after it already happened is not done twice', () {
+      const insert = SongSlideEdit(
+        index: 0,
+        type: VerseType.verse,
+        original: 'Primera estrofa',
+        parts: ['Nueva'],
+        action: SlideAction.insert,
+      );
+      final once = insert.applyTo(hymn())!;
+      expect(insert.applyTo(once), isNull);
+
+      const move = SongSlideEdit(
+        index: 2,
+        type: VerseType.verse,
+        original: 'Segunda estrofa',
+        parts: [],
+        action: SlideAction.move,
+        offset: -1,
+      );
+      final moved = move.applyTo(hymn())!;
+      expect(moved.slides[1], 'Segunda estrofa');
+      expect(move.applyTo(moved), isNull);
+    });
+
+    test('where the operator\'s place lands', () {
+      expect(CollectionItem.positionAfterInsert(1, 3), 4);
+      expect(CollectionItem.positionAfterInsert(1, 1), 1);
+      expect(CollectionItem.positionAfterMove(2, 1, 2), 1);
+      expect(CollectionItem.positionAfterMove(2, 1, 1), 2);
+      expect(CollectionItem.positionAfterMove(0, 3, 2), 1);
+    });
+
+    test('sermon points are added and moved, and the title stays first', () {
+      expect(sermon().contentWithInsert(1, 'Nuevo')!['points'], [
+        'Dios amó primero',
+        'Nuevo',
+        'Dios dio lo mejor',
+      ]);
+      expect(sermon().contentWithMove(2, -1)!['points'], ['Dios dio lo mejor', 'Dios amó primero']);
+      expect(sermon().canMoveSlide(1, -1), isFalse, reason: 'nothing goes above the title');
+    });
+
+    test('a page of a presentation moves and comes out', () {
+      const pages = CollectionItem(
+        id: 'p',
+        collectionId: 'c',
+        type: CollectionItemType.imageSlide,
+        order: 0,
+        contentJson: {
+          'paths': ['/a.png', '/b.png', '/c.png'],
+        },
+      );
+      expect(pages.contentWithSlide(1, const []), {
+        'paths': ['/a.png', '/c.png'],
+      });
+      expect(pages.contentWithMove(2, -1), {
+        'paths': ['/a.png', '/c.png', '/b.png'],
+      });
+      expect(pages.canInsertSlide(0), isFalse, reason: 'a page has no words to write');
+      expect(pages.slidesEditable, isFalse);
+    });
+  });
 }

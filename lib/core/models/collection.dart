@@ -185,8 +185,69 @@ class CollectionItem extends Equatable {
   bool canRemoveSlide(int index) => switch (type) {
     CollectionItemType.song => (song?.verses.length ?? 0) > 1,
     CollectionItemType.sermon => index > 0,
+    // A page of the announcements that already went by, taken out of the
+    // presentation without importing it again.
+    CollectionItemType.imageSlide => slides.length > 1,
     _ => false,
   };
+
+  /// Whether a new slide can go after slide [index]: in a song, or among the
+  /// sermon's points.
+  bool canInsertSlide(int index) => switch (type) {
+    CollectionItemType.song => song != null,
+    CollectionItemType.sermon => true,
+    _ => false,
+  };
+
+  /// Whether slide [index] can move [offset] places. The sermon's title stays
+  /// first; the pages of a presentation move among themselves.
+  bool canMoveSlide(int index, int offset) {
+    final target = index + offset;
+    return switch (type) {
+      CollectionItemType.song => song != null && target >= 0 && target < song!.verses.length,
+      CollectionItemType.sermon => index >= 1 && target >= 1 && target < slides.length,
+      CollectionItemType.imageSlide => target >= 0 && target < slides.length,
+      _ => false,
+    };
+  }
+
+  /// The content with [text] as a new point after slide [index] of a sermon.
+  Map<String, dynamic>? contentWithInsert(int index, String text) {
+    if (type != CollectionItemType.sermon) return null;
+    final points = List<String>.from(contentJson?['points'] ?? const []);
+    points.insert(index.clamp(0, points.length), text);
+    return {'title': contentJson?['title'] ?? '', 'points': points};
+  }
+
+  /// The content with slide [index] moved [offset] places: a sermon point or
+  /// a page of a presentation.
+  Map<String, dynamic>? contentWithMove(int index, int offset) {
+    if (!canMoveSlide(index, offset)) return null;
+    switch (type) {
+      case CollectionItemType.sermon:
+        final points = List<String>.from(contentJson?['points'] ?? const []);
+        points.insert(index - 1 + offset, points.removeAt(index - 1));
+        return {'title': contentJson?['title'] ?? '', 'points': points};
+      case CollectionItemType.imageSlide:
+        final paths = List<String>.from(contentJson?['paths'] ?? const []);
+        paths.insert(index + offset, paths.removeAt(index));
+        return {'paths': paths};
+      default:
+        return null;
+    }
+  }
+
+  /// Where slide [position] lands once a new slide goes in after [index].
+  static int positionAfterInsert(int index, int position) =>
+      position > index ? position + 1 : position;
+
+  /// Where slide [position] lands once slide [from] moves to [to].
+  static int positionAfterMove(int from, int to, int position) {
+    if (position == from) return to;
+    if (from < to && position > from && position <= to) return position - 1;
+    if (to < from && position >= to && position < from) return position + 1;
+    return position;
+  }
 
   /// Where slide [position] lands once slide [index] is replaced by [parts],
   /// so the operator's place and the screen stay on the same words.
@@ -225,6 +286,11 @@ class CollectionItem extends Equatable {
       case CollectionItemType.announcement:
         if (parts.length != 1) return null;
         return {'message': parts.single};
+      case CollectionItemType.imageSlide:
+        // A page has no words to correct; it can only be taken out.
+        final paths = List<String>.from(contentJson?['paths'] ?? const []);
+        if (parts.isNotEmpty || index >= paths.length || paths.length < 2) return null;
+        return {'paths': paths..removeAt(index)};
       default:
         return null;
     }
@@ -351,6 +417,25 @@ class Collection extends Equatable {
   final String? templateId;
   final String? bgAudioPath;
   final List<CollectionItem> items;
+
+  /// The moment [item] belongs to: the nearest mark above it, or null before
+  /// the first one. A moment belongs to itself.
+  CollectionItem? momentOf(CollectionItem item) {
+    final at = items.indexWhere((i) => i.id == item.id);
+    for (var i = at; i >= 0; i--) {
+      if (items[i].isSection) return items[i];
+    }
+    return null;
+  }
+
+  /// The designs that could draw [item], most particular first: its own, its
+  /// moment's, the service's. Alabanza on a moving background and the sermon
+  /// on a plain one, without giving every song the design one by one.
+  List<String> designsFor(CollectionItem item) => [
+    ?item.templateId,
+    ?momentOf(item)?.templateId,
+    ?templateId,
+  ];
 
   /// How many things the service puts on the screen. The moments that divide
   /// it are marks in the list, and counting them made a service of seven items

@@ -631,6 +631,34 @@ void main() {
       ]);
     });
 
+    testWidgets('a right click offers what can be done to that slide', (tester) async {
+      await pumpPresenter(tester);
+      await tester.tap(find.text('Primera').first, buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Editar slide'), findsWidgets);
+      expect(find.text('Agregar slide'), findsOneWidget);
+      expect(find.text('Mover a la derecha'), findsOneWidget);
+      expect(find.text('Mover a la izquierda'), findsNothing, reason: 'it is already first');
+      expect(find.text('Quitar slide'), findsOneWidget);
+
+      await tester.tap(find.text('Duplicar slide'));
+      await tester.pumpAndSettle();
+      expect((control.state as ControlLoadedState).model.currentItem!.slides, [
+        'Primera',
+        'Primera',
+        'Segunda',
+      ]);
+      expect(find.text('Deshacer'), findsOneWidget);
+    });
+
+    testWidgets('the big single slide has its pencil too', (tester) async {
+      await pumpPresenter(tester);
+      control.toggleGridView();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Editar slide'), findsOneWidget);
+    });
+
     testWidgets('a slide libre is corrected but has nothing to split', (tester) async {
       await pumpPresenter(tester);
       control.selectItem(1);

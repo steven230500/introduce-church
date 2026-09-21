@@ -70,6 +70,40 @@ void main() {
     expect(cubit.state.next?.itemTitle, 'Anuncios');
   });
 
+  test('names the moment, and looks past its mark for what comes next', () async {
+    final state = operatorState(slideIndex: 1);
+    final items = (state['collection'] as Map<String, dynamic>)['collection_items'] as List;
+    items.insert(
+      0,
+      itemRow(
+        id: 'm1',
+        collectionId: 'c1',
+        type: 'section',
+        order: 0,
+        contentJson: {'title': 'Alabanza'},
+      ),
+    );
+    items.insert(
+      2,
+      itemRow(
+        id: 'm2',
+        collectionId: 'c1',
+        type: 'section',
+        order: 2,
+        contentJson: {'title': 'Anuncios'},
+      ),
+    );
+    for (final (order, item) in items.indexed) {
+      (item as Map<String, dynamic>)['item_order'] = order;
+    }
+    await cubit.applyLocalState({...state, 'current_item_index': 1});
+
+    expect(cubit.state.current?.moment, 'Alabanza');
+    expect(cubit.state.next?.itemTitle, 'Anuncios', reason: 'the slide after the mark');
+    expect(cubit.state.next?.content, 'Reunión de jóvenes');
+    expect(cubit.state.next?.moment, 'Anuncios');
+  });
+
   test('carries the note for the item the team is on', () async {
     await cubit.applyLocalState(operatorState(itemIndex: 1));
 

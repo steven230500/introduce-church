@@ -1401,6 +1401,26 @@
     }
   },
   "slideEditChords": "Esta estrofa tiene acordes. Si cambias la letra, revisa en la canción que sigan en su lugar.",
+  "momentDesign": "Diseño del momento",
+  "momentHere": "Nuevo momento aquí",
+  "shortcutsMoments": "Momento siguiente o anterior",
+  "autoAdvanceOff": "apagado",
+  "slideAdd": "Agregar slide",
+  "slideAddAfter": "después de {label}",
+  "@slideAddAfter": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "slideDuplicate": "Duplicar slide",
+  "slideMoveBack": "Mover a la izquierda",
+  "slideMoveForward": "Mover a la derecha",
+  "slideRemovePage": "Quitar página",
+  "slideRemovePageMessage": "Sale de esta presentación en este servicio. El archivo original no se toca.",
+  "songDetails": "Título y autor",
+  "songDetailsNote": "Cambia la canción en la biblioteca: el nombre nuevo llega a todos los servicios y al reporte de licencias.",
   "shortcutsHelp": "Abrir esta ayuda",
   "shortcutsNotWhileTyping": "Los atajos no se activan mientras escribes en un campo de texto.",
   "sidePresenter": "Presentador",

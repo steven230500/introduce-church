@@ -68,7 +68,14 @@ class _StageLayout extends StatelessWidget {
           width: 300,
           child: Column(
             children: [
-              _SectionLabel(t.stageNext, isLive: false),
+              // Crossing into another moment is worth saying out loud: the
+              // band is about to stop, or the pastor about to stand up.
+              _SectionLabel(
+                state.next?.moment != null && state.next?.moment != state.current?.moment
+                    ? '${t.stageNext} · ${state.next!.moment}'
+                    : t.stageNext,
+                isLive: false,
+              ),
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Padding(
@@ -360,6 +367,18 @@ class _InfoPanelState extends State<_InfoPanel> {
           const Divider(color: AppColors.surfaceControl, height: 24),
 
           if (current != null) ...[
+            if (current.moment != null) ...[
+              Text(
+                current.moment!.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
             Text(
               current.itemTitle,
               style: const TextStyle(

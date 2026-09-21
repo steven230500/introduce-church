@@ -54,6 +54,7 @@ class ControlModel extends Equatable {
     this.gridView = true,
     this.gridZoom = 0,
     this.collapsedMoments = const {},
+    this.openedMoments = const {},
     this.userTemplates = const [],
     this.countdownActive = false,
     this.countdownEnd,
@@ -142,16 +143,19 @@ class ControlModel extends Equatable {
   SlideTemplate? findTemplate(String id) =>
       SlideTemplate.findPreset(id) ?? userTemplates.where((t) => t.id == id).firstOrNull;
 
-  /// The design [item] will be drawn with: its own, else the collection's,
-  /// else the built-in default.
+  /// The design [item] will be drawn with: its own, else its moment's, else
+  /// the collection's, else the built-in default. One that has been deleted
+  /// is passed over for the next.
   SlideTemplate templateFor(CollectionItem? item) {
-    final itemId = item?.templateId;
-    if (itemId != null) {
-      final t = findTemplate(itemId);
-      if (t != null) return t;
+    final collection = activeCollection;
+    final ids = item != null && collection != null
+        ? collection.designsFor(item)
+        : [?collection?.templateId];
+    for (final id in ids) {
+      final template = findTemplate(id);
+      if (template != null) return template;
     }
-    final id = activeCollection?.templateId;
-    return (id != null ? findTemplate(id) : null) ?? SlideTemplate.defaultTemplate;
+    return SlideTemplate.defaultTemplate;
   }
 
   SlideTemplate get activeTemplate => templateFor(currentItem);
@@ -310,11 +314,26 @@ class ControlModel extends Equatable {
   /// something about the service.
   final Set<String> collapsedMoments;
 
+  /// The moments the operator opened again after the service folded them on
+  /// its own. What they opened stays open.
+  final Set<String> openedMoments;
+
+  /// Whether moment [id] is folded: because the operator folded it, or
+  /// because the service is on the screen and has gone past it. Worship is
+  /// over once the sermon starts, and the list is shorter without it.
+  bool isMomentFolded(String id) {
+    if (collapsedMoments.contains(id)) return true;
+    if (!isLive || openedMoments.contains(id)) return false;
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    final at = items.indexWhere((item) => item.id == id);
+    return at >= 0 && momentEnd(at) < liveItemIndex;
+  }
+
   /// Whether [index] is inside a folded moment, which hides it unless it is
   /// the one on the screen.
   bool isFolded(int index) {
     final moment = momentOf(index);
-    return moment != null && collapsedMoments.contains(moment.id);
+    return moment != null && isMomentFolded(moment.id);
   }
 
   /// Which moment this is, counting from the top, so each one keeps its colour
@@ -375,6 +394,7 @@ class ControlModel extends Equatable {
     bool? gridView,
     int? gridZoom,
     Set<String>? collapsedMoments,
+    Set<String>? openedMoments,
     List<SlideTemplate>? userTemplates,
     bool? countdownActive,
     DateTime? countdownEnd,
@@ -406,6 +426,7 @@ class ControlModel extends Equatable {
       gridView: gridView ?? this.gridView,
       gridZoom: gridZoom ?? this.gridZoom,
       collapsedMoments: collapsedMoments ?? this.collapsedMoments,
+      openedMoments: openedMoments ?? this.openedMoments,
       userTemplates: userTemplates ?? this.userTemplates,
       countdownActive: countdownActive ?? this.countdownActive,
       countdownEnd: clearCountdownEnd ? null : countdownEnd ?? this.countdownEnd,
@@ -439,6 +460,7 @@ class ControlModel extends Equatable {
     gridView,
     gridZoom,
     collapsedMoments,
+    openedMoments,
     userTemplates,
     countdownActive,
     countdownEnd,
@@ -800,7 +822,18 @@ class ControlCubit extends Cubit<ControlState> {
         await _repository.updateItemPlanned(change.target, args['planned_secs'] as int?);
       case PendingKind.songVerses:
         final edit = change.songEdit;
-        if (edit == null) {
+        final details = change.args['details'];
+        if (details is Map) {
+          // A new title or author, made on the song as the server has it.
+          final current = await _repository.getSong(change.target);
+          final author = details['author'] as String?;
+          final renamed = current.copyWith(
+            title: details['title'] as String?,
+            author: author,
+            clearAuthor: author == null,
+          );
+          if (renamed != current) await _repository.updateSong(renamed);
+        } else if (edit == null) {
           // An undo: the song as it was, whole.
           final song = change.editedSong;
           if (song != null) await _repository.updateSong(song);
@@ -999,6 +1032,7 @@ class ControlCubit extends Cubit<ControlState> {
       gridView: previous?.gridView ?? true,
       gridZoom: previous?.gridZoom ?? savedGridZoom ?? 0,
       collapsedMoments: previous?.collapsedMoments ?? const {},
+      openedMoments: previous?.openedMoments ?? const {},
       countdownActive: previous?.countdownActive ?? false,
       countdownEnd: previous?.countdownEnd,
       overlayVisible: previous?.overlayVisible ?? false,
@@ -1790,24 +1824,53 @@ class ControlCubit extends Cubit<ControlState> {
   /// their words in the item. When the item is on the screen, the screen
   /// follows at once: a typo the congregation is reading is the reason to
   /// open the editor in the middle of a service.
-  Future<bool> editSlide(String itemId, int slideIndex, List<String> parts) async {
+  Future<bool> editSlide(String itemId, int slideIndex, List<String> parts) =>
+      _changeSlide(itemId, slideIndex, SlideAction.replace, parts: parts);
+
+  /// Puts a new slide of [text] after slide [after]: a stanza the song file
+  /// never had, a point the pastor added at the last minute.
+  Future<bool> insertSlide(String itemId, {required int after, required String text}) =>
+      _changeSlide(itemId, after, SlideAction.insert, parts: [text]);
+
+  /// Moves slide [index] one place back ([offset] -1) or forward (1).
+  Future<bool> moveSlide(String itemId, int index, int offset) =>
+      _changeSlide(itemId, index, SlideAction.move, offset: offset);
+
+  Future<bool> _changeSlide(
+    String itemId,
+    int slideIndex,
+    SlideAction action, {
+    List<String> parts = const [],
+    int offset = 0,
+  }) async {
     if (state is! ControlLoadedState) return false;
     final before = (state as ControlLoadedState).model;
     final items = before.activeCollection?.items ?? const <CollectionItem>[];
     final at = items.indexWhere((item) => item.id == itemId);
     if (at < 0) return false;
     final item = items[at];
+    if (slideIndex < 0 || slideIndex >= item.slides.length) return false;
     final words = [
       for (final part in parts)
         if (part.trim().isNotEmpty) part.trim(),
     ];
-    if (!item.slidesEditable || slideIndex < 0 || slideIndex >= item.slides.length) return false;
-    if (words.length > 1 && !item.canSplitSlide(slideIndex)) return false;
-    if (words.isEmpty && !item.canRemoveSlide(slideIndex)) return false;
+    final allowed = switch (action) {
+      SlideAction.replace =>
+        words.isEmpty
+            ? item.canRemoveSlide(slideIndex)
+            : item.slidesEditable && (words.length == 1 || item.canSplitSlide(slideIndex)),
+      SlideAction.insert => words.length == 1 && item.canInsertSlide(slideIndex),
+      SlideAction.move => offset != 0 && item.canMoveSlide(slideIndex, offset),
+    };
+    if (!allowed) return false;
 
     final song = item.song;
     if (item.type == CollectionItemType.song && song != null) {
-      final edited = song.withSlide(slideIndex, words);
+      final edited = switch (action) {
+        SlideAction.replace => song.withSlide(slideIndex, words),
+        SlideAction.insert => song.withSlideInserted(slideIndex + 1, words.single),
+        SlideAction.move => song.withSlideMoved(slideIndex, slideIndex + offset),
+      };
       if (edited == song) return false;
       final verse = song.verses[slideIndex];
       _lastSlideEdit = (
@@ -1829,12 +1892,18 @@ class ControlCubit extends Cubit<ControlState> {
               type: verse.type,
               original: verse.content,
               parts: words,
+              action: action,
+              offset: offset,
             ).toJson(),
           },
         ),
       );
     } else {
-      final content = item.contentWithSlide(slideIndex, words);
+      final content = switch (action) {
+        SlideAction.replace => item.contentWithSlide(slideIndex, words),
+        SlideAction.insert => item.contentWithInsert(slideIndex, words.single),
+        SlideAction.move => item.contentWithMove(slideIndex, offset),
+      };
       if (content == null) return false;
       _lastSlideEdit = (
         itemId: itemId,
@@ -1853,8 +1922,19 @@ class ControlCubit extends Cubit<ControlState> {
     final updated = after.activeCollection?.items.where((i) => i.id == itemId).firstOrNull;
     if (updated == null) return true;
     final last = updated.slides.length - 1;
-    int follow(int position) =>
-        item.slidePositionAfterEdit(slideIndex, words, position).clamp(0, last < 0 ? 0 : last);
+    int follow(int position) {
+      final moved = switch (action) {
+        SlideAction.replace => item.slidePositionAfterEdit(slideIndex, words, position),
+        SlideAction.insert => CollectionItem.positionAfterInsert(slideIndex, position),
+        SlideAction.move => CollectionItem.positionAfterMove(
+          slideIndex,
+          slideIndex + offset,
+          position,
+        ),
+      };
+      return moved.clamp(0, last < 0 ? 0 : last);
+    }
+
     final editingCurrent = after.currentItemIndex == at;
     final editingLive = after.liveItemIndex == at;
     emit(
@@ -1867,6 +1947,32 @@ class ControlCubit extends Cubit<ControlState> {
     );
     if (after.isLive && editingLive) _syncState();
     return true;
+  }
+
+  /// Gives the song in item [itemId] a new [title] and [author]. The song is
+  /// the library's, so the name changes in every service that sings it, and
+  /// on the licence report.
+  Future<void> updateSongDetails(String itemId, {required String title, String? author}) async {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final song = model.activeCollection?.items.where((i) => i.id == itemId).firstOrNull?.song;
+    final cleanTitle = title.trim();
+    final cleanAuthor = author?.trim().isEmpty ?? true ? null : author!.trim();
+    if (song == null || cleanTitle.isEmpty) return;
+    if (song.title == cleanTitle && song.author == cleanAuthor) return;
+    await _write(
+      PendingWrite(
+        kind: PendingKind.songVerses,
+        target: song.id,
+        args: {
+          'id': newId(),
+          'song': song
+              .copyWith(title: cleanTitle, author: cleanAuthor, clearAuthor: cleanAuthor == null)
+              .toJson(),
+          'details': {'title': cleanTitle, 'author': cleanAuthor},
+        },
+      ),
+    );
   }
 
   /// Puts back what the last slide edit changed: the song as it was, or the
@@ -1917,12 +2023,44 @@ class ControlCubit extends Cubit<ControlState> {
   ///
   /// It goes in the running order like everything else, and what is added
   /// after it belongs to it until the next one.
-  Future<void> addSection(String title) async {
+  ///
+  /// With [before], it goes in front of that item: marking a service that is
+  /// already made up, which used to take adding the moment at the end and
+  /// dragging it up.
+  Future<void> addSection(String title, {int? before}) async {
     final collection = _openCollection;
     if (collection == null) return;
-    await _addItems(collection.id, [
-      _draft(collection, CollectionItemType.section, content: {'title': title}),
-    ]);
+    final moment = _draft(collection, CollectionItemType.section, content: {'title': title});
+    if (before == null) {
+      await _addItems(collection.id, [moment]);
+    } else {
+      await _addAt(collection, moment, before);
+    }
+  }
+
+  /// Moves to the first item of the next moment, or back: to the start of
+  /// this moment, or to the one before when already there. "Vamos a la
+  /// ofrenda" is one key, not a scroll through the list.
+  void jumpMoment({required bool forward}) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final items = model.activeCollection?.items ?? const <CollectionItem>[];
+    final current = model.currentItemIndex;
+    final marks = [
+      for (var i = 0; i < items.length; i++)
+        if (items[i].isSection) i,
+    ];
+    if (marks.isEmpty) return;
+    if (forward) {
+      final next = marks.where((m) => m > current).firstOrNull;
+      if (next != null) selectItem(next);
+      return;
+    }
+    final above = marks.where((m) => m < current).toList();
+    if (above.isEmpty) return;
+    final start = _skipMoments(items, above.last, forward: true);
+    final atStart = start == null || current <= start;
+    selectItem(atStart && above.length > 1 ? above[above.length - 2] : above.last);
   }
 
   /// Folds a moment away, or opens it again.
@@ -1933,8 +2071,15 @@ class ControlCubit extends Cubit<ControlState> {
     if (state is! ControlLoadedState) return;
     final model = (state as ControlLoadedState).model;
     final folded = Set<String>.from(model.collapsedMoments);
-    if (!folded.remove(id)) folded.add(id);
-    emit(ControlLoadedState(model.copyWith(collapsedMoments: folded)));
+    final opened = Set<String>.from(model.openedMoments);
+    if (model.isMomentFolded(id)) {
+      folded.remove(id);
+      opened.add(id);
+    } else {
+      folded.add(id);
+      opened.remove(id);
+    }
+    emit(ControlLoadedState(model.copyWith(collapsedMoments: folded, openedMoments: opened)));
   }
 
   Future<void> addSermon(String title, List<String> points) async {

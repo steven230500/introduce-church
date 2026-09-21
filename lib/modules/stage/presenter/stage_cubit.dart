@@ -19,6 +19,7 @@ class StageSlide extends Equatable {
     this.imagePath,
     this.notes,
     this.chords,
+    this.moment,
   });
 
   final String content;
@@ -31,8 +32,13 @@ class StageSlide extends Equatable {
   final String? notes;
   final String? chords;
 
+  /// The moment of the service the slide belongs to: "Alabanza", "Prédica".
+  /// The musicians read it to know where the service is going next.
+  final String? moment;
+
   @override
   List<Object?> get props => [
+    moment,
     content,
     reference,
     template,
@@ -250,6 +256,7 @@ class StageCubit extends Cubit<StageState> {
       imagePath: item.type == CollectionItemType.imageSlide ? slides[clamped] : null,
       notes: item.notes,
       chords: chords,
+      moment: col.momentOf(item)?.displayTitle,
     );
   }
 
@@ -262,9 +269,10 @@ class StageCubit extends Cubit<StageState> {
     if (slideIndex + 1 < slides.length) {
       return _buildSlide(col, itemIndex, slideIndex + 1);
     }
-    // First slide of next item
-    if (itemIndex + 1 < col.items.length) {
-      return _buildSlide(col, itemIndex + 1, 0);
+    // First slide of the next thing on the screen, past the mark of a moment
+    // that starts in between: a mark has nothing to show.
+    for (var i = itemIndex + 1; i < col.items.length; i++) {
+      if (!col.items[i].isSection) return _buildSlide(col, i, 0);
     }
     return null;
   }
@@ -284,7 +292,7 @@ class StageCubit extends Cubit<StageState> {
   }
 
   Future<SlideTemplate> _resolveTemplate(Collection col, CollectionItem item) =>
-      _templateById(item.templateId ?? col.templateId);
+      _templateById(col.designsFor(item).firstOrNull);
 
   Future<SlideTemplate> _templateById(String? id) async {
     if (id == null) return SlideTemplate.defaultTemplate;

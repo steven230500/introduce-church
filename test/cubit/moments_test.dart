@@ -190,4 +190,55 @@ void main() {
       expect(length.unplanned, 0);
     });
   });
+
+  group('working with moments', () {
+    test('a moment can go in front of an item, not only at the end', () async {
+      await control.addSection('Bienvenida', before: 1);
+      final titles = model(control).activeCollection!.items.map((i) => i.displayTitle).toList();
+      expect(titles, [
+        'Alabanza',
+        'Bienvenida',
+        'Sublime gracia',
+        'Grande es',
+        'Prédica',
+        'El llamado',
+      ]);
+      expect(model(control).momentOf(2)?.displayTitle, 'Bienvenida');
+    });
+
+    test('a moment\'s design draws its items that have none of their own', () async {
+      control.setItemTemplate('c1', 'm1', 'preset_motion_mist');
+      await pumpEventQueue();
+      final m = model(control);
+      final items = m.activeCollection!.items;
+      expect(m.templateFor(items[1]).id, 'preset_motion_mist', reason: 'a song under Alabanza');
+      expect(m.templateFor(items[4]).id, isNot('preset_motion_mist'), reason: 'under Prédica');
+    });
+
+    test('while on the screen, the moments already past fold on their own', () async {
+      control.toggleLive();
+      control.selectItem(4); // "El llamado", under Prédica
+      expect(model(control).isMomentFolded('m1'), isTrue);
+      expect(model(control).isMomentFolded('m2'), isFalse);
+
+      // Opened again by hand, it stays open.
+      control.toggleMoment('m1');
+      expect(model(control).isMomentFolded('m1'), isFalse);
+      control.selectSlide(0);
+      expect(model(control).isMomentFolded('m1'), isFalse);
+    });
+
+    test('M goes to the next moment and back', () {
+      control.selectItem(1);
+      control.jumpMoment(forward: true);
+      expect(model(control).currentItemIndex, 4, reason: 'the first item of Prédica');
+
+      control.jumpMoment(forward: false);
+      expect(model(control).currentItemIndex, 1, reason: 'already at its start: Alabanza');
+
+      control.selectItem(2);
+      control.jumpMoment(forward: false);
+      expect(model(control).currentItemIndex, 1, reason: 'back to the start of this moment');
+    });
+  });
 }

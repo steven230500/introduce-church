@@ -231,6 +231,13 @@ class _SectionItemState extends State<_SectionItem> {
 
 /// Asks what the moment is called and marks it in the running order.
 Future<void> _addMoment(BuildContext context, ControlCubit cubit) async {
+  final name = await askMomentName(context);
+  if (name != null) await cubit.addSection(name);
+}
+
+/// What a new moment is called: "Alabanza", "Prédica". Null when cancelled
+/// or left empty.
+Future<String?> askMomentName(BuildContext context) async {
   final t = L10n.of(context);
   final name = await showDialog<String>(
     context: context,
@@ -254,7 +261,7 @@ Future<void> _addMoment(BuildContext context, ControlCubit cubit) async {
       ),
     ),
   );
-  if (name != null && name.isNotEmpty) await cubit.addSection(name);
+  return name == null || name.isEmpty ? null : name;
 }
 
 typedef SermonDraft = ({String title, List<String> points});

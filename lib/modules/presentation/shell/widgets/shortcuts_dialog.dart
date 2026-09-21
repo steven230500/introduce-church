@@ -23,6 +23,7 @@ class _ShortcutsDialog extends StatelessWidget {
       ('←   ·   ↑', t.shortcutsPreviousSlide),
       (t.shortcutsKeyHomeEnd, t.shortcutsFirstLast),
       ('1 … 9', t.shortcutsJump),
+      ('M   ·   Shift + M', t.shortcutsMoments),
     ],
     t.shortcutsGroupProjection: [
       ('L', t.shortcutsLive),

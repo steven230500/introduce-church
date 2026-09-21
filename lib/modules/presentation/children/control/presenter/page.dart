@@ -15,6 +15,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../../core/models/collection.dart';
+import '../../../../../core/models/song.dart';
 import '../../../../../core/models/collection_item_type.dart';
 import '../../../../../core/models/labels.dart';
 import '../../../../../core/models/slide_template.dart';

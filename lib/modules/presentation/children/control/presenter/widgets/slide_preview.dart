@@ -257,6 +257,8 @@ class _SlideGrid extends StatelessWidget {
     final labels = item.slideLabelsIn(t);
     final isImageSlide = item.type == CollectionItemType.imageSlide;
     final editable = item.slidesEditable;
+    // A presentation's pages have no words to correct, but they move and come out.
+    final hasActions = editable || isImageSlide;
     final cubit = context.read<ControlCubit>();
 
     return LayoutBuilder(
@@ -315,7 +317,7 @@ class _SlideGrid extends StatelessWidget {
                       // No double click to edit: the first click already puts
                       // the slide on the screen, and waiting to see whether a
                       // second one follows would slow every click in a service.
-                      onSecondaryTapDown: editable
+                      onSecondaryTapDown: hasActions
                           ? (details) => _showSlideMenu(context, details.globalPosition, index)
                           : null,
                       child: Column(
@@ -392,21 +394,88 @@ class _SlideGrid extends StatelessWidget {
     );
   }
 
+  /// Everything that can be done to one slide, where the operator is
+  /// already pointing: correct it, add one after it, copy it, move it, take
+  /// it out. A presentation's pages move and come out; they have no words.
   Future<void> _showSlideMenu(BuildContext context, Offset at, int index) async {
+    final item = model.currentItem;
+    if (item == null) return;
     final t = L10n.of(context);
+    final cubit = context.read<ControlCubit>();
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final pages = item.type == CollectionItemType.imageSlide;
+
+    PopupMenuItem<String> row(String value, IconData icon, String label, {bool danger = false}) =>
+        PopupMenuItem(
+          value: value,
+          height: 38,
+          child: AppMenuRow(icon: icon, label: label, danger: danger),
+        );
+
+    final canBack = item.canMoveSlide(index, -1);
+    final canForward = item.canMoveSlide(index, 1);
+    final entries = <PopupMenuEntry<String>>[
+      if (item.slidesEditable) row('edit', Icons.edit_outlined, t.slideEdit),
+      if (item.canInsertSlide(index)) ...[
+        row('add', Icons.add_box_outlined, t.slideAdd),
+        row('duplicate', Icons.copy_outlined, t.slideDuplicate),
+      ],
+      if (canBack || canForward) ...[
+        if (item.slidesEditable) const PopupMenuDivider(),
+        if (canBack) row('back', Icons.arrow_back_rounded, t.slideMoveBack),
+        if (canForward) row('forward', Icons.arrow_forward_rounded, t.slideMoveForward),
+      ],
+      if (item.canRemoveSlide(index)) ...[
+        const PopupMenuDivider(),
+        row(
+          'remove',
+          Icons.delete_outline,
+          pages ? t.slideRemovePage : t.slideEditRemove,
+          danger: true,
+        ),
+      ],
+    ];
+    if (entries.isEmpty) return;
+
     final choice = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
       color: AppColors.surfaceRaised,
-      items: [
-        PopupMenuItem(
-          value: 'edit',
-          height: 38,
-          child: AppMenuRow(icon: Icons.edit_outlined, label: t.slideEdit),
-        ),
-      ],
+      items: entries,
     );
-    if (choice == 'edit' && context.mounted) await showSlideEditor(context, slideIndex: index);
+    if (choice == null || !context.mounted) return;
+
+    var changed = false;
+    switch (choice) {
+      case 'edit':
+        await showSlideEditor(context, slideIndex: index);
+        return;
+      case 'add':
+        await showSlideEditor(context, slideIndex: index, adding: true);
+        return;
+      case 'duplicate':
+        changed = await cubit.insertSlide(item.id, after: index, text: item.slides[index]);
+      case 'back':
+        changed = await cubit.moveSlide(item.id, index, -1);
+      case 'forward':
+        changed = await cubit.moveSlide(item.id, index, 1);
+      case 'remove':
+        final confirmed = await showAppConfirmDialog(
+          context,
+          title: pages ? t.slideRemovePage : t.slideEditRemoveTitle,
+          message: pages
+              ? t.slideRemovePageMessage
+              : item.type == CollectionItemType.song
+              ? t.slideEditRemoveSong
+              : t.slideEditRemovePoint,
+          confirmLabel: pages ? t.slideRemovePage : t.slideEditRemove,
+          destructive: true,
+          icon: Icons.delete_outline,
+        );
+        if (!confirmed) return;
+        changed = await cubit.editSlide(item.id, index, const []);
+    }
+    if (changed) offerSlideUndo(messenger, t, cubit, item);
   }
 
   /// Columns that make the slides as big as they can be while still all
@@ -439,7 +508,7 @@ class _SlideGrid extends StatelessWidget {
   static const _maxTile = 520.0;
 
   /// Room under each tile for the slide's label.
-  static const _captionHeight = 18.0;
+  static const _captionHeight = 20.0;
 }
 
 /// The pencil under a slide. Always there, not only on hover: a control that
@@ -461,11 +530,12 @@ class _EditSlideButton extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
+          // Wider than the icon: a 13-point target is a miss on a trackpad.
           child: Padding(
-            padding: const EdgeInsets.only(left: AppSpace.xs),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
             child: Icon(
               Icons.edit_outlined,
-              size: 13,
+              size: 14,
               color: highlighted ? AppColors.textSecondary : AppColors.textMuted,
             ),
           ),
@@ -930,6 +1000,16 @@ class _Controls extends StatelessWidget {
               '${model.currentSlideIndex + 1} / ${model.currentItem!.slides.length}',
               style: AppText.rowSubtitle,
             ),
+          // The big view had only the E key for this; a key nobody told
+          // Pablo about is not a way to do something.
+          if (model.currentItem?.slidesEditable == true) ...[
+            const SizedBox(width: AppSpace.md),
+            AppIconButton(
+              icon: Icons.edit_outlined,
+              tooltip: t.slideEdit,
+              onTap: () => showSlideEditor(context),
+            ),
+          ],
           // Under the frame it belongs to, as well as in the live bar: this is
           // where the operator is looking when they decide to send.
           if (model.isHolding) ...[

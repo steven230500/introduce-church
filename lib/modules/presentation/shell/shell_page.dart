@@ -193,6 +193,8 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       showQuickVerseDialog(context);
     } else if (key == LogicalKeyboardKey.keyE) {
       showSlideEditor(context);
+    } else if (key == LogicalKeyboardKey.keyM) {
+      control.jumpMoment(forward: !HardwareKeyboard.instance.isShiftPressed);
     } else if (key == LogicalKeyboardKey.keyK) {
       control.toggleFollowCursor();
     } else if (key == LogicalKeyboardKey.keyB) {
