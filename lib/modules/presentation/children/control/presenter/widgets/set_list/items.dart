@@ -822,6 +822,7 @@ Future<void> _editItemContent(BuildContext context, CollectionItem item, Control
         initial: (
           title: content?['title'] as String? ?? '',
           points: List<String>.from(content?['points'] as List? ?? const []),
+          passages: const [],
         ),
       );
       if (draft != null) {

@@ -4,6 +4,7 @@ import 'package:introduce_church/core/local_db/bible_repository.dart' show spani
 
 void main() {
   _suggestions();
+  _inRunningText();
   BibleReference? read(String input) => parseBibleReference(input).reference;
   ReferenceProblem? problem(String input) => parseBibleReference(input).problem;
 
@@ -121,6 +122,51 @@ void _suggestions() {
     test('a single letter offers nothing, since it would offer everything', () {
       expect(booksMatching('j'), matchBooks('j'));
       expect(booksMatching(''), isEmpty);
+    });
+  });
+}
+
+void _inRunningText() {
+  List<String> found(String text) => [for (final f in findBibleReferences(text)) '${f.reference}'];
+
+  group('references in someone\'s notes', () {
+    test('inside a sentence, in brackets, with an abbreviation', () {
+      expect(found('La fe agrada a Dios (He 11:6)'), ['Hebreos 11:6']);
+      expect(found('Como dice Juan 3:16, de tal manera amó'), ['Juan 3:16']);
+      expect(found('Mt. 5:3-12 y Lc 6:20'), ['Mateo 5:3-12', 'Lucas 6:20']);
+    });
+
+    test('numbered books, with the number in digits, glued or in Roman numerals', () {
+      expect(found('1 Corintios 13:4-7'), ['1 Corintios 13:4-7']);
+      expect(found('1Co 13:13'), ['1 Corintios 13:13']);
+      expect(found('II Timoteo 3:16'), ['2 Timoteo 3:16']);
+      expect(found('lee III Juan 1:2'), ['3 Juan 1:2']);
+    });
+
+    test('more of the same book after a semicolon', () {
+      expect(found('Romanos 8:28; 12:1-2'), ['Romanos 8:28', 'Romanos 12:1-2']);
+    });
+
+    test('a whole chapter only by its book\'s name', () {
+      expect(found('Salmo 23'), ['Salmos 23']);
+      expect(found('Hebreos 11'), ['Hebreos 11']);
+      // A short abbreviation and a number are too easy to meet in a sentence.
+      expect(found('am 5'), isEmpty);
+    });
+
+    test('what only looks like one', () {
+      expect(found('a las 10:30 en punto'), isEmpty);
+      expect(found('la 3:16'), isEmpty, reason: 'not Lamentaciones');
+      expect(found('Punto 1: la fe'), isEmpty);
+      expect(found('1. La fe es certeza'), isEmpty);
+      expect(found('versión 2:0'), isEmpty);
+    });
+
+    test('where each one is, so the rest of the line can be read', () {
+      final hit = findBibleReferences('Texto: Juan 3:16').single;
+
+      expect(hit.start, 7);
+      expect(hit.end, 16);
     });
   });
 }

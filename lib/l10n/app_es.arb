@@ -951,6 +951,18 @@
   "sermonRemovePoint": "Quitar punto",
   "sermonAddFirstPoint": "Agregar primer punto",
   "sermonEdit": "Editar prédica",
+  "sermonPasteOutline": "Pegar bosquejo",
+  "sermonPasteNothing": "Copia primero el bosquejo, desde WhatsApp o donde te llegó, y vuelve a pulsar Pegar bosquejo.",
+  "sermonPassages": "PASAJES",
+  "sermonPassagesNote": "Entran al servicio después de la prédica, en este orden.",
+  "sermonPassageMissing": "No está en {version}",
+  "@sermonPassageMissing": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "announcementTitle": "Slide de anuncio",
   "announcementHint": "Bienvenidos a la iglesia...",
   "announcementMessage": "Mensaje",

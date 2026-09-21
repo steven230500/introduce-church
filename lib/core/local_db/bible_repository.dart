@@ -3,6 +3,7 @@ import '../bible_import/book_codes.dart' show bookAbbrevs;
 import '../bible_import/imported_bible.dart';
 import '../services/app_prefs_service.dart';
 import 'app_database.dart';
+import 'bible_reference.dart' show BibleReference;
 
 const _spanishBookNames = [
   'Génesis',
@@ -307,6 +308,22 @@ class BibleRepository {
     if (row == null) return [];
     final raw = jsonDecode(row.versesJson);
     return List<String>.from(raw as List);
+  }
+
+  /// [reference] as version [versionCode] has it: a chapter named on its
+  /// own is all of it. Null when the version does not have it - a book an
+  /// imported file left out, a verse past the end of the chapter.
+  Future<BibleVerseRef?> passage(BibleReference reference, String versionCode) async {
+    final verses = await getVerses(versionCode, reference.bookIndex, reference.chapter);
+    if (verses.isEmpty) return null;
+    final start = reference.verseStart ?? 1;
+    return getVerseRange(
+      versionCode: versionCode,
+      bookIndex: reference.bookIndex,
+      chapter: reference.chapter,
+      verseStart: start,
+      verseEnd: reference.verseStart == null ? verses.length : (reference.verseEnd ?? start),
+    );
   }
 
   Future<BibleVerseRef?> getVerseRange({

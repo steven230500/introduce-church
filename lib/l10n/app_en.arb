@@ -663,6 +663,18 @@
   "sermonRemovePoint": "Remove point",
   "sermonAddFirstPoint": "Add the first point",
   "sermonEdit": "Edit sermon",
+  "sermonPasteOutline": "Paste outline",
+  "sermonPasteNothing": "Copy the outline first, from WhatsApp or wherever it came, then press Paste outline again.",
+  "sermonPassages": "PASSAGES",
+  "sermonPassagesNote": "They go into the service after the sermon, in this order.",
+  "sermonPassageMissing": "Not in {version}",
+  "@sermonPassageMissing": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "announcementTitle": "Announcement slide",
   "announcementHint": "Welcome to church...",
   "announcementMessage": "Message",

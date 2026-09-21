@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/widgets/free_slide_dialog.dart';
-import 'package:introduce_church/modules/presentation/children/control/presenter/page.dart';
+import 'package:introduce_church/modules/presentation/shell/widgets/sermon_dialog.dart';
 
 import '../helpers/builders.dart';
 
@@ -20,7 +20,7 @@ void main() {
         opener((context) async {
           result = await showSermonDialog(
             context,
-            initial: (title: 'El llamado', points: ['Mateo 9:9', 'Sobra']),
+            initial: (title: 'El llamado', points: ['Mateo 9:9', 'Sobra'], passages: const []),
           );
         }),
       );
@@ -28,6 +28,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Editar prédica'), findsOneWidget);
+      expect(find.text('Pegar bosquejo'), findsNothing, reason: 'an outline starts a sermon');
       expect(find.text('El llamado'), findsOneWidget);
       expect(find.text('Mateo 9:9'), findsOneWidget);
 

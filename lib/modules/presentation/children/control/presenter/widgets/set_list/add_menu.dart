@@ -65,6 +65,14 @@ class _AddItemMenu extends StatelessWidget {
           child: AppMenuRow(icon: Icons.mic_outlined, label: L10n.of(context).itemTypeSermon),
         ),
         PopupMenuItem(
+          value: 'outline',
+          height: 38,
+          child: AppMenuRow(
+            icon: Icons.content_paste_rounded,
+            label: L10n.of(context).sermonPasteOutline,
+          ),
+        ),
+        PopupMenuItem(
           value: 'announcement',
           height: 38,
           child: AppMenuRow(
@@ -184,6 +192,8 @@ class _AddItemMenu extends StatelessWidget {
         await _addMoment(context, cubit);
       case 'sermon':
         await _addSermon(context, cubit);
+      case 'outline':
+        await _addSermon(context, cubit, paste: true);
       case 'announcement':
         await _showAnnouncementDialog(context, cubit);
 
@@ -264,161 +274,12 @@ Future<String?> askMomentName(BuildContext context) async {
   return name == null || name.isEmpty ? null : name;
 }
 
-typedef SermonDraft = ({String title, List<String> points});
-
-/// Writes the sermon's title slide and its points, or corrects them when
-/// [initial] is given.
-Future<SermonDraft?> showSermonDialog(BuildContext context, {SermonDraft? initial}) {
-  return showDialog<SermonDraft>(
-    context: context,
-    builder: (_) => _SermonDialog(initial: initial),
-  );
-}
-
-Future<void> _addSermon(BuildContext context, ControlCubit cubit) async {
-  final result = await showSermonDialog(context);
+/// A sermon written in the dialog, or read from the outline on the
+/// clipboard with [paste], followed by the passages that outline names.
+Future<void> _addSermon(BuildContext context, ControlCubit cubit, {bool paste = false}) async {
+  final result = await showSermonDialog(context, paste: paste);
   if (result != null && context.mounted) {
-    await cubit.addSermon(result.title, result.points);
-  }
-}
-
-class _SermonDialog extends StatefulWidget {
-  const _SermonDialog({this.initial});
-
-  final SermonDraft? initial;
-
-  @override
-  State<_SermonDialog> createState() => _SermonDialogState();
-}
-
-class _SermonDialogState extends State<_SermonDialog> {
-  late final _titleCtrl = TextEditingController(text: widget.initial?.title ?? '');
-  late final List<TextEditingController> _pointCtrls = [
-    for (final point in widget.initial?.points ?? const <String>[])
-      TextEditingController(text: point),
-  ];
-
-  bool get _isEdit => widget.initial != null;
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    for (final c in _pointCtrls) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  void _addPoint() => setState(() => _pointCtrls.add(TextEditingController()));
-
-  void _removePoint(int index) {
-    setState(() {
-      _pointCtrls[index].dispose();
-      _pointCtrls.removeAt(index);
-    });
-  }
-
-  void _save() {
-    final title = _titleCtrl.text.trim();
-    if (title.isEmpty) return;
-    final points = _pointCtrls.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList();
-    Navigator.pop(context, (title: title, points: points));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialog(
-      title: _isEdit ? L10n.of(context).sermonEdit : L10n.of(context).sermonNew,
-      icon: Icons.mic_outlined,
-      width: 480,
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).cancel)),
-        const SizedBox(width: AppSpace.sm),
-        FilledButton(
-          onPressed: _titleCtrl.text.trim().isEmpty ? null : _save,
-          child: Text(_isEdit ? L10n.of(context).saveChanges : L10n.of(context).save),
-        ),
-      ],
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppTextField(
-              controller: _titleCtrl,
-              hintText: L10n.of(context).sermonTitleHint,
-              label: L10n.of(context).sermonTitleSlide,
-              autofocus: true,
-              onSubmitted: (_) => _addPoint(),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: AppSpace.lg),
-            Row(
-              children: [
-                Text(L10n.of(context).sermonPoints, style: AppText.sectionLabel),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _addPoint,
-                  icon: const Icon(Icons.add, size: 14),
-                  label: Text(L10n.of(context).add, style: const TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.accent),
-                ),
-              ],
-            ),
-            ..._pointCtrls.asMap().entries.map((entry) {
-              final i = entry.key;
-              return Padding(
-                padding: const EdgeInsets.only(top: AppSpace.sm),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceControl,
-                        borderRadius: AppRadius.all(AppRadius.sm),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${i + 1}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpace.sm),
-                    Expanded(
-                      child: AppTextField(
-                        controller: entry.value,
-                        hintText: L10n.of(context).sermonPoint(i + 1),
-                        onSubmitted: (_) => _addPoint(),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.remove_circle_outline,
-                        size: 18,
-                        color: AppColors.textTertiary,
-                      ),
-                      tooltip: L10n.of(context).sermonRemovePoint,
-                      onPressed: () => _removePoint(i),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            if (_pointCtrls.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.sm),
-                child: TextButton.icon(
-                  onPressed: _addPoint,
-                  icon: const Icon(Icons.add, size: 14),
-                  label: Text(L10n.of(context).sermonAddFirstPoint),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.textTertiary),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
+    await cubit.addSermon(result.title, result.points, passages: result.passages);
   }
 }
 

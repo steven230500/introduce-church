@@ -2082,11 +2082,24 @@ class ControlCubit extends Cubit<ControlState> {
     emit(ControlLoadedState(model.copyWith(collapsedMoments: folded, openedMoments: opened)));
   }
 
-  Future<void> addSermon(String title, List<String> points) async {
+  /// Adds a sermon and, right after it, the [passages] its outline names, in
+  /// the order it names them: when the pastor says "Hebreos 11:6" it is the
+  /// next thing in the list, not a search.
+  Future<void> addSermon(
+    String title,
+    List<String> points, {
+    List<BibleVerseRef> passages = const [],
+  }) async {
     final collection = _openCollection;
     if (collection == null) return;
     await _addItems(collection.id, [
       _draft(collection, CollectionItemType.sermon, content: {'title': title, 'points': points}),
+      for (final (offset, passage) in passages.indexed)
+        _draft(
+          collection,
+          CollectionItemType.bibleVerse,
+          content: {...passage.toJson(), 'together': false},
+        ).copyWith(order: collection.items.length + offset + 1),
     ]);
   }
 

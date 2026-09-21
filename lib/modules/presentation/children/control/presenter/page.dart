@@ -40,6 +40,7 @@ import '../../../shell/shell_cubit.dart';
 import '../../../shell/widgets/collection_dialog.dart';
 import '../../../shell/widgets/quick_verse_dialog.dart';
 import '../../../shell/widgets/rehearsal_summary_dialog.dart';
+import '../../../shell/widgets/sermon_dialog.dart';
 import '../../../shell/widgets/slide_editor_dialog.dart';
 import '../../../../../core/timing/item_timer.dart';
 import '../../../../../core/timing/service_clock.dart';

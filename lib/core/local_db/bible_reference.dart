@@ -121,6 +121,97 @@ List<int> booksMatching(String text) {
   ];
 }
 
+/// A reference found in running text, and where: [start] and [end] are
+/// offsets into the text it was found in.
+typedef FoundReference = ({BibleReference reference, int start, int end});
+
+/// The references in someone's notes: "La fe agrada a Dios (He 11:6)",
+/// "Texto: Romanos 8:28; 12:1-2", "II Timoteo 3:16".
+///
+/// Stricter than [parseBibleReference], which reads a line meant to be one.
+/// Here most words are not books, so a book is named whole or by an
+/// abbreviation from [_aliases], never by any start of its name ("la 3:16"
+/// is not Lamentaciones), and a chapter alone counts only after a book's name
+/// in full: "Salmo 23" is a reference, "am 5" in a sentence is not.
+List<FoundReference> findBibleReferences(String text) {
+  final found = <FoundReference>[];
+  for (final match in _inText.allMatches(text)) {
+    final verse = match.group(4);
+    final book = _bookInText(match.group(1), match.group(2)!, withVerse: verse != null);
+    if (book == null) continue;
+    found.add((
+      reference: _referenceOf(book, match.group(3)!, verse, match.group(5)),
+      start: match.start,
+      end: match.end,
+    ));
+
+    // "Romanos 8:28; 12:1-2": the second is still Romanos.
+    var at = match.end;
+    while (true) {
+      final more = _nextInBook.matchAsPrefix(text, at);
+      if (more == null) break;
+      found.add((
+        reference: _referenceOf(book, more.group(1)!, more.group(2), more.group(3)),
+        start: at,
+        end: more.end,
+      ));
+      at = more.end;
+    }
+  }
+  return found;
+}
+
+/// A book, perhaps numbered ("1 Co", "1Co", "II Timoteo"), and a chapter with
+/// perhaps a verse and a range. Not inside a word or a number.
+final _inText = RegExp(
+  r'(?<![\p{L}\d])(?:([1-3]|i{1,3})\s*)?(\p{L}+)\.?\s*(\d{1,3})(?:\s*[:.]\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?(?![\p{L}\d])',
+  unicode: true,
+  caseSensitive: false,
+);
+
+/// Another chapter and verse of the same book, after a semicolon or a comma.
+final _nextInBook = RegExp(
+  r'\s*[;,]\s*(\d{1,3})\s*[:.]\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?(?![\p{L}\d])',
+  unicode: true,
+);
+
+int? _bookInText(String? number, String word, {required bool withVerse}) {
+  final ordinal = switch (number?.toLowerCase()) {
+    null => '',
+    'i' => '1 ',
+    'ii' => '2 ',
+    'iii' => '3 ',
+    final digit => '$digit ',
+  };
+  final needle = _normalise('$ordinal$word');
+  final exact = [
+    for (var index = 0; index < 66; index++)
+      if (_namesOf(index).contains(needle)) index,
+  ];
+  if (exact.length == 1 && (withVerse || _fullNamesOf(exact.single).contains(needle))) {
+    return exact.single;
+  }
+  // "Salmo 23", "Hebr 11:1": the start of a name, long enough not to be
+  // a word of the sentence.
+  if (word.length < 4) return null;
+  final started = [
+    for (var index = 0; index < 66; index++)
+      if (_fullNamesOf(index).any((name) => name.startsWith(needle))) index,
+  ];
+  return started.length == 1 ? started.single : null;
+}
+
+BibleReference _referenceOf(int book, String chapter, String? verse, String? end) {
+  final start = verse == null ? null : int.parse(verse);
+  final last = end == null ? start : int.parse(end);
+  return BibleReference(
+    bookIndex: book,
+    chapter: int.parse(chapter),
+    verseStart: start,
+    verseEnd: start == null || last == null || last < start ? start : last,
+  );
+}
+
 /// The chapter-and-verse tail, with everything before it taken as the book.
 final _pattern = RegExp(r'^(.*?)\s*(\d{1,3})(?:\s*[:.]\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?$');
 
@@ -141,11 +232,13 @@ String _normalise(String value) {
 /// Every way book [index] may be typed: its Spanish name, its English one -
 /// "john 3:16" for the church that reads the English Bible - and the usual
 /// abbreviations.
-List<String> _namesOf(int index) => [
+List<String> _namesOf(int index) => [..._fullNamesOf(index), ...?_aliases[index]];
+
+/// Book [index] by its name, in Spanish and in English.
+List<String> _fullNamesOf(int index) => [
   _normalise(spanishBookName(index)),
   _normalise(bookName(index, language: 'en')),
   if (index == 18) 'psalm',
-  ...?_aliases[index],
 ];
 
 const _aliases = <int, List<String>>{
