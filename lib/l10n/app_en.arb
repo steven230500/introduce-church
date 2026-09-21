@@ -1427,7 +1427,7 @@
       }
     }
   },
-  "bibleImportUnsupported": "That file is not a Bible Introduce can read. Zefania XML, OSIS, OpenSong, Beblia and FreeShow (.fsb) work.",
+  "bibleImportUnsupported": "That file is not a Bible Introduce can read. MySword, e-Sword, MyBible, OpenSong and FreeShow files work, and Zefania, Beblia, OSIS, USFX or USFM.",
   "bibleImportUnreadable": "The file could not be read. It may be damaged.",
   "bibleImportEmpty": "The file has no verses in it.",
   "bibleImportNotSaved": "The Bible could not be saved: {error}",

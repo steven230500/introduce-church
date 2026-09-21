@@ -1743,7 +1743,7 @@
       }
     }
   },
-  "bibleImportUnsupported": "Ese archivo no es una Biblia que Introduce sepa leer. Sirven Zefania XML, OSIS, OpenSong, Beblia y FreeShow (.fsb).",
+  "bibleImportUnsupported": "Ese archivo no es una Biblia que Introduce sepa leer. Sirven los de MySword, e-Sword, MyBible, OpenSong y FreeShow, y Zefania, Beblia, OSIS, USFX o USFM.",
   "bibleImportUnreadable": "No se pudo leer el archivo. Puede estar dañado.",
   "bibleImportEmpty": "El archivo no trae versículos.",
   "bibleImportNotSaved": "No se pudo guardar la Biblia: {error}",
