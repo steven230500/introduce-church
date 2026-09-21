@@ -23,6 +23,7 @@ class BibleBrowserState extends Equatable {
     this.view = BibleBrowserView.books,
     this.query = '',
     this.textHits = const [],
+    this.revealVerse,
   });
 
   final List<BibleVersion> versions;
@@ -41,6 +42,10 @@ class BibleBrowserState extends Equatable {
   /// it: "de tal manera amó" is a way into the Bible as much as "Juan" is.
   final String query;
   final List<VerseHit> textHits;
+
+  /// A verse opened from a search, which the list scrolls to: John 3:16 is
+  /// sixteen rows down, below the fold.
+  final int? revealVerse;
 
   bool get canConfirm =>
       selectedVersion != null &&
@@ -67,6 +72,8 @@ class BibleBrowserState extends Equatable {
     BibleBrowserView? view,
     String? query,
     List<VerseHit>? textHits,
+    int? revealVerse,
+    bool clearReveal = false,
   }) {
     return BibleBrowserState(
       versions: versions ?? this.versions,
@@ -82,6 +89,7 @@ class BibleBrowserState extends Equatable {
       view: view ?? this.view,
       query: query ?? this.query,
       textHits: textHits ?? this.textHits,
+      revealVerse: clearReveal ? null : revealVerse ?? this.revealVerse,
     );
   }
 
@@ -100,5 +108,6 @@ class BibleBrowserState extends Equatable {
     view,
     query,
     textHits,
+    revealVerse,
   ];
 }

@@ -21,6 +21,7 @@ import '../../../core/services/update_checker.dart';
 import '../../../core/services/usage_reporter.dart';
 import '../../../l10n/l10n.dart';
 import '../../../core/widgets/ui/panel_resizer.dart';
+import '../../../core/widgets/ui/typing.dart';
 import 'org_admin_dialog.dart';
 import 'shell_cubit.dart';
 import 'widgets/command_palette.dart';
@@ -128,11 +129,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   /// Transport keys are global, but they must never steal a keystroke from a
   /// text field. Typing the letter B in a song title used to be impossible
   /// because it blanked the projector.
-  bool get _isTyping {
-    final focused = FocusManager.instance.primaryFocus;
-    final widget = focused?.context?.widget;
-    return widget is EditableText;
-  }
+  bool get _isTyping => isTyping();
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;

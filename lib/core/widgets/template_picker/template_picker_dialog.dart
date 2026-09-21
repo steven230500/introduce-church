@@ -18,6 +18,7 @@ import 'canvas_snap.dart';
 import 'color_field.dart';
 import 'editor_controls.dart';
 import '../slide_view.dart';
+import '../ui/typing.dart';
 import '../ui/app_buttons.dart';
 import '../ui/hover_builder.dart';
 import 'template_editor_cubit.dart';
@@ -327,10 +328,7 @@ class _TemplateEditorDialogState extends State<TemplateEditorDialog> {
 
   /// Whether the operator is in a text field, where the system's own undo is
   /// the one they mean.
-  bool get _typing {
-    final focused = FocusManager.instance.primaryFocus?.context;
-    return focused != null && focused.findAncestorWidgetOfExactType<EditableText>() != null;
-  }
+  bool get _typing => isTyping();
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;

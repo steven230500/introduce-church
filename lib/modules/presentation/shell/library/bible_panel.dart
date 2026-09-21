@@ -347,8 +347,26 @@ class _ChaptersGrid extends StatelessWidget {
 
 // ── Verses ────────────────────────────────────────────────────────────────────
 
-class _VersesList extends StatelessWidget {
+class _VersesList extends StatefulWidget {
   const _VersesList();
+
+  @override
+  State<_VersesList> createState() => _VersesListState();
+}
+
+class _VersesListState extends State<_VersesList> {
+  /// The row of a verse opened from a search, to bring into view once drawn.
+  final _reveal = GlobalKey();
+  int? _revealed;
+
+  void _bringIntoView(int? verse) {
+    if (verse == null || verse == _revealed) return;
+    _revealed = verse;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final row = _reveal.currentContext;
+      if (row != null) Scrollable.ensureVisible(row, alignment: 0.25);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -356,8 +374,10 @@ class _VersesList extends StatelessWidget {
       buildWhen: (a, b) =>
           a.verses != b.verses ||
           a.selectedVerse != b.selectedVerse ||
-          a.selectedVerseEnd != b.selectedVerseEnd,
+          a.selectedVerseEnd != b.selectedVerseEnd ||
+          a.revealVerse != b.revealVerse,
       builder: (context, state) {
+        _bringIntoView(state.revealVerse);
         final start = state.selectedVerse;
         final end = state.selectedVerseEnd ?? start;
 
@@ -368,50 +388,53 @@ class _VersesList extends StatelessWidget {
             if (state.verses[i].trim().isNotEmpty) i,
         ];
 
-        return ListView.builder(
+        // Every row built, not only the visible ones: a chapter is at most a
+        // few hundred, and the verse to reveal has to exist to be scrolled to.
+        return ListView(
           padding: const EdgeInsets.only(bottom: AppSpace.md),
-          itemCount: present.length,
-          itemBuilder: (_, row) {
-            final i = present[row];
-            final number = i + 1;
-            final selected = start != null && end != null && number >= start && number <= end;
-
-            return GestureDetector(
-              onTap: () => context.read<BibleBrowserCubit>().selectVerse(number),
-              child: Container(
-                color: selected ? AppColors.accentFillSoft : Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 22,
-                      child: Text(
-                        '$number',
-                        style: TextStyle(
-                          color: selected ? AppColors.accent : AppColors.textTertiary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        state.verses[i],
-                        style: TextStyle(
-                          color: selected ? AppColors.textPrimary : AppColors.textSecondary,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          children: [for (final i in present) _row(context, state, i, start, end)],
         );
       },
+    );
+  }
+
+  Widget _row(BuildContext context, BibleBrowserState state, int i, int? start, int? end) {
+    final number = i + 1;
+    final selected = start != null && end != null && number >= start && number <= end;
+
+    return GestureDetector(
+      key: number == state.revealVerse ? _reveal : null,
+      onTap: () => context.read<BibleBrowserCubit>().selectVerse(number),
+      child: Container(
+        color: selected ? AppColors.accentFillSoft : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 22,
+              child: Text(
+                '$number',
+                style: TextStyle(
+                  color: selected ? AppColors.accent : AppColors.textTertiary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                state.verses[i],
+                style: TextStyle(
+                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -258,14 +258,15 @@ class BibleRepository {
 
   /// The verses of version [code] that hold every word of [query], in the
   /// order of the Bible, at most [limit] of them. "de tal manera amo" finds
-  /// John 3:16.
+  /// John 3:16. A word matches from its start, so "am" finds "amó" and "amor"
+  /// while it is still being typed, and "amo" does not find "álamo".
   Future<List<VerseHit>> searchText(String code, String query, {int limit = 50}) async {
     final words = searchable(query).split(' ').where((w) => w.length > 1).toList();
     if (words.isEmpty) return const [];
     final index = _searchIndex[code] ??= await _readForSearch(code);
     final hits = <VerseHit>[];
     for (final entry in index) {
-      if (words.every(entry.plain.contains)) {
+      if (words.every((word) => entry.plain.contains(' $word'))) {
         hits.add(entry.hit);
         if (hits.length >= limit) break;
       }

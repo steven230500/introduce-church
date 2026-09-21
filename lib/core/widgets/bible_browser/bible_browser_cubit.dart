@@ -36,13 +36,14 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
 
   Future<void> selectVersion(BibleVersion version) async {
     await _repo.rememberVersion(version.code);
-    if (state.query.trim().length >= _searchFrom) unawaited(_searchTextIn(version));
     final books = await _buildBookItems(version);
+    // What was being searched is still being searched, in the new version.
     emit(
       state.copyWith(
         selectedVersion: version,
         allBooks: books,
-        filteredBooks: books,
+        filteredBooks: _matching(books, state.query),
+        textHits: const [],
         clearBook: true,
         chapters: [],
         selectedChapter: null,
@@ -51,22 +52,27 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
         view: BibleBrowserView.books,
       ),
     );
+    if (state.query.trim().length >= _searchFrom) unawaited(_searchText(state.query));
   }
 
   void filterBooks(String query) {
-    final q = query.toLowerCase().trim();
-    final filtered = q.isEmpty
-        ? state.allBooks
-        : state.allBooks.where((b) => b.displayName.toLowerCase().contains(q)).toList();
-    final searching = q.length >= _searchFrom;
+    final searching = query.trim().length >= _searchFrom;
+    // The results of what was typed before are cleared, not kept until the
+    // new ones arrive: "de tal ma" finds Genesis 26:7, and a click in that
+    // moment opened it for a search it does not answer.
     emit(
       state.copyWith(
-        filteredBooks: filtered,
+        filteredBooks: _matching(state.allBooks, query),
         query: query,
-        textHits: searching ? state.textHits : const [],
+        textHits: const [],
       ),
     );
     if (searching) unawaited(_searchText(query));
+  }
+
+  static List<BibleBookItem> _matching(List<BibleBookItem> books, String query) {
+    final q = query.toLowerCase().trim();
+    return q.isEmpty ? books : books.where((b) => b.displayName.toLowerCase().contains(q)).toList();
   }
 
   /// Below this many letters a search of the words finds half the Bible.
@@ -82,13 +88,6 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
     emit(state.copyWith(textHits: hits));
   }
 
-  Future<void> _searchTextIn(BibleVersion version) async {
-    final query = state.query;
-    final hits = await _repo.searchText(version.code, query);
-    if (isClosed || state.query != query || state.selectedVersion?.code != version.code) return;
-    emit(state.copyWith(textHits: hits));
-  }
-
   /// Opens the chapter of a verse found by its words, with the verse chosen.
   Future<void> openHit(VerseHit hit) async {
     final book = state.allBooks.where((b) => b.book.bookIndex == hit.bookIndex).firstOrNull;
@@ -96,6 +95,7 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
     await selectBook(book);
     await selectChapter(hit.chapter);
     selectVerse(hit.verse);
+    emit(state.copyWith(revealVerse: hit.verse));
   }
 
   Future<void> selectBook(BibleBookItem book) async {
@@ -104,6 +104,7 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
       state.copyWith(
         selectedBook: book,
         chapters: chapters,
+        clearReveal: true,
         selectedChapter: null,
         verses: [],
         selectedVerse: null,
@@ -123,6 +124,7 @@ class BibleBrowserCubit extends Cubit<BibleBrowserState> {
       state.copyWith(
         selectedChapter: chapter,
         verses: verses,
+        clearReveal: true,
         selectedVerse: null,
         view: BibleBrowserView.verses,
       ),

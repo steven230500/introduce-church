@@ -43,6 +43,12 @@ void main() {
     expect(hits.single.verse, 16);
   });
 
+  test('a word matches from its start, not from inside another word', () async {
+    expect(await repo.searchText('RV', 'amo'), hasLength(1), reason: 'amó, not álamo');
+    expect(await repo.searchText('RV', 'princ'), hasLength(1), reason: 'still being typed');
+    expect(await repo.searchText('RV', 'ncipio'), isEmpty);
+  });
+
   test('every word has to be there, and the order is the Bible\'s', () async {
     expect(await repo.searchText('RV', 'dios mundo'), hasLength(1));
     final both = await repo.searchText('RV', 'dios');
@@ -66,5 +72,45 @@ void main() {
     expect(browser.state.selectedChapter, 3);
     expect(browser.state.selectedVerse, 16);
     expect(browser.state.selectedBook?.displayName, 'Juan');
+    expect(browser.state.revealVerse, 16, reason: 'the list scrolls down to it');
+  });
+
+  test('switching versions keeps the search, and searches the new version', () async {
+    await repo.install(
+      importedBible({
+        42: [
+          [],
+          [],
+          [for (var v = 1; v <= 16; v++) v == 16 ? 'For God so loved the world' : 'v'],
+        ],
+      }),
+      code: 'WEB',
+      name: 'WEB',
+      language: 'en',
+    );
+    final browser = BibleBrowserCubit(repo);
+    addTearDown(browser.close);
+    await browser.load();
+    browser.filterBooks('loved world');
+    await pumpEventQueue();
+
+    final web = browser.state.versions.firstWhere((v) => v.code == 'WEB');
+    await browser.selectVersion(web);
+    await pumpEventQueue();
+
+    expect(browser.state.filteredBooks, isEmpty, reason: 'the words still name no book');
+    expect(browser.state.textHits.single.verse, 16);
+  });
+
+  test('what was found for an earlier search is gone as soon as the search changes', () async {
+    final browser = BibleBrowserCubit(repo);
+    addTearDown(browser.close);
+    await browser.load();
+    browser.filterBooks('principio');
+    await pumpEventQueue();
+    expect(browser.state.textHits, isNotEmpty);
+
+    browser.filterBooks('principio creo x');
+    expect(browser.state.textHits, isEmpty, reason: 'not the hits of "principio"');
   });
 }
