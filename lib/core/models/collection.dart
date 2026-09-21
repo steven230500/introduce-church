@@ -274,6 +274,11 @@ class Collection extends Equatable {
   final String? bgAudioPath;
   final List<CollectionItem> items;
 
+  /// How many things the service puts on the screen. The moments that divide
+  /// it are marks in the list, and counting them made a service of seven items
+  /// with three moments read as ten.
+  int get playableCount => items.where((item) => !item.isSection).length;
+
   factory Collection.fromJson(Map<String, dynamic> json) => Collection(
     id: json['id'] as String,
     name: json['name'] as String,

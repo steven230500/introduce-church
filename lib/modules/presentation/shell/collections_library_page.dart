@@ -356,7 +356,7 @@ class _CollectionCardState extends State<_CollectionCard> {
   }
 
   static String _meta(L10n t, Collection collection) {
-    final count = collection.items.length;
+    final count = collection.playableCount;
     final items = t.itemCount(count);
     final date = collection.serviceDate;
     if (date == null) return items;

@@ -1388,7 +1388,7 @@ class ControlCubit extends Cubit<ControlState> {
 
     return (
       name: file.name,
-      items: file.items.length,
+      items: file.items.where((item) => item.type != CollectionItemType.section).length,
       newSongs: newSongs,
       newDesigns: newDesigns,
       missingMedia: file.items

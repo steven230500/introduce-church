@@ -147,7 +147,10 @@ String clockText(Duration duration) {
 ({Duration total, int unplanned}) plannedLength(Collection collection) {
   var seconds = 0;
   var unplanned = 0;
+  // A moment has no length of its own; counting it as unplanned said "5 sin
+  // tiempo" of a service whose only untimed items were two announcements.
   for (final item in collection.items) {
+    if (item.isSection) continue;
     final planned = item.plannedSecs;
     if (planned == null) {
       unplanned++;

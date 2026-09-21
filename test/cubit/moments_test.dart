@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:introduce_church/core/models/collection_item_type.dart';
 import 'package:introduce_church/core/services/pending_writes.dart';
+import 'package:introduce_church/core/timing/service_clock.dart';
 import 'package:introduce_church/modules/presentation/children/control/presenter/cubit/cubit.dart';
 
 import '../helpers/builders.dart';
@@ -65,6 +66,17 @@ void main() {
         model(control).playableItems.every((i) => i.type != CollectionItemType.section),
         isTrue,
       );
+    });
+
+    test('the service says how many things it puts on the screen, not how many rows', () {
+      final service = model(control).activeCollection!;
+      expect(service.items.length, 5);
+      expect(service.playableCount, 3);
+    });
+
+    test('a moment is not an item without a planned time', () {
+      // The songs and the slide have none either; the two marks must not add to them.
+      expect(plannedLength(model(control).activeCollection!).unplanned, 3);
     });
 
     test('the badges count what the operator counts', () {

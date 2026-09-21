@@ -151,7 +151,7 @@ class _CollectionShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = collection.items.length;
+    final count = collection.playableCount;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.sm - 2),

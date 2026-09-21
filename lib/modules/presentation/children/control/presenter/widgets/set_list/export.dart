@@ -81,7 +81,7 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
   }
 
   buf.writeln(sep);
-  buf.writeln(t.printTotal(collection.items.length));
+  buf.writeln(t.printTotal(collection.playableCount));
   buf.writeln(sep);
 
   try {

@@ -75,7 +75,7 @@ class _SetListHeader extends StatelessWidget {
     if (collection == null) return t.noCollectionOpen;
     final date = collection.serviceDate;
     return [
-      t.itemCount(collection.items.length),
+      t.itemCount(collection.playableCount),
       if (date != null) '${date.day}/${date.month}/${date.year}',
     ].join('  •  ');
   }
@@ -104,7 +104,7 @@ class _CollectionSwitcher extends StatelessWidget {
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
               label: collection.name,
-              trailing: '${collection.items.length}',
+              trailing: '${collection.playableCount}',
             ),
           ),
       ],
