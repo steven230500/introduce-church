@@ -20,6 +20,7 @@ extension CollectionItemTypeLabel on CollectionItemType {
     CollectionItemType.imageSlide => t.itemTypePresentation,
     CollectionItemType.videoSlide => t.itemTypeVideo,
     CollectionItemType.announcement => t.itemTypeAnnouncement,
+    CollectionItemType.section => t.itemTypeSection,
   };
 }
 

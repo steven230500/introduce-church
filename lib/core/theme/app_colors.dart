@@ -70,6 +70,20 @@ abstract final class AppColors {
   /// Operator notes.
   static const note = Color(0xFFFFD60A);
 
+  /// The spines that run down the moments of a service - alabanza, prédica,
+  /// anuncios - so its shape can be read without reading a word.
+  ///
+  /// Muted on purpose, and deliberately none of the colours that already mean
+  /// something: blue is what the operator has selected, red is what the
+  /// congregation is seeing, yellow is a note.
+  static const moments = [
+    Color(0xFF2FA39B), // teal
+    Color(0xFF8B7BE8), // violet
+    Color(0xFFC2A15A), // sand
+    Color(0xFFC97BA0), // rose
+    Color(0xFF6E8CA8), // steel
+  ];
+
   // ── Tints ──────────────────────────────────────────────────────────────────
   /// Fill behind a selected row or tile.
   static Color get accentFill => accent.withValues(alpha: 0.20);

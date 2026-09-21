@@ -18,11 +18,25 @@ Future<void> _exportSetList(BuildContext context, Collection collection) async {
   buf.writeln(sep);
   buf.writeln();
 
+  var number = 0;
   for (var i = 0; i < collection.items.length; i++) {
     final item = collection.items[i];
-    buf.writeln('${i + 1}. ${item.titleIn(t).toUpperCase()}  [${item.type.labelIn(t)}]');
+
+    // A moment heads the list it opens rather than taking a number of its own,
+    // the way it reads on the screen.
+    if (item.isSection) {
+      buf.writeln();
+      buf.writeln('── ${item.titleIn(t).toUpperCase()} ──');
+      buf.writeln();
+      continue;
+    }
+
+    number++;
+    buf.writeln('$number. ${item.titleIn(t).toUpperCase()}  [${item.type.labelIn(t)}]');
 
     switch (item.type) {
+      case CollectionItemType.section:
+        break;
       case CollectionItemType.song:
         if (item.song?.author != null) buf.writeln('   ${item.song!.author}');
         buf.writeln('   $dash');

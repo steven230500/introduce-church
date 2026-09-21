@@ -50,6 +50,11 @@ class _AddItemMenu extends StatelessWidget {
         const PopupMenuDivider(),
         _SectionItem(L10n.of(context).addCreate),
         PopupMenuItem(
+          value: 'moment',
+          height: 38,
+          child: AppMenuRow(icon: Icons.label_outline, label: L10n.of(context).momentNew),
+        ),
+        PopupMenuItem(
           value: 'free',
           height: 38,
           child: AppMenuRow(icon: Icons.text_fields, label: L10n.of(context).addTextSlide),
@@ -175,6 +180,8 @@ class _AddItemMenu extends StatelessWidget {
       case 'free':
         final result = await showFreeSlideDialog(context);
         if (result != null) await cubit.addFreeSlide(result.text, title: result.title);
+      case 'moment':
+        await _addMoment(context, cubit);
       case 'sermon':
         await _addSermon(context, cubit);
       case 'announcement':
@@ -221,6 +228,34 @@ class _SectionItemState extends State<_SectionItem> {
 }
 
 // ── Sermon ────────────────────────────────────────────────────────────────────
+
+/// Asks what the moment is called and marks it in the running order.
+Future<void> _addMoment(BuildContext context, ControlCubit cubit) async {
+  final t = L10n.of(context);
+  final name = await showDialog<String>(
+    context: context,
+    builder: (_) => TextControllerScope(
+      builder: (ctx, ctrl) => AppDialog(
+        title: t.momentNew,
+        icon: Icons.label_outline,
+        width: 380,
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
+          const SizedBox(width: AppSpace.sm),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(t.add)),
+        ],
+        child: AppTextField(
+          controller: ctrl,
+          label: t.momentName,
+          hintText: t.momentHint,
+          autofocus: true,
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+      ),
+    ),
+  );
+  if (name != null && name.isNotEmpty) await cubit.addSection(name);
+}
 
 typedef SermonDraft = ({String title, List<String> points});
 

@@ -65,6 +65,7 @@ class _TypeChip extends StatelessWidget {
     CollectionItemType.imageSlide => Icons.slideshow_outlined,
     CollectionItemType.videoSlide => Icons.videocam_outlined,
     CollectionItemType.announcement => Icons.campaign_outlined,
+    CollectionItemType.section => Icons.label_outline,
   };
 
   @override

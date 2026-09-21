@@ -841,6 +841,19 @@
   "itemTypePresentation": "Presentación",
   "itemTypeVideo": "Video",
   "itemTypeAnnouncement": "Anuncio",
+  "itemTypeSection": "Momento",
+  "momentDrag": "Arrastra para mover el momento con sus elementos",
+  "momentNew": "Nuevo momento",
+  "momentName": "Nombre del momento",
+  "momentHint": "Alabanza, Prédica, Anuncios...",
+  "momentItems": "{count, plural, =0{sin elementos} =1{1 elemento} other{{count} elementos}}",
+  "@momentItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "verseTypeVerse": "Verso",
   "verseTypeChorus": "Coro",
   "verseTypeBridge": "Puente",

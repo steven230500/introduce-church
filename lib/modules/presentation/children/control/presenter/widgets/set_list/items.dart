@@ -81,27 +81,216 @@ class _SetListItems extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ReorderableListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
-            itemCount: items.length,
-            // The default handle is a second trailing control on a panel that
-            // is already too narrow for its titles. The order badge drags
-            // instead, which costs no width because it is there regardless.
-            buildDefaultDragHandles: false,
-            onReorder: (oldIndex, newIndex) {
-              if (newIndex > oldIndex) newIndex--;
-              context.read<ControlCubit>().reorderItem(oldIndex, newIndex);
+          child: Builder(
+            builder: (context) {
+              // A folded moment takes its items out of the list, except the
+              // one on the screen and the one the operator has selected:
+              // losing sight of what the congregation is reading is worse
+              // than a long list.
+              final rows = [
+                for (var i = 0; i < items.length; i++)
+                  if (items[i].isSection ||
+                      !model.isFolded(i) ||
+                      model.isLiveItem(i) ||
+                      model.currentItemIndex == i)
+                    i,
+              ];
+
+              return ReorderableListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+                itemCount: rows.length,
+                // The default handle is a second trailing control on a panel
+                // that is already too narrow for its titles. The order badge
+                // drags instead, which costs no width because it is there
+                // regardless.
+                buildDefaultDragHandles: false,
+                onReorder: (oldPosition, newPosition) {
+                  if (newPosition > oldPosition) newPosition--;
+                  final from = rows[oldPosition];
+                  final to = newPosition < rows.length ? rows[newPosition] : items.length - 1;
+                  context.read<ControlCubit>().reorderItem(from, to);
+                },
+                itemBuilder: (context, position) {
+                  final index = rows[position];
+                  final item = items[index];
+                  if (item.isSection) {
+                    return _MomentRow(
+                      key: ValueKey(item.id),
+                      model: model,
+                      item: item,
+                      index: index,
+                      position: position,
+                    );
+                  }
+                  return _SetListTile(
+                    key: ValueKey(item.id),
+                    model: model,
+                    item: item,
+                    index: index,
+                    position: position,
+                    isActive: model.currentItemIndex == index,
+                    isOnAir: model.isLiveItem(index),
+                  );
+                },
+              );
             },
-            itemBuilder: (context, index) => _SetListTile(
-              key: ValueKey(items[index].id),
-              model: model,
-              item: items[index],
-              index: index,
-              isActive: model.currentItemIndex == index,
-              isOnAir: model.isLiveItem(index),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The colour that runs down a moment, and down the items under it.
+Color? _momentColor(ControlModel model, int index) {
+  final moment = model.momentOf(index);
+  if (moment == null) return null;
+  return AppColors.moments[model.momentOrder(moment.id) % AppColors.moments.length];
+}
+
+/// The colour of the moment an item belongs to, drawn down its left edge.
+///
+/// Null before the first mark of a service, and for a service with none: the
+/// list then looks exactly as it did before moments existed.
+BoxDecoration? _spine(Color? colour) {
+  if (colour == null) return null;
+  return BoxDecoration(
+    border: Border(left: BorderSide(color: colour, width: 3)),
+  );
+}
+
+/// A moment of the service: the mark that opens "Alabanza" or "Prédica".
+///
+/// It reads as a band the running order passes through rather than a folder
+/// that swallows it: the items keep their place in the one list, and folding
+/// one is a way of looking, not a way of filing.
+class _MomentRow extends StatelessWidget {
+  const _MomentRow({
+    super.key,
+    required this.model,
+    required this.item,
+    required this.index,
+    required this.position,
+  });
+
+  final ControlModel model;
+  final CollectionItem item;
+  final int index;
+  final int position;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    final cubit = context.read<ControlCubit>();
+    final colour = AppColors.moments[model.momentOrder(item.id) % AppColors.moments.length];
+    final folded = model.collapsedMoments.contains(item.id);
+    final length = model.momentLength(index);
+
+    return HoverBuilder(
+      cursor: SystemMouseCursors.click,
+      builder: (context, hovering) => GestureDetector(
+        onTap: () => cubit.toggleMoment(item.id),
+        onSecondaryTapDown: (details) =>
+            _showItemMenu(context, model, item, details.globalPosition),
+        // The whole strip drags, not the 3px spine: an operator moving a
+        // moment mid-service should not have to hit a hairline.
+        child: ReorderableDragStartListener(
+          index: position,
+          child: Tooltip(
+            message: t.momentDrag,
+            waitDuration: const Duration(milliseconds: 900),
+            child: Container(
+              // The gap above is what makes this read as the start of something
+              // rather than one more row.
+              margin: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.md, AppSpace.sm, 0),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: colour,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm + 2),
+                  Flexible(
+                    child: Text(
+                      item.titleIn(t),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  // Folded, the dots say how much is under there without opening
+                  // it; open, the numbers do.
+                  if (folded)
+                    _FoldedDots(count: length.items, colour: colour)
+                  else
+                    Text(_summary(t, length), style: AppText.rowSubtitle),
+                  const Spacer(),
+                  AnimatedRotation(
+                    turns: folded ? -0.25 : 0,
+                    duration: AppMotion.fast,
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 16,
+                      color: hovering ? AppColors.textSecondary : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// "3 elementos · 18 min", dropping the half it cannot say.
+  static String _summary(L10n t, ({int items, Duration planned, int unplanned}) length) {
+    final parts = [
+      t.momentItems(length.items),
+      if (length.planned > Duration.zero) clockText(length.planned),
+    ];
+    return parts.join('  ·  ');
+  }
+}
+
+/// One dot per item folded away, so the size of what is hidden is visible.
+class _FoldedDots extends StatelessWidget {
+  const _FoldedDots({required this.count, required this.colour});
+
+  final int count;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    // Past a dozen the dots stop being countable and start being a texture.
+    final shown = count.clamp(0, 12);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < shown; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 3),
+            child: Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colour.withValues(alpha: 0.7),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        if (count > shown)
+          Text('+${count - shown}', style: AppText.rowSubtitle.copyWith(fontSize: 10)),
       ],
     );
   }
@@ -115,13 +304,20 @@ class _SetListTile extends StatelessWidget {
     required this.model,
     required this.item,
     required this.index,
+    required this.position,
     required this.isActive,
     required this.isOnAir,
   });
 
   final ControlModel model;
   final CollectionItem item;
+
+  /// Where the item sits in the service.
   final int index;
+
+  /// Where its row sits in the list as drawn, which is not the same once a
+  /// moment is folded and the drag has to know the difference.
+  final int position;
 
   /// The row the operator has selected.
   final bool isActive;
@@ -143,12 +339,16 @@ class _SetListTile extends StatelessWidget {
             _showItemMenu(context, model, item, details.globalPosition),
         child: AnimatedContainer(
           duration: AppMotion.fast,
-          margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
+          // The spine has to meet the one above it: with a gap between rows it
+          // reads as dashes rather than one band running down the moment. The
+          // breathing room is padding inside the row instead.
+          margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          foregroundDecoration: _spine(_momentColor(model, index)),
           padding: const EdgeInsets.fromLTRB(
             AppSpace.md,
-            AppSpace.sm + 2,
+            AppSpace.sm + 3,
             AppSpace.xs,
-            AppSpace.sm + 2,
+            AppSpace.sm + 3,
           ),
           decoration: BoxDecoration(
             color: isActive
@@ -160,13 +360,13 @@ class _SetListTile extends StatelessWidget {
           child: Row(
             children: [
               ReorderableDragStartListener(
-                index: index,
+                index: position,
                 child: Tooltip(
                   message: t.dragToReorder,
                   waitDuration: const Duration(milliseconds: 600),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.grab,
-                    child: _OrderBadge(index: index, isActive: isActive),
+                    child: _OrderBadge(number: model.playableNumber(index), isActive: isActive),
                   ),
                 ),
               ),
@@ -260,6 +460,7 @@ class _SetListTile extends StatelessWidget {
     CollectionItemType.imageSlide => Icons.slideshow_outlined,
     CollectionItemType.videoSlide => Icons.videocam_outlined,
     CollectionItemType.announcement => Icons.campaign_outlined,
+    CollectionItemType.section => Icons.label_outline,
   };
 }
 
@@ -283,9 +484,11 @@ class _OnAirDot extends StatelessWidget {
 }
 
 class _OrderBadge extends StatelessWidget {
-  const _OrderBadge({required this.index, required this.isActive});
+  const _OrderBadge({required this.number, required this.isActive});
 
-  final int index;
+  /// What the operator counts, which skips the moments: the third song is 3
+  /// however many marks divide the service above it.
+  final int number;
   final bool isActive;
 
   @override
@@ -299,7 +502,7 @@ class _OrderBadge extends StatelessWidget {
         borderRadius: AppRadius.all(AppRadius.xs),
       ),
       child: Text(
-        '${index + 1}',
+        '$number',
         style: TextStyle(
           color: isActive ? Colors.white : AppColors.textTertiary,
           fontSize: 11,
@@ -428,71 +631,95 @@ String _editLabel(L10n t, CollectionItemType type) =>
     type == CollectionItemType.sermon ? t.sermonEdit : t.freeSlideEdit;
 
 List<PopupMenuEntry<String>> _itemMenuEntries(L10n t, CollectionItem item) => [
-  if (_canEditContent(item.type)) ...[
-    PopupMenuItem(
-      value: 'edit',
-      height: 38,
-      child: AppMenuRow(icon: Icons.edit_outlined, label: _editLabel(t, item.type)),
-    ),
-    const PopupMenuDivider(),
-  ],
-  if (_canRename(item.type)) ...[
+  // A moment holds nothing of its own: no design, no notes, no duration. What
+  // it has is a name and a place in the order.
+  if (item.isSection) ...[
     PopupMenuItem(
       value: 'rename',
       height: 38,
       child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: t.rename),
     ),
     const PopupMenuDivider(),
-  ],
-  PopupMenuItem(
-    value: 'template',
-    height: 38,
-    child: AppMenuRow(
-      icon: Icons.palette_outlined,
-      label: item.templateId == null ? t.ownDesign : t.changeDesign,
-    ),
-  ),
-  if (item.templateId != null)
     PopupMenuItem(
-      value: 'clear_template',
+      value: 'remove',
       height: 38,
-      child: AppMenuRow(icon: Icons.format_color_reset_outlined, label: t.useCollectionDesign),
+      child: AppMenuRow(
+        icon: Icons.remove_circle_outline,
+        label: t.removeFromSetList,
+        danger: true,
+      ),
     ),
-  const PopupMenuDivider(),
-  PopupMenuItem(
-    value: 'notes',
-    height: 38,
-    child: AppMenuRow(
-      icon: Icons.sticky_note_2_outlined,
-      label: item.notes?.isNotEmpty == true ? t.editNote : t.addNote,
+  ] else ...[
+    if (_canEditContent(item.type)) ...[
+      PopupMenuItem(
+        value: 'edit',
+        height: 38,
+        child: AppMenuRow(icon: Icons.edit_outlined, label: _editLabel(t, item.type)),
+      ),
+      const PopupMenuDivider(),
+    ],
+    if (_canRename(item.type)) ...[
+      PopupMenuItem(
+        value: 'rename',
+        height: 38,
+        child: AppMenuRow(icon: Icons.drive_file_rename_outline, label: t.rename),
+      ),
+      const PopupMenuDivider(),
+    ],
+    PopupMenuItem(
+      value: 'template',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.palette_outlined,
+        label: item.templateId == null ? t.ownDesign : t.changeDesign,
+      ),
     ),
-  ),
-  PopupMenuItem(
-    value: 'planned',
-    height: 38,
-    child: AppMenuRow(
-      icon: Icons.schedule,
-      label: t.plannedMenu,
-      trailing: item.plannedSecs != null
-          ? clockText(Duration(seconds: item.plannedSecs!))
-          : t.plannedNone,
+    if (item.templateId != null)
+      PopupMenuItem(
+        value: 'clear_template',
+        height: 38,
+        child: AppMenuRow(icon: Icons.format_color_reset_outlined, label: t.useCollectionDesign),
+      ),
+    const PopupMenuDivider(),
+    PopupMenuItem(
+      value: 'notes',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.sticky_note_2_outlined,
+        label: item.notes?.isNotEmpty == true ? t.editNote : t.addNote,
+      ),
     ),
-  ),
-  PopupMenuItem(
-    value: 'auto_advance',
-    height: 38,
-    child: AppMenuRow(
-      icon: Icons.timer_outlined,
-      label: t.autoAdvance,
-      trailing: item.autoAdvanceSecs != null ? '${item.autoAdvanceSecs}s' : 'apagado',
+    PopupMenuItem(
+      value: 'planned',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.schedule,
+        label: t.plannedMenu,
+        trailing: item.plannedSecs != null
+            ? clockText(Duration(seconds: item.plannedSecs!))
+            : t.plannedNone,
+      ),
     ),
-  ),
-  const PopupMenuDivider(),
-  PopupMenuItem(
-    value: 'remove',
-    height: 38,
-    child: AppMenuRow(icon: Icons.remove_circle_outline, label: t.removeFromSetList, danger: true),
-  ),
+    PopupMenuItem(
+      value: 'auto_advance',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.timer_outlined,
+        label: t.autoAdvance,
+        trailing: item.autoAdvanceSecs != null ? '${item.autoAdvanceSecs}s' : 'apagado',
+      ),
+    ),
+    const PopupMenuDivider(),
+    PopupMenuItem(
+      value: 'remove',
+      height: 38,
+      child: AppMenuRow(
+        icon: Icons.remove_circle_outline,
+        label: t.removeFromSetList,
+        danger: true,
+      ),
+    ),
+  ],
 ];
 
 /// Opens the item menu at a point, for the right-click path.

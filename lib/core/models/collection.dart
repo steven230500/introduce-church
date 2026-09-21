@@ -47,7 +47,14 @@ class CollectionItem extends Equatable {
     CollectionItemType.imageSlide => List<String>.from(contentJson?['paths'] as List? ?? []),
     CollectionItemType.videoSlide => [contentJson?['path'] as String? ?? ''],
     CollectionItemType.announcement => [contentJson?['message'] as String? ?? ''],
+    // A moment is a mark in the running order, not something that goes on the
+    // screen, so it has nothing to project.
+    CollectionItemType.section => const [],
   };
+
+  /// Whether this is a mark in the running order rather than something the
+  /// congregation can see.
+  bool get isSection => type == CollectionItemType.section;
 
   String get displayTitle => switch (type) {
     CollectionItemType.song => song?.title ?? '',
@@ -65,6 +72,7 @@ class CollectionItem extends Equatable {
     CollectionItemType.imageSlide => contentJson?['title'] as String? ?? 'Presentación',
     CollectionItemType.videoSlide => contentJson?['title'] as String? ?? 'Video',
     CollectionItemType.announcement => contentJson?['title'] as String? ?? 'Anuncio',
+    CollectionItemType.section => contentJson?['title'] as String? ?? 'Momento',
   };
 
   String get displaySubtitle => switch (type) {
@@ -78,6 +86,7 @@ class CollectionItem extends Equatable {
     CollectionItemType.videoSlide => contentJson?['duration'] as String? ?? '',
     CollectionItemType.announcement =>
       contentJson?['timerTarget'] != null ? 'Con cuenta regresiva' : '',
+    CollectionItemType.section => '',
   };
 
   // Labels por slide para grid view (Verso, Coro, Puente, Slide N, etc.)

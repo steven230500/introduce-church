@@ -207,8 +207,9 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       showShortcutsDialog(context);
     } else if (_itemNumber(key) case final number?) {
       // Jumping to the fourth item took a scroll and a click, mid-service,
-      // while the congregation watched the wrong slide.
-      control.selectItem(number - 1);
+      // while the congregation watched the wrong slide. The fourth item is
+      // the fourth thing that goes on the screen, whatever marks divide them.
+      control.selectPlayable(number);
     } else {
       return KeyEventResult.ignored;
     }

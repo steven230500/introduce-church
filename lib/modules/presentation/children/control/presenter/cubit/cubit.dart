@@ -51,6 +51,7 @@ class ControlModel extends Equatable {
     this.blankScreen = false,
     this.gridView = true,
     this.gridZoom = 0,
+    this.collapsedMoments = const {},
     this.userTemplates = const [],
     this.countdownActive = false,
     this.countdownEnd,
@@ -237,14 +238,22 @@ class ControlModel extends Equatable {
     if (currentSlideIndex + 1 < item.slides.length) {
       return (item: item, slide: currentSlideIndex + 1);
     }
-    final next = currentItemIndex.clamp(0, collection.items.length - 1) + 1;
-    if (next >= collection.items.length) return null;
-    return (item: collection.items[next], slide: 0);
+    // What comes next is what the next press puts on the screen, so a moment
+    // in between is stepped over exactly as the arrows step over it.
+    for (var i = currentItemIndex + 1; i < collection.items.length; i++) {
+      if (!collection.items[i].isSection) return (item: collection.items[i], slide: 0);
+    }
+    return null;
   }
 
   bool get hasPrevSlide {
-    if (activeCollection == null || activeCollection!.items.isEmpty) return false;
-    return currentSlideIndex > 0 || currentItemIndex > 0;
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    if (items.isEmpty) return false;
+    if (currentSlideIndex > 0) return true;
+    for (var i = currentItemIndex - 1; i >= 0; i--) {
+      if (!items[i].isSection) return true;
+    }
+    return false;
   }
 
   /// Whether the projector has somewhere to go, which is what the auto-advance
@@ -257,11 +266,97 @@ class ControlModel extends Equatable {
     return !lastItem || !lastSlide;
   }
 
+  /// The items the operator can actually put on the screen: the moments that
+  /// divide the service are marks in the list, not things to project.
+  List<CollectionItem> get playableItems => [
+    for (final item in activeCollection?.items ?? const <CollectionItem>[])
+      if (!item.isSection) item,
+  ];
+
+  /// Where [index] lands once the moments in front of it are not counted, so
+  /// the badges read 1, 2, 3 down a service that is divided.
+  int playableNumber(int index) {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    var number = 0;
+    for (var i = 0; i <= index && i < items.length; i++) {
+      if (!items[i].isSection) number++;
+    }
+    return number;
+  }
+
+  /// The moment [index] belongs to: the nearest mark above it. Null while the
+  /// service has none, or for the items before the first one.
+  CollectionItem? momentOf(int index) {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    for (var i = index.clamp(0, items.length - 1); i >= 0; i--) {
+      if (items[i].isSection) return items[i];
+    }
+    return null;
+  }
+
+  /// Where a moment's items end: the next mark, or the end of the service.
+  int momentEnd(int start) {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    for (var i = start + 1; i < items.length; i++) {
+      if (items[i].isSection) return i - 1;
+    }
+    return items.length - 1;
+  }
+
+  /// The moments the operator has folded away. Held here rather than on the
+  /// server: it is how one person is looking at the list right now, not
+  /// something about the service.
+  final Set<String> collapsedMoments;
+
+  /// Whether [index] is inside a folded moment, which hides it unless it is
+  /// the one on the screen.
+  bool isFolded(int index) {
+    final moment = momentOf(index);
+    return moment != null && collapsedMoments.contains(moment.id);
+  }
+
+  /// Which moment this is, counting from the top, so each one keeps its colour
+  /// however the service is rearranged.
+  int momentOrder(String id) {
+    var order = 0;
+    for (final item in activeCollection?.items ?? const <CollectionItem>[]) {
+      if (!item.isSection) continue;
+      if (item.id == id) return order;
+      order++;
+    }
+    return 0;
+  }
+
+  /// How long the items under a moment are planned to take, and how many of
+  /// them there are.
+  ({int items, Duration planned, int unplanned}) momentLength(int start) {
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    var count = 0;
+    var planned = Duration.zero;
+    var unplanned = 0;
+    for (var i = start + 1; i <= momentEnd(start) && i < items.length; i++) {
+      if (items[i].isSection) break;
+      count++;
+      final secs = items[i].plannedSecs;
+      if (secs == null || secs <= 0) {
+        unplanned++;
+      } else {
+        planned += Duration(seconds: secs);
+      }
+    }
+    return (items: count, planned: planned, unplanned: unplanned);
+  }
+
   bool get hasNextSlide {
-    if (activeCollection == null || activeCollection!.items.isEmpty) return false;
-    final lastItem = currentItemIndex == activeCollection!.items.length - 1;
-    final lastSlide = currentSlideIndex == currentSlides.length - 1;
-    return !lastItem || !lastSlide;
+    final items = activeCollection?.items ?? const <CollectionItem>[];
+    if (items.isEmpty) return false;
+    if (currentSlideIndex < currentSlides.length - 1) return true;
+    // Whatever is left has to be something that can be shown: a service that
+    // ends with a moment has no slide after the last song.
+    for (var i = currentItemIndex + 1; i < items.length; i++) {
+      if (!items[i].isSection) return true;
+    }
+    return false;
   }
 
   ControlModel copyWith({
@@ -277,6 +372,7 @@ class ControlModel extends Equatable {
     bool? blankScreen,
     bool? gridView,
     int? gridZoom,
+    Set<String>? collapsedMoments,
     List<SlideTemplate>? userTemplates,
     bool? countdownActive,
     DateTime? countdownEnd,
@@ -307,6 +403,7 @@ class ControlModel extends Equatable {
       blankScreen: blankScreen ?? this.blankScreen,
       gridView: gridView ?? this.gridView,
       gridZoom: gridZoom ?? this.gridZoom,
+      collapsedMoments: collapsedMoments ?? this.collapsedMoments,
       userTemplates: userTemplates ?? this.userTemplates,
       countdownActive: countdownActive ?? this.countdownActive,
       countdownEnd: clearCountdownEnd ? null : countdownEnd ?? this.countdownEnd,
@@ -339,6 +436,7 @@ class ControlModel extends Equatable {
     blankScreen,
     gridView,
     gridZoom,
+    collapsedMoments,
     userTemplates,
     countdownActive,
     countdownEnd,
@@ -810,7 +908,17 @@ class ControlCubit extends Cubit<ControlState> {
     final activeId = previous?.activeCollection?.id;
     final active = activeId == null ? null : collections.where((c) => c.id == activeId).firstOrNull;
     final last = (active?.items.length ?? 0) - 1;
-    int clampItem(int? index) => last < 0 ? 0 : (index ?? 0).clamp(0, last);
+    // Never on a mark: a service that opens with "Alabanza" would otherwise
+    // start with nothing to project and an output panel reading "1 of 0".
+    int clampItem(int? index) {
+      if (last < 0) return 0;
+      final wanted = (index ?? 0).clamp(0, last);
+      final items = active?.items ?? const <CollectionItem>[];
+      return _skipMoments(items, wanted, forward: true) ??
+          _skipMoments(items, wanted, forward: false) ??
+          wanted;
+    }
+
     return ControlModel(
       collections: collections,
       activeCollection: active,
@@ -826,6 +934,7 @@ class ControlCubit extends Cubit<ControlState> {
       blankScreen: previous?.blankScreen ?? false,
       gridView: previous?.gridView ?? true,
       gridZoom: previous?.gridZoom ?? savedGridZoom ?? 0,
+      collapsedMoments: previous?.collapsedMoments ?? const {},
       countdownActive: previous?.countdownActive ?? false,
       countdownEnd: previous?.countdownEnd,
       overlayVisible: previous?.overlayVisible ?? false,
@@ -839,13 +948,16 @@ class ControlCubit extends Cubit<ControlState> {
   void selectCollection(Collection collection) {
     if (state is! ControlLoadedState) return;
     final current = (state as ControlLoadedState).model;
+    // The first thing that can go on the screen, which is not the first row
+    // when the service opens with a moment.
+    final first = _skipMoments(collection.items, 0, forward: true) ?? 0;
     emit(
       ControlLoadedState(
         current.copyWith(
           activeCollection: collection,
-          currentItemIndex: 0,
+          currentItemIndex: first,
           currentSlideIndex: 0,
-          liveItemIndex: 0,
+          liveItemIndex: first,
           liveSlideIndex: 0,
         ),
       ),
@@ -860,7 +972,36 @@ class ControlCubit extends Cubit<ControlState> {
     // anyway would leave the cursor pointing past the end of the set list.
     final items = current.activeCollection?.items ?? const <CollectionItem>[];
     if (itemIndex < 0 || itemIndex >= items.length) return;
-    _moveCursor(current, itemIndex, 0);
+    // A moment has nothing to project. Landing on one would blank the screen,
+    // so the cursor carries on to the first item under it.
+    final landing = _skipMoments(items, itemIndex, forward: true);
+    if (landing == null) return;
+    _moveCursor(current, landing, 0);
+  }
+
+  /// The first item at or after [from] that can go on the screen, looking the
+  /// way [forward] says. Null when there is none that way.
+  static int? _skipMoments(List<CollectionItem> items, int from, {required bool forward}) {
+    for (var i = from; i >= 0 && i < items.length; i += forward ? 1 : -1) {
+      if (!items[i].isSection) return i;
+    }
+    return null;
+  }
+
+  /// Jumps to the nth thing that can go on the screen, counting from one and
+  /// skipping the marks that divide the service.
+  void selectPlayable(int number) {
+    if (state is! ControlLoadedState) return;
+    final items = (state as ControlLoadedState).model.activeCollection?.items;
+    if (items == null) return;
+    var seen = 0;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].isSection) continue;
+      if (++seen == number) {
+        selectItem(i);
+        return;
+      }
+    }
   }
 
   void selectSlide(int slideIndex) {
@@ -984,9 +1125,10 @@ class ControlCubit extends Cubit<ControlState> {
     if (model.currentSlideIndex > 0) {
       selectSlide(model.currentSlideIndex - 1);
     } else {
-      final prevItem = model.currentItemIndex - 1;
-      final prevSlides = model.activeCollection!.items[prevItem].slides;
-      _moveCursor(model, prevItem, prevSlides.length - 1);
+      final items = model.activeCollection!.items;
+      final prevItem = _skipMoments(items, model.currentItemIndex - 1, forward: false);
+      if (prevItem == null) return;
+      _moveCursor(model, prevItem, items[prevItem].slides.length - 1);
     }
   }
 
@@ -1566,6 +1708,30 @@ class ControlCubit extends Cubit<ControlState> {
     );
   }
 
+  /// Marks a moment of the service: "Alabanza", "Prédica", "Anuncios".
+  ///
+  /// It goes in the running order like everything else, and what is added
+  /// after it belongs to it until the next one.
+  Future<void> addSection(String title) async {
+    final collection = _openCollection;
+    if (collection == null) return;
+    await _addItems(collection.id, [
+      _draft(collection, CollectionItemType.section, content: {'title': title}),
+    ]);
+  }
+
+  /// Folds a moment away, or opens it again.
+  ///
+  /// Local to this operator and this sitting: what one person has folded is
+  /// not something about the service, and it is not worth a round trip.
+  void toggleMoment(String id) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final folded = Set<String>.from(model.collapsedMoments);
+    if (!folded.remove(id)) folded.add(id);
+    emit(ControlLoadedState(model.copyWith(collapsedMoments: folded)));
+  }
+
   Future<void> addSermon(String title, List<String> points) async {
     final collection = _openCollection;
     if (collection == null) return;
@@ -1903,8 +2069,30 @@ class ControlCubit extends Cubit<ControlState> {
     if (col == null) return;
 
     final items = List<CollectionItem>.from(col.items);
-    final item = items.removeAt(oldIndex);
-    items.insert(newIndex, item);
+    // Dragging a moment carries what belongs to it. Moving the mark alone
+    // would silently hand its songs to the moment above.
+    final block = items[oldIndex].isSection
+        ? items.sublist(oldIndex, (model.momentEnd(oldIndex) + 1).clamp(oldIndex + 1, items.length))
+        : [items[oldIndex]];
+    items.removeRange(oldIndex, oldIndex + block.length);
+    // Where it lands, once the gap the block left is taken out of the count.
+    var target = (newIndex > oldIndex ? newIndex - block.length + 1 : newIndex).clamp(
+      0,
+      items.length,
+    );
+    // A moment can only land where another one starts, or at the end. Dropped
+    // halfway down "Alabanza" it would leave that moment empty and quietly
+    // adopt its songs, which is not what dragging a moment means.
+    if (block.first.isSection) {
+      final stops = [
+        0,
+        for (var i = 0; i < items.length; i++)
+          if (items[i].isSection) i,
+        items.length,
+      ];
+      target = stops.reduce((a, b) => (a - target).abs() <= (b - target).abs() ? a : b);
+    }
+    items.insertAll(target, block);
 
     final updated = col.copyWith(items: items);
     emit(ControlLoadedState(model.copyWith(activeCollection: updated)));

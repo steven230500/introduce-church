@@ -6,6 +6,11 @@ enum CollectionItemType {
   imageSlide,
   videoSlide,
   announcement,
+
+  /// A moment in the service - "Alabanza", "Prédica" - dropped into the same
+  /// ordered list as everything else. What follows belongs to it until the
+  /// next one; it is not a folder that holds them.
+  section,
 }
 
 extension CollectionItemTypeX on CollectionItemType {
@@ -17,6 +22,7 @@ extension CollectionItemTypeX on CollectionItemType {
     CollectionItemType.imageSlide => 'image_slide',
     CollectionItemType.videoSlide => 'video_slide',
     CollectionItemType.announcement => 'announcement',
+    CollectionItemType.section => 'section',
   };
 
   String get label => switch (this) {
@@ -27,6 +33,7 @@ extension CollectionItemTypeX on CollectionItemType {
     CollectionItemType.imageSlide => 'Presentación',
     CollectionItemType.videoSlide => 'Video',
     CollectionItemType.announcement => 'Anuncio',
+    CollectionItemType.section => 'Momento',
   };
 
   static CollectionItemType fromString(String v) => switch (v) {
@@ -36,6 +43,7 @@ extension CollectionItemTypeX on CollectionItemType {
     'image_slide' => CollectionItemType.imageSlide,
     'video_slide' => CollectionItemType.videoSlide,
     'announcement' => CollectionItemType.announcement,
+    'section' => CollectionItemType.section,
     _ => CollectionItemType.song,
   };
 }
