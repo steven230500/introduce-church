@@ -87,6 +87,24 @@ class AppPrefsService {
     await _write(d);
   }
 
+  /// How big the operator wants the slides in the grid, as columns taken away
+  /// from what fits. Kept per machine: the laptop at the desk has a small
+  /// screen and the one at home does not.
+  Future<void> saveGridZoom(int zoom) async {
+    final d = Map<String, dynamic>.from(await _read());
+    if (zoom == 0) {
+      d.remove('grid_zoom');
+    } else {
+      d['grid_zoom'] = zoom;
+    }
+    await _write(d);
+  }
+
+  Future<int?> loadGridZoom() async {
+    final raw = (await _read())['grid_zoom'];
+    return raw is num ? raw.toInt() : null;
+  }
+
   Future<Map<String, double>?> loadLayout() async {
     final d = await _read();
     final raw = d['layout'];

@@ -192,6 +192,71 @@ class _PptxImportDialogState extends State<_PptxImportDialog> {
   }
 }
 
+/// Brings a PDF in as one presentation, a page per slide.
+///
+/// No conversion tools are needed for this one - the app draws the pages
+/// itself - so it works on a machine that has nothing else installed.
+Future<void> _importPdf(BuildContext context, ControlCubit cubit) async {
+  await Future.delayed(const Duration(milliseconds: 250));
+  if (!context.mounted) return;
+
+  final result = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: false);
+  final path = result?.files.firstOrNull?.path;
+  if (path == null || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final t = L10n.of(context);
+
+  if (!path.toLowerCase().endsWith('.pdf')) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(t.importPickPdf), duration: const Duration(seconds: 2)),
+    );
+    return;
+  }
+
+  final navigator = Navigator.of(context);
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => AppDialog(
+      title: t.importPdfReading,
+      icon: Icons.picture_as_pdf_outlined,
+      showClose: false,
+      width: 320,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: kAccent),
+            ),
+            const SizedBox(width: 16),
+            Text(t.importPdfWait, style: const TextStyle(color: kTextSecondary, fontSize: 13)),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final pages = await cubit.importPdfAsImages(path);
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(pages > 0 ? t.importPdfDone(pages) : t.importPdfFailed),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  } catch (e) {
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(t.errorWith('$e')), duration: const Duration(seconds: 5)),
+    );
+  }
+}
+
 Future<void> _importVideo(BuildContext context, ControlCubit cubit) async {
   await Future.delayed(const Duration(milliseconds: 250));
   if (!context.mounted) return;

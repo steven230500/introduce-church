@@ -103,6 +103,13 @@ class _VersionRow extends StatelessWidget {
                     const SizedBox(width: 6),
                     const _ApiBadge(),
                   ],
+                  if (state.status == VersionStatus.incomplete) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      L10n.of(context).bibleVersionIncomplete,
+                      style: TextStyle(color: Colors.amber.shade600, fontSize: 11),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -197,6 +204,18 @@ class _VersionAction extends StatelessWidget {
                 label: Text(L10n.of(context).download, style: const TextStyle(fontSize: 13)),
               )
             : const SizedBox.shrink(),
+
+      // What was half downloaded is finished, not deleted first: the same
+      // download wipes it and writes it again.
+      VersionStatus.incomplete => FilledButton.icon(
+        onPressed: () => cubit.download(state.meta.code),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.accent,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        ),
+        icon: const Icon(Icons.refresh_rounded, size: 16),
+        label: Text(L10n.of(context).bibleVersionFinish, style: const TextStyle(fontSize: 13)),
+      ),
 
       VersionStatus.downloading => _ProgressBar(progress: state.progress),
 

@@ -69,13 +69,17 @@ class _AddItemMenu extends StatelessWidget {
         ),
         const PopupMenuDivider(),
         _SectionItem(L10n.of(context).addImportFile),
+        // Order matters here. The two PowerPoint rows used to read the same,
+        // told apart by one word at the end, and an operator importing the
+        // Sunday announcements picked the one that pulls the text out and got
+        // a service with one element per page.
         PopupMenuItem(
-          value: 'pptx',
+          value: 'pdf',
           height: 38,
           child: AppMenuRow(
-            icon: Icons.upload_file_outlined,
-            label: 'PowerPoint',
-            trailing: L10n.of(context).addPptxText,
+            icon: Icons.picture_as_pdf_outlined,
+            label: L10n.of(context).addPdf,
+            trailing: L10n.of(context).addAsPresentation,
           ),
         ),
         PopupMenuItem(
@@ -84,7 +88,16 @@ class _AddItemMenu extends StatelessWidget {
           child: AppMenuRow(
             icon: Icons.slideshow_outlined,
             label: 'PowerPoint',
-            trailing: L10n.of(context).addPptxImages,
+            trailing: L10n.of(context).addAsPresentation,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'pptx',
+          height: 38,
+          child: AppMenuRow(
+            icon: Icons.upload_file_outlined,
+            label: 'PowerPoint',
+            trailing: L10n.of(context).addPptxText,
           ),
         ),
         PopupMenuItem(
@@ -98,6 +111,7 @@ class _AddItemMenu extends StatelessWidget {
           child: AppMenuRow(
             icon: Icons.folder_open_outlined,
             label: L10n.of(context).addWholeFolder,
+            trailing: L10n.of(context).addAsPresentation,
           ),
         ),
       ],
@@ -170,6 +184,8 @@ class _AddItemMenu extends StatelessWidget {
         await _importPptx(context, cubit);
       case 'pptx_images':
         await _importPptxAsImages(context, cubit);
+      case 'pdf':
+        await _importPdf(context, cubit);
       case 'video':
         await _importVideo(context, cubit);
       case 'folder':

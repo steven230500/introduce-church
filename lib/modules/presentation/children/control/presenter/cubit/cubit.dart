@@ -11,6 +11,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:flutter_modular/flutter_modular.dart' show Modular;
 import '../../../../../../core/local_db/bible_repository.dart';
 import '../../../../../../core/services/app_prefs_service.dart';
+import '../../../../../../core/services/pdf_import_service.dart';
 import '../../../../../../core/utils/app_logger.dart';
 import '../../../../../../core/utils/new_id.dart';
 import '../../../../../../core/windows/window_link.dart';
@@ -49,6 +50,7 @@ class ControlModel extends Equatable {
     this.isLive = false,
     this.blankScreen = false,
     this.gridView = true,
+    this.gridZoom = 0,
     this.userTemplates = const [],
     this.countdownActive = false,
     this.countdownEnd,
@@ -94,6 +96,14 @@ class ControlModel extends Equatable {
   final bool isLive;
   final bool blankScreen;
   final bool gridView;
+
+  /// How much bigger the operator wants the slides in the grid, in columns
+  /// taken away from what fits.
+  ///
+  /// Zero is what the app always did: as many as the window holds. One means
+  /// one column fewer and so larger slides, which is what a laptop at the desk
+  /// needs; below zero means smaller.
+  final int gridZoom;
   final List<SlideTemplate> userTemplates;
   final bool countdownActive;
   final DateTime? countdownEnd;
@@ -266,6 +276,7 @@ class ControlModel extends Equatable {
     bool? isLive,
     bool? blankScreen,
     bool? gridView,
+    int? gridZoom,
     List<SlideTemplate>? userTemplates,
     bool? countdownActive,
     DateTime? countdownEnd,
@@ -295,6 +306,7 @@ class ControlModel extends Equatable {
       isLive: isLive ?? this.isLive,
       blankScreen: blankScreen ?? this.blankScreen,
       gridView: gridView ?? this.gridView,
+      gridZoom: gridZoom ?? this.gridZoom,
       userTemplates: userTemplates ?? this.userTemplates,
       countdownActive: countdownActive ?? this.countdownActive,
       countdownEnd: clearCountdownEnd ? null : countdownEnd ?? this.countdownEnd,
@@ -326,6 +338,7 @@ class ControlModel extends Equatable {
     isLive,
     blankScreen,
     gridView,
+    gridZoom,
     userTemplates,
     countdownActive,
     countdownEnd,
@@ -360,7 +373,9 @@ class ControlCubit extends Cubit<ControlState> {
     ServiceClock? clock,
     DateTime Function()? now,
     String? Function()? currentOrg,
+    PdfImportService? pdfImport,
   }) : _pending = pending ?? PendingWrites(),
+       _pdfImport = pdfImport ?? const PdfImportService(),
        _songs = songs,
        _clock = clock ?? ServiceClock(),
        _now = now ?? DateTime.now,
@@ -374,6 +389,9 @@ class ControlCubit extends Cubit<ControlState> {
 
   /// Changes made while the server could not be reached, waiting to be sent.
   final PendingWrites _pending;
+
+  /// Draws the pages of a PDF. Held here so a test can hand over its own.
+  final PdfImportService _pdfImport;
 
   /// Only needed when a service is opened from a file, so it is resolved then
   /// rather than held by every presenter that never imports anything.
@@ -688,7 +706,14 @@ class ControlCubit extends Cubit<ControlState> {
 
   /// Full load with a loading state. Use only for the first load and for
   /// recovering from an error screen.
-  Future<void> load() => _fetch(showSpinner: true);
+  Future<void> load() async {
+    // How big this machine's operator wants the slides, from the last time
+    // they said so.
+    _savedGridZoom = await _prefs.loadGridZoom();
+    await _fetch(showSpinner: true);
+  }
+
+  int? _savedGridZoom;
 
   /// Reloads from the server while keeping the current screen on display.
   ///
@@ -724,6 +749,7 @@ class ControlCubit extends Cubit<ControlState> {
             // changes are concerned, that is still no network.
             offline: stillWaiting > 0,
             pendingWrites: stillWaiting,
+            savedGridZoom: _savedGridZoom,
           ),
         ),
       );
@@ -779,6 +805,7 @@ class ControlCubit extends Cubit<ControlState> {
     required List<SlideTemplate> userTemplates,
     required bool offline,
     required int pendingWrites,
+    int? savedGridZoom,
   }) {
     final activeId = previous?.activeCollection?.id;
     final active = activeId == null ? null : collections.where((c) => c.id == activeId).firstOrNull;
@@ -798,6 +825,7 @@ class ControlCubit extends Cubit<ControlState> {
       isLive: previous?.isLive ?? false,
       blankScreen: previous?.blankScreen ?? false,
       gridView: previous?.gridView ?? true,
+      gridZoom: previous?.gridZoom ?? savedGridZoom ?? 0,
       countdownActive: previous?.countdownActive ?? false,
       countdownEnd: previous?.countdownEnd,
       overlayVisible: previous?.overlayVisible ?? false,
@@ -1003,6 +1031,26 @@ class ControlCubit extends Cubit<ControlState> {
     final model = (state as ControlLoadedState).model;
     emit(ControlLoadedState(model.copyWith(gridView: !model.gridView)));
   }
+
+  /// Makes the slides in the grid bigger or smaller.
+  ///
+  /// The grid fits the slides to the window, which on a laptop at the desk can
+  /// leave them too small to read from where the operator sits. Each step up
+  /// takes a column away, so every slide grows and the grid scrolls.
+  void zoomGrid(int delta) {
+    if (state is! ControlLoadedState) return;
+    final model = (state as ControlLoadedState).model;
+    final zoom = (model.gridZoom + delta).clamp(minGridZoom, maxGridZoom);
+    if (zoom == model.gridZoom) return;
+    emit(ControlLoadedState(model.copyWith(gridZoom: zoom)));
+    _prefs.saveGridZoom(zoom);
+  }
+
+  /// How far the slides can be pushed either way. Three columns fewer than
+  /// what fits is a single slide filling the panel; two more than fits is as
+  /// small as anything is worth drawing.
+  static const maxGridZoom = 3;
+  static const minGridZoom = -2;
 
   /// Makes a new service and opens it. Works with no network: the service is
   /// named here, so everything added to it before the server hears about it
@@ -1338,6 +1386,26 @@ class ControlCubit extends Cubit<ControlState> {
         collection,
         CollectionItemType.imageSlide,
         content: {'title': p.basename(filePath), 'paths': imagePaths},
+      ),
+    ]);
+    return imagePaths.length;
+  }
+
+  /// Adds a PDF as one presentation, a page per slide.
+  ///
+  /// Announcements arrive as a PDF far more often than as a PowerPoint, and
+  /// the page has to reach the screen as it was designed: one element with its
+  /// pages, not one element per page.
+  Future<int> importPdfAsImages(String filePath) async {
+    final collection = _openCollection;
+    if (collection == null) return 0;
+    final imagePaths = await _pdfImport.renderPages(filePath);
+    if (imagePaths.isEmpty) return 0;
+    await _addItems(collection.id, [
+      _draft(
+        collection,
+        CollectionItemType.imageSlide,
+        content: {'title': p.basenameWithoutExtension(filePath), 'paths': imagePaths},
       ),
     ]);
     return imagePaths.length;

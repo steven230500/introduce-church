@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:drift_flutter/drift_flutter.dart';
 
 part 'app_database.g.dart';
@@ -39,6 +40,10 @@ class BibleChapters extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
 
+  /// A database that lives only as long as the test does.
+  @visibleForTesting
+  AppDatabase.forTesting(super.executor);
+
   static final AppDatabase instance = AppDatabase._();
 
   @override
@@ -54,6 +59,34 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> isVersionDownloaded(String code) async {
     final v = await (select(bibleVersions)..where((t) => t.code.equals(code))).getSingleOrNull();
     return v?.isDownloaded ?? false;
+  }
+
+  /// The whole Bible, as every version the app offers counts it.
+  static const wholeBibleBooks = 66;
+
+  /// Whether a version has all of its books and all of their chapters.
+  ///
+  /// A download that is cut off - the wifi drops, the laptop sleeps - used to
+  /// leave a Bible with the first few books in it, marked as installed, and
+  /// the operator found out on a Sunday that Romans was not there.
+  Future<bool> isVersionComplete(String code) async {
+    final books = await getBooks(code);
+    if (books.length < wholeBibleBooks) return false;
+    final expected = books.fold<int>(0, (sum, b) => sum + b.chapterCount);
+    final stored =
+        await (selectOnly(bibleChapters)
+              ..addColumns([bibleChapters.id.count()])
+              ..where(bibleChapters.versionCode.equals(code)))
+            .map((row) => row.read(bibleChapters.id.count()) ?? 0)
+            .getSingle();
+    return stored >= expected;
+  }
+
+  /// Says a version is ready to be read. Called only once everything is in.
+  Future<void> markVersionDownloaded(String code) async {
+    await (update(bibleVersions)..where((t) => t.code.equals(code))).write(
+      BibleVersionsCompanion(isDownloaded: const Value(true), downloadedAt: Value(DateTime.now())),
+    );
   }
 
   // Libros
@@ -131,6 +164,9 @@ class AppDatabase extends _$AppDatabase {
     required String name,
     required bool isBundled,
     required List<Map<String, dynamic>> books,
+    // A chapter-by-chapter download announces the version first and fills it
+    // afterwards, so it starts out not ready to be read.
+    bool isDownloaded = true,
   }) async {
     await transaction(() async {
       await into(bibleVersions).insertOnConflictUpdate(
@@ -138,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
           code: Value(code),
           name: Value(name),
           isBundled: Value(isBundled),
-          isDownloaded: Value(true),
+          isDownloaded: Value(isDownloaded),
           downloadedAt: Value(DateTime.now()),
         ),
       );

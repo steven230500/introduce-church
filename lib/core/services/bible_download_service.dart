@@ -51,8 +51,15 @@ class BibleDownloadService {
     final totalChapters = booksList.fold<int>(0, (sum, b) => sum + (b['chapters'] as int));
     var completedChapters = 0;
 
-    // 2. Prepare version row
-    await _db.insertVersion(code: code, name: name, isBundled: false, books: []);
+    // 2. Prepare version row, not yet readable: what is half downloaded must
+    // not look installed.
+    await _db.insertVersion(
+      code: code,
+      name: name,
+      isBundled: false,
+      books: [],
+      isDownloaded: false,
+    );
 
     // Wipe existing data for clean re-import
     await _db.deleteBooksAndChapters(code);
@@ -93,6 +100,9 @@ class BibleDownloadService {
         }
       }
     }
+
+    // 4. Only now is it a Bible.
+    await _db.markVersionDownloaded(code);
   }
 
   Future<List<String>> _fetchChapter(String apiCode, int bookId, int chapter) async {
@@ -125,6 +135,10 @@ class BibleDownloadService {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   Future<bool> isDownloaded(String code) => _db.isVersionDownloaded(code);
+
+  /// Whether what is stored is the whole Bible. A version downloaded by an
+  /// older build may say it is installed while holding only its first books.
+  Future<bool> isComplete(String code) => _db.isVersionComplete(code);
   Future<void> deleteVersion(String code) => _db.deleteVersion(code);
 
   static String _stripHtml(String text) => text.replaceAll(RegExp(r'<[^>]+>'), '').trim();

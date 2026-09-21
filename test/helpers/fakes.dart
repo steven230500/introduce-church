@@ -69,6 +69,16 @@ class FakePrefsService extends AppPrefsService {
   @override
   Future<List<Map<String, dynamic>>?> loadTemplates() async => savedTemplates;
 
+  int? gridZoom;
+
+  @override
+  Future<void> saveGridZoom(int zoom) async {
+    gridZoom = zoom == 0 ? null : zoom;
+  }
+
+  @override
+  Future<int?> loadGridZoom() async => gridZoom;
+
   Map<String, dynamic>? waiting;
 
   @override

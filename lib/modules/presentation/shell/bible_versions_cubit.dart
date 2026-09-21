@@ -47,7 +47,17 @@ const kAvailableVersions = [
 
 // ── States ────────────────────────────────────────────────────────────────────
 
-enum VersionStatus { checking, installed, notInstalled, downloading, importing, error }
+enum VersionStatus {
+  checking,
+  installed,
+  notInstalled,
+  downloading,
+  importing,
+  error,
+
+  /// Installed, but missing books: a download that was cut off.
+  incomplete,
+}
 
 class VersionState extends Equatable {
   const VersionState({
@@ -103,7 +113,14 @@ class BibleVersionsCubit extends Cubit<BibleVersionsState> {
   Future<void> load() async {
     for (final meta in kAvailableVersions) {
       final installed = await _service.isDownloaded(meta.code);
-      _emit(meta.code, installed ? VersionStatus.installed : VersionStatus.notInstalled);
+      if (!installed) {
+        _emit(meta.code, VersionStatus.notInstalled);
+        continue;
+      }
+      // A Bible with holes in it is worse than one that is not there: the
+      // operator only finds out when the passage does not come up.
+      final complete = meta.bundled || await _service.isComplete(meta.code);
+      _emit(meta.code, complete ? VersionStatus.installed : VersionStatus.incomplete);
     }
   }
 

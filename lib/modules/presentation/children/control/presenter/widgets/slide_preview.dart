@@ -110,7 +110,82 @@ class _PreviewHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (model.gridView) ...[
+            const SizedBox(width: AppSpace.sm),
+            _GridSizeButtons(model: model),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Makes the slides in the grid bigger or smaller.
+///
+/// The operator at the desk runs a laptop with a small screen, and a song with
+/// eight slides fits them all on it by making each one too small to read.
+class _GridSizeButtons extends StatelessWidget {
+  const _GridSizeButtons({required this.model});
+
+  final ControlModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L10n.of(context);
+    final cubit = context.read<ControlCubit>();
+    final hasSlides = (model.currentItem?.slides.length ?? 0) > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceControl,
+        borderRadius: AppRadius.all(AppRadius.sm + 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _GridSizeButton(
+            icon: Icons.zoom_out_map_rounded,
+            tooltip: t.gridBigger,
+            onTap: !hasSlides || model.gridZoom >= ControlCubit.maxGridZoom
+                ? null
+                : () => cubit.zoomGrid(1),
+          ),
+          _GridSizeButton(
+            icon: Icons.zoom_in_map_rounded,
+            tooltip: t.gridSmaller,
+            onTap: !hasSlides || model.gridZoom <= ControlCubit.minGridZoom
+                ? null
+                : () => cubit.zoomGrid(-1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridSizeButton extends StatelessWidget {
+  const _GridSizeButton({required this.icon, required this.tooltip, required this.onTap});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.all(AppRadius.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
+          child: Icon(
+            icon,
+            size: 15,
+            color: onTap == null ? AppColors.textMuted : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -188,7 +263,11 @@ class _SlideGrid extends StatelessWidget {
         const spacing = AppSpace.sm;
         const pad = AppSpace.lg;
         final available = constraints.maxWidth - pad * 2;
-        final columns = _columnsFor(slides.length, available, constraints.maxHeight - pad * 2);
+        final fitted = _columnsFor(slides.length, available, constraints.maxHeight - pad * 2);
+        // Each step of zoom is a column taken away, and never more columns
+        // than there are slides: four columns for a two-slide song is two
+        // empty holes.
+        final columns = (fitted - model.gridZoom).clamp(1, slides.length);
         final gridWidth = _gridWidth(columns, available);
         final tile = (gridWidth - spacing * (columns - 1)) / columns;
         final inset = (available - gridWidth) / 2;
@@ -199,7 +278,13 @@ class _SlideGrid extends StatelessWidget {
           // ceiling of a tall empty column.
           child: Center(
             child: GridView.builder(
-              shrinkWrap: true,
+              // Fitted to the window it cannot overflow, so it hugs its
+              // content and sits centred. Once the operator makes the slides
+              // bigger than the window, it has to scroll instead.
+              shrinkWrap: model.gridZoom <= 0,
+              physics: model.gridZoom <= 0
+                  ? const NeverScrollableScrollPhysics()
+                  : const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(pad),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,

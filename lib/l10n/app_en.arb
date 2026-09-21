@@ -510,6 +510,10 @@
   "bibleVersions": "Versions",
   "bibleBooks": "Books",
   "bibleManageVersions": "Manage versions",
+  "bibleVersionIncomplete": "incomplete",
+  "bibleVersionFinish": "Finish",
+  "gridBigger": "Bigger slides",
+  "gridSmaller": "Smaller slides",
   "bibleSearchBook": "Search books...",
   "bibleNoBookMatches": "No book matches",
   "bibleTapVerse": "Tap a verse. Tap another to choose a passage.",
@@ -625,6 +629,20 @@
   "addImportFile": "Import a file",
   "addPptxText": "text",
   "addPptxImages": "images",
+  "addPdf": "PDF",
+  "addAsPresentation": "presentation",
+  "importPickPdf": "Choose a .pdf file",
+  "importPdfReading": "Reading the PDF",
+  "importPdfWait": "Drawing the pages...",
+  "importPdfDone": "{count, plural, =1{1 page imported} other{{count} pages in one presentation}}",
+  "@importPdfDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importPdfFailed": "The PDF could not be read.",
   "addWholeFolder": "Whole folder",
   "add": "Add",
   "sermonNew": "New sermon",
