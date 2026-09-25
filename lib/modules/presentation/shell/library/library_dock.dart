@@ -80,7 +80,13 @@ class _DockTabs extends StatelessWidget {
                 icon: _icons[tab]!,
                 label: tab.label(t),
                 active: tab == current,
-                onTap: () => shell.openLibrary(tab),
+                onTap: () {
+                  // The search box of the panel being left keeps the
+                  // keyboard otherwise, and the service stops answering
+                  // to the arrows.
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  shell.openLibrary(tab);
+                },
               ),
             ),
         ],

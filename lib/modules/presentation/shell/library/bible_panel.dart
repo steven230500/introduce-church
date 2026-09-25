@@ -13,6 +13,7 @@ import '../../../../core/widgets/ui/app_buttons.dart';
 import '../../../../core/widgets/ui/app_search_field.dart';
 import '../../../../core/services/app_prefs_service.dart';
 import '../../../../core/widgets/ui/empty_state.dart';
+import '../../../../core/widgets/ui/reveal_row.dart';
 import '../../../../core/widgets/ui/verse_layout_toggle.dart';
 import '../../children/control/presenter/cubit/cubit.dart';
 import '../bible_versions_dialog.dart';
@@ -357,15 +358,22 @@ class _VersesList extends StatefulWidget {
 class _VersesListState extends State<_VersesList> {
   /// The row of a verse opened from a search, to bring into view once drawn.
   final _reveal = GlobalKey();
+  final _scroll = ScrollController();
   int? _revealed;
 
-  void _bringIntoView(int? verse) {
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _bringIntoView(int? verse, List<int> present) {
     if (verse == null || verse == _revealed) return;
     _revealed = verse;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final row = _reveal.currentContext;
-      if (row != null) Scrollable.ensureVisible(row, alignment: 0.25);
-    });
+    final at = present.indexOf(verse - 1);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => revealRow(key: _reveal, controller: _scroll, at: at, count: present.length),
+    );
   }
 
   @override
@@ -377,7 +385,6 @@ class _VersesListState extends State<_VersesList> {
           a.selectedVerseEnd != b.selectedVerseEnd ||
           a.revealVerse != b.revealVerse,
       builder: (context, state) {
-        _bringIntoView(state.revealVerse);
         final start = state.selectedVerse;
         final end = state.selectedVerseEnd ?? start;
 
@@ -388,9 +395,10 @@ class _VersesListState extends State<_VersesList> {
             if (state.verses[i].trim().isNotEmpty) i,
         ];
 
-        // Every row built, not only the visible ones: a chapter is at most a
-        // few hundred, and the verse to reveal has to exist to be scrolled to.
+        _bringIntoView(state.revealVerse, present);
+
         return ListView(
+          controller: _scroll,
           padding: const EdgeInsets.only(bottom: AppSpace.md),
           children: [for (final i in present) _row(context, state, i, start, end)],
         );

@@ -108,6 +108,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
     _control.keepRetrying();
     _updates.start();
     _usage.start();
+    FocusManager.instance.addListener(_keepKeyboard);
   }
 
   /// Held rather than looked up again in dispose, where the tree it would be
@@ -116,6 +117,7 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 
   @override
   void dispose() {
+    FocusManager.instance.removeListener(_keepKeyboard);
     _control.stopRetrying();
     _updates.stop();
     _usage.stop();
@@ -131,6 +133,35 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
   /// because it blanked the projector.
   bool get _isTyping => isTyping();
 
+  /// Hands the keyboard back to the service.
+  ///
+  /// The guard above keeps typing from running the service. It is not enough
+  /// on its own: the focus stays in the search box until something takes it,
+  /// and when the box goes away - another library tab, a chapter opened from
+  /// a search - the focus is left on no one at all, which puts this handler
+  /// off the path the keys travel. Either way the operator searched a song
+  /// and the arrows stopped passing slides.
+  /// Takes the keyboard back whenever nobody is holding it: a search box that
+  /// closed with the panel it was in, a menu that went away. The keys of a
+  /// service have to work without the operator knowing what a focus is.
+  void _keepKeyboard() {
+    if (!mounted) return;
+    final focus = FocusManager.instance.primaryFocus;
+    // Somebody is typing or has the keyboard for a reason.
+    if (focus != null && focus is! FocusScopeNode) return;
+    // A dialog is open: the keyboard is its own.
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (_focusNode.hasFocus) return;
+    scheduleMicrotask(() {
+      if (mounted && !_focusNode.hasFocus) _focusNode.requestFocus();
+    });
+  }
+
+  void _takeKeyboard() {
+    if (_isTyping) FocusManager.instance.primaryFocus?.unfocus();
+    if (!_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
@@ -144,7 +175,15 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
       return KeyEventResult.handled;
     }
 
-    if (_isTyping) return KeyEventResult.ignored;
+    if (_isTyping) {
+      // Escape is how you leave a box you are typing in. On the service it
+      // uncovers the screen; here it gives the keys back.
+      if (key == LogicalKeyboardKey.escape) {
+        _takeKeyboard();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
 
     final control = context.read<ControlCubit>();
     final shell = context.read<ShellCubit>();
@@ -263,7 +302,14 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
                     children: [
                       _Sidebar(current: shell.section, remote: _remote, updates: _updates),
                       const VerticalDivider(width: 1, color: AppColors.divider),
-                      Expanded(child: _body(context, shell.section)),
+                      Expanded(
+                        // A pointer route, not a tap: the press is seen even
+                        // when the row or the slide under it handles the tap.
+                        child: Listener(
+                          onPointerDown: (_) => _takeKeyboard(),
+                          child: _body(context, shell.section),
+                        ),
+                      ),
                       if (showDock)
                         PanelResizer(
                           tooltip: L10n.of(context).resizeHint,

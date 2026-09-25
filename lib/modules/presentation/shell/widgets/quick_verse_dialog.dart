@@ -332,10 +332,10 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
             ),
           ),
           const SizedBox(height: AppSpace.md),
-          _Feedback(result: _parsed, failure: _failure),
+          _Feedback(result: _parsed, failure: _failure, language: _version?.language),
           if (_bookChoices.isNotEmpty) ...[
             const SizedBox(height: AppSpace.sm),
-            _BookChoices(books: _bookChoices, onPick: _chooseBook),
+            _BookChoices(books: _bookChoices, onPick: _chooseBook, language: _version?.language),
           ],
           if (_preview case final text? when _parsed.reference != null) ...[
             const SizedBox(height: AppSpace.md),
@@ -365,10 +365,14 @@ class _QuickVerseDialogState extends State<QuickVerseDialog> {
 
 /// Says what the line will turn into, before the operator commits to it.
 class _Feedback extends StatelessWidget {
-  const _Feedback({required this.result, required this.failure});
+  const _Feedback({required this.result, required this.failure, this.language});
 
   final ReferenceResult result;
   final String? failure;
+
+  /// The language of the version the passage goes out in, which is how the
+  /// book is named back to the operator.
+  final String? language;
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +381,7 @@ class _Feedback extends StatelessWidget {
 
     final reference = result.reference;
     if (reference != null) {
-      return _Line(text: reference.toString(), color: AppColors.success, bold: true);
+      return _Line(text: reference.inLanguage(language), color: AppColors.success, bold: true);
     }
 
     return switch (result.problem) {
@@ -426,9 +430,12 @@ class _Line extends StatelessWidget {
 
 /// The books a half-typed name could mean, one tap from being the one.
 class _BookChoices extends StatelessWidget {
-  const _BookChoices({required this.books, required this.onPick});
+  const _BookChoices({required this.books, required this.onPick, this.language});
 
   final List<int> books;
+
+  /// Books are offered in the language of the version they will go out in.
+  final String? language;
   final ValueChanged<int> onPick;
 
   @override
@@ -439,7 +446,7 @@ class _BookChoices extends StatelessWidget {
       children: [
         for (final index in books)
           ActionChip(
-            label: Text(spanishBookName(index), style: const TextStyle(fontSize: 12)),
+            label: Text(bookName(index, language: language), style: const TextStyle(fontSize: 12)),
             onPressed: () => onPick(index),
             backgroundColor: AppColors.surfaceControl,
             side: const BorderSide(color: AppColors.border),

@@ -1,13 +1,43 @@
 part of '../../page.dart';
 
 /// The ordered list of elements in the open collection.
-class _SetListItems extends StatelessWidget {
+class _SetListItems extends StatefulWidget {
   const _SetListItems({required this.model});
 
   final ControlModel model;
 
   @override
+  State<_SetListItems> createState() => _SetListItemsState();
+}
+
+class _SetListItemsState extends State<_SetListItems> {
+  /// The row of the selected element, to keep in sight.
+  final _selected = GlobalKey();
+  final _scroll = ScrollController();
+  int? _followed;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Keeps the selected element in sight. Pressing 8, jumping a moment with
+  /// M or letting "next" run past the bottom used to leave the list where it
+  /// was, and the operator looking for what they had just selected.
+  void _follow(int index, List<int> rows) {
+    if (index == _followed) return;
+    _followed = index;
+    final at = rows.indexOf(index);
+    if (at < 0) return;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => revealRow(key: _selected, controller: _scroll, at: at, count: rows.length),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final model = widget.model;
     final t = L10n.of(context);
     final collection = model.activeCollection;
 
@@ -96,7 +126,10 @@ class _SetListItems extends StatelessWidget {
                     i,
               ];
 
+              _follow(model.currentItemIndex, rows);
+
               return ReorderableListView.builder(
+                scrollController: _scroll,
                 padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                 itemCount: rows.length,
                 // The default handle is a second trailing control on a panel
@@ -113,6 +146,7 @@ class _SetListItems extends StatelessWidget {
                 itemBuilder: (context, position) {
                   final index = rows[position];
                   final item = items[index];
+                  final selected = model.currentItemIndex == index;
                   if (item.isSection) {
                     return _MomentRow(
                       key: ValueKey(item.id),
@@ -124,11 +158,12 @@ class _SetListItems extends StatelessWidget {
                   }
                   return _SetListTile(
                     key: ValueKey(item.id),
+                    rowKey: selected ? _selected : null,
                     model: model,
                     item: item,
                     index: index,
                     position: position,
-                    isActive: model.currentItemIndex == index,
+                    isActive: selected,
                     isOnAir: model.isLiveItem(index),
                   );
                 },
@@ -301,6 +336,7 @@ class _FoldedDots extends StatelessWidget {
 class _SetListTile extends StatelessWidget {
   const _SetListTile({
     super.key,
+    this.rowKey,
     required this.model,
     required this.item,
     required this.index,
@@ -308,6 +344,10 @@ class _SetListTile extends StatelessWidget {
     required this.isActive,
     required this.isOnAir,
   });
+
+  /// Marks the selected row so the list can be scrolled to it. The widget's
+  /// own key is the item's id, which the reordering needs.
+  final GlobalKey? rowKey;
 
   final ControlModel model;
   final CollectionItem item;
@@ -330,6 +370,7 @@ class _SetListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L10n.of(context);
     return HoverBuilder(
+      key: rowKey,
       cursor: SystemMouseCursors.click,
       builder: (context, hovering) => GestureDetector(
         onTap: () => context.read<ControlCubit>().selectItem(index),

@@ -25,6 +25,17 @@ class BibleReference {
 
   String get bookName => spanishBookName(bookIndex);
 
+  /// The reference as the version that will show it names the book, so what
+  /// the operator reads while typing is what goes out: "John 3:16" for the
+  /// church reading the English Bible.
+  String inLanguage(String? language) {
+    // Not [bookName]: inside the class that name is this object's getter.
+    final book = _named(bookIndex, language);
+    if (verseStart == null) return '$book $chapter';
+    if (verseEnd == null || verseEnd == verseStart) return '$book $chapter:$verseStart';
+    return '$book $chapter:$verseStart-$verseEnd';
+  }
+
   @override
   String toString() {
     if (verseStart == null) return '$bookName $chapter';
@@ -32,6 +43,9 @@ class BibleReference {
     return '$bookName $chapter:$verseStart-$verseEnd';
   }
 }
+
+String _named(int index, String? language) =>
+    bookName(index, language: language, inReference: true);
 
 /// Why a line could not be turned into a reference.
 enum ReferenceProblem { empty, noBook, ambiguous, noChapter }

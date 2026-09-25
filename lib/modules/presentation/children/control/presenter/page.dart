@@ -35,6 +35,7 @@ import '../../../../../core/widgets/ui/empty_state.dart';
 import '../../../../../core/widgets/ui/hover_builder.dart';
 import '../../../../../core/widgets/ui/page_header.dart';
 import '../../../../../core/widgets/ui/panel_resizer.dart';
+import '../../../../../core/widgets/ui/reveal_row.dart';
 import '../../../../../core/widgets/ui/text_controller_scope.dart';
 import '../../../shell/shell_cubit.dart';
 import '../../../shell/widgets/collection_dialog.dart';
